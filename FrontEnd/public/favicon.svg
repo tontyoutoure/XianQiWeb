@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Circular piece background -->
+  <defs>
+    <!-- Wooden texture pattern -->
+    <pattern id="woodPattern" patternUnits="userSpaceOnUse" width="32" height="32">
+      <rect width="32" height="32" fill="#d4a36f"/>
+      <rect width="32" height="32" fill="#b5835a" opacity="0.3">
+        <animate attributeName="opacity" values="0.3;0.1;0.3" dur="3s" repeatCount="indefinite"/>
+      </rect>
+    </pattern>
+  </defs>
+
+  <!-- Main circle with wooden pattern -->
+  <circle cx="16" cy="16" r="15" fill="url(#woodPattern)" stroke="#8b0000" stroke-width="1"/>
+  
+  <!-- Inner circle decoration -->
+  <circle cx="16" cy="16" r="13" fill="none" stroke="#dc0000" stroke-width="0.5"/>
+  
+  <text x="16" y="18" 
+        font-family="KaiTi, 楷体, DFKai-SB, serif" 
+        font-size="22" 
+        font-weight="bold"
+        fill="#dc0000" 
+        text-anchor="middle" 
+        dominant-baseline="middle">掀</text>
+</svg>
