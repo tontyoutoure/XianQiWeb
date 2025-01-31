@@ -1,15 +1,13 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import asyncio
 from fastapi import APIRouter
-from pydantic import BaseModel
 
 from app.services.connection_manager import ConnectionManager
-# from app.services.lobby_manager import lobby_manager
+from app.services.player_manager import player_manager
 
 app = FastAPI()
-connection_manager = ConnectionManager()
+connection_manager = ConnectionManager(player_manager)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,11 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.on_event("startup")
 async def startup_event():
     # Start connection monitoring
     asyncio.create_task(connection_manager.check_connections())
+    # Start player cleanup
+    asyncio.create_task(player_manager.cleanup_disconnected_players())
 
 @app.websocket("/ws/{player_name}")
 async def websocket_endpoint(websocket: WebSocket, player_name: str):
@@ -32,7 +31,6 @@ async def websocket_endpoint(websocket: WebSocket, player_name: str):
         return
     
     try:
-        # Send connection established message
         await connection_manager.send_personal_message(
             {"type": "connection_established", "player_name": player_name},
             player_name
@@ -42,11 +40,9 @@ async def websocket_endpoint(websocket: WebSocket, player_name: str):
             try:
                 data = await websocket.receive_json()
                 await connection_manager.handle_message(player_name, data)
-                
             except ValueError as e:
                 print(f"Invalid message format from {player_name}: {e}")
                 continue
-                
     except WebSocketDisconnect:
         await connection_manager.handle_disconnection(player_name)
     except Exception as e:
@@ -54,21 +50,23 @@ async def websocket_endpoint(websocket: WebSocket, player_name: str):
         await connection_manager.handle_disconnection(player_name)
 
 # Router setup
-router_lobby = APIRouter(
-    prefix="/lobby",
-    responses={404: {"description": "Not found"}}
-)
-app.include_router(router_lobby)
-# lobby_manager.register_router(router_lobby)
-
 router_player = APIRouter(
     prefix="/player",
     responses={404: {"description": "Not found"}}
 )
-app.include_router(router_player)
 
-# Serve static files
-# app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="static")
+@router_player.get("/status/{player_name}")
+async def get_player_status(player_name: str):
+    """Get current status of a player"""
+    player = player_manager.get_player(player_name)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return {
+        "status": player.get_status().name,
+        "current_lobby": player.get_current_lobby()
+    }
+
+app.include_router(router_player)
 
 if __name__ == "__main__":
     import uvicorn

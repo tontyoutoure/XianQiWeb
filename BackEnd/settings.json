@@ -1,0 +1,10 @@
+{
+    "websocket": {
+        "heartbeat_interval": 3,
+        "heartbeat_timeout": 7
+    },
+    "player": {
+        "cleanup_interval": 30,
+        "disconnect_timeout": 300
+    }
+}
