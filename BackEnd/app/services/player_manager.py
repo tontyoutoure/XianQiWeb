@@ -38,7 +38,10 @@ class PlayerManager:
             
     def get_player(self, player_name: str) -> Optional[Player]:
         """Get a player by name."""
-        return self.players.get(player_name)
+        if player_name not in self.players:
+            return None
+        else:
+            return self.players.get(player_name)
         
     def update_player_state(self, player_name: str, state: PlayerState) -> Player:
         """Update a player's state."""

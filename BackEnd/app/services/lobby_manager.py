@@ -4,17 +4,17 @@ import uuid
 from fastapi import HTTPException
 from app.models.lobby import Lobby, LobbyStatus
 from fastapi import APIRouter
+from pydantic import BaseModel
+from app.services.player_manager import PlayerManager
 
-
+class CreateLobbyRequest(BaseModel):
+    player_name: str
+    initial_chip_count: int
 
 class LobbyManager:
-    def __init__(self):
+    def __init__(self, player_manager:PlayerManager):
         self.lobbies: Dict[str, Lobby] = {}
-        self.players: Dict[str, datetime] = {}  # player_name -> last_active
-
-    def register_player(self, player_name: str) -> None:
-        """Register a new player or update their last active time."""
-        self.players[player_name] = datetime.now()
+        self.player_manager = player_manager
 
     def get_active_lobbies(self) -> List[Lobby]:
         """Get all active lobbies."""
@@ -22,7 +22,7 @@ class LobbyManager:
 
     def create_lobby(self, player_name: str, initial_chip_count:int) -> Lobby:
         """Create a new lobby with the given player as host."""
-        if player_name not in self.players:
+        if self.player_manager.get_player(player_name) is None:
             raise HTTPException(status_code=400, detail="Player not found")
         
         lobby_id = str(uuid.uuid4())
@@ -39,7 +39,7 @@ class LobbyManager:
 
     def join_lobby(self, lobby_id: str, player_name: str) -> Lobby:
         """Add a player to an existing lobby."""
-        if player_name not in self.players:
+        if self.player_manager.get_player(player_name) is None:
             raise HTTPException(status_code=400, detail="Player not found")
             
         if lobby_id not in self.lobbies:
@@ -95,8 +95,36 @@ class LobbyManager:
         """Get a specific lobby by ID."""
         return self.lobbies.get(lobby_id)
     
-    def register_router(self, router:APIRouter):
-        
+    def register_router(self, router: APIRouter):
+        @router.get("/list")
+        async def get_lobbies():
+            lobbies = self.get_active_lobbies()
+            print("Returning lobbies:", lobbies)  # Debug print
+            return [lobby.dict() for lobby in lobbies]  # Convert Pydantic models to dict
+            
+        @router.post("/create")
+        async def create_new_lobby(request: CreateLobbyRequest):
+            try:
+                lobby = self.create_lobby(request.player_name, request.initial_chip_count)
+                return lobby.dict()  # Convert Pydantic model to dict
+            except Exception as e:
+                print(f"Error creating lobby: {e}")  # Debug print
+                raise
 
-# Create a global instance of the lobby manager
-lobby_manager = LobbyManager()
+        @router.post("/{lobby_id}/join")
+        async def join_existing_lobby(lobby_id: str, player_name: str):
+            lobby = self.join_lobby(lobby_id, player_name)
+            return lobby.dict()
+            
+        @router.post("/{lobby_id}/leave")
+        async def leave_lobby(lobby_id: str, player_name: str):
+            result = self.leave_lobby(lobby_id, player_name)
+            if "lobby" in result:
+                result["lobby"] = result["lobby"].dict()
+            return result
+            
+        @router.put("/{lobby_id}/settings")
+        async def update_lobby_settings(lobby_id: str, chip_count: int):
+            lobby = self.set_lobby_settings(lobby_id, chip_count)
+            return lobby.dict()
+        

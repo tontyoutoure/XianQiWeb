@@ -23,6 +23,11 @@ const routes = [
         next()
       }
     }
+  },
+  {
+    path: '/lobby/:id',
+    name: 'Lobby',
+    component: () => import('@/views/LobbyPage.vue')
   }
 ]
 

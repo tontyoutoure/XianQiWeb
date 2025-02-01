@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from app.services.connection_manager import ConnectionManager
 from app.services.player_manager import player_manager
+from app.services.lobby_manager import LobbyManager
 
 app = FastAPI()
 connection_manager = ConnectionManager(player_manager)
@@ -67,6 +68,16 @@ async def get_player_status(player_name: str):
     }
 
 app.include_router(router_player)
+
+router_lobby = APIRouter(
+    prefix="/lobby",  # Changed from /lobby to /api/lobby
+    responses={404: {"description": "Not found"}}
+)
+
+lobby_manager = LobbyManager(player_manager)
+lobby_manager.register_router(router_lobby)
+app.include_router(router_lobby)
+
 
 if __name__ == "__main__":
     import uvicorn

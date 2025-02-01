@@ -1,5 +1,6 @@
 // src/composables/useWebSocket.ts
 import { ref, computed } from 'vue'
+import store from '@/store'  // Import store
 
 const HEARTBEAT_INTERVAL = 5000 // 5 seconds
 
