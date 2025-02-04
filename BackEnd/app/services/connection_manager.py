@@ -20,11 +20,15 @@ class ConnectionManager:
         
     async def connect(self, websocket: WebSocket, player_name: str) -> bool:
         """Handle new WebSocket connection and player registration."""
-        await websocket.accept()
         
+        await websocket.accept()
         if player_name in self.active_connections:
-            await websocket.close(code=4000, reason="Player already connected")
+            await websocket.send_json({"type": "connection_error_player_already_exist"})
+            await websocket.close()
             return False
+        else:
+            await websocket.send_json({"type": "connection_established"})
+            
             
         # Register player
         self.player_manager.register_player(player_name)

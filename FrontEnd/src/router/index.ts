@@ -2,8 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import NameInputPage from '@/views/NameInputPage.vue'
 import LobbyListPage from '@/views/LobbyListPage.vue'
-import { Store } from 'vuex'
-import store from '@/store'  // Make sure this path matches your store file location
+import store from '@/store'
 
 const routes = [
   {
@@ -27,7 +26,15 @@ const routes = [
   {
     path: '/lobby/:id',
     name: 'Lobby',
-    component: () => import('@/views/LobbyPage.vue')
+    component: () => import('@/views/LobbyPage.vue'),
+    beforeEnter: (to, from, next) => {
+      const playerName = store.state.user.playerName
+      if (!playerName) {
+        next({ name: 'NameInput' })
+      } else {
+        next()
+      }
+    }
   }
 ]
 

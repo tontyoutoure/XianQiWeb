@@ -38,7 +38,7 @@ export default defineComponent({
     const playerName = ref('')
     const errorMessage = ref('')
     const isConnecting = ref(false)
-    const { connect } = useWebSocket()
+    const { connect, connectionState, errorType } = useWebSocket()
 
     const handleSubmit = async () => {
       if (isConnecting.value) return
@@ -52,6 +52,40 @@ export default defineComponent({
         
         // Establish WebSocket connection
         await connect(playerName.value.trim())
+        console.log('finding connection state')
+        while (true) {
+          console.log('connection state:', connectionState.value)
+          if (connectionState.value === 'connected') {
+            console.log('Connected!')
+            break
+          }
+          else if (connectionState.value === 'disconnected') 
+          {
+            console.log('Disconnected!')
+            if (errorType.value === 'error_player_already_exist')
+              {
+                console.log('Error: player already exists')
+                throw new Error('玩家已存在，请更换姓名')
+              }
+            else {
+              console.log('Error: connection failed_')
+              throw new Error('连接失败，请重试')
+            }
+
+          }
+          //sleep for a while
+          else if (connectionState.value=== 'connecting')
+          {
+            console.log('Connecting...')
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+          }
+          else
+          {
+            console.log('Error: connection failed')
+            throw new Error('连接失败，请重试')
+          }
+        }
         // Only navigate after successful connection
         router.push('/lobby-list')
       } catch (error) {

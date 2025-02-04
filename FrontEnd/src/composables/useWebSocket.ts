@@ -1,11 +1,11 @@
 // src/composables/useWebSocket.ts
 import { ref, computed } from 'vue'
-import store from '@/store'  // Import store
 
 const HEARTBEAT_INTERVAL = 5000 // 5 seconds
 
 // Shared state between all instances
-const connectionState = ref<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+const connectionState = ref<'disconnected' | 'connecting' | 'connected' >('disconnected')
+const errorType = ref<'error_player_already_exist' | 'null'>('null')
 let wsInstance: WebSocket | null = null
 let heartbeatIntervalId: number | null = null
 
@@ -26,6 +26,7 @@ export function useWebSocket() {
   const connect = async (playerName: string) => {
     if (wsInstance?.readyState === WebSocket.OPEN) {
       connectionState.value = 'connected'
+      errorType.value = 'null'
       return Promise.resolve() // Already connected
     }
 
@@ -38,7 +39,6 @@ export function useWebSocket() {
       wsInstance = new WebSocket(`${wsUrl}/ws/${playerName}`)
 
       wsInstance.onopen = () => {
-        connectionState.value = 'connected'
         resolve()
       }
 
@@ -47,7 +47,7 @@ export function useWebSocket() {
         reject(error)
       }
 
-      wsInstance.onclose = () => {
+      wsInstance.onclose = (event) => {
         connectionState.value = 'disconnected'
         stopHeartbeat()
         wsInstance = null
@@ -55,6 +55,7 @@ export function useWebSocket() {
 
       wsInstance.onmessage = (event) => {
         const message = JSON.parse(event.data)
+        console.log('Received message:', message)
         handleMessage(message)
       }
     })
@@ -99,6 +100,10 @@ export function useWebSocket() {
         console.log('Connection established:', message)
         connectionState.value = 'connected'
         break
+      case 'connection_error_player_already_exist':
+        console.error('Player already exists:', message)
+        errorType.value = 'error_player_already_exist'
+        break
       case 'heartbeat_ack':
         // Optional: handle heartbeat acknowledgment
         break
@@ -123,6 +128,7 @@ export function useWebSocket() {
     stopHeartbeat,
     connectionStatus,
     connectionState,
+    errorType,
     send
   }
 }
