@@ -6,6 +6,10 @@ from fastapi import APIRouter
 from app.services.connection_manager import ConnectionManager
 from app.services.player_manager import player_manager
 from app.services.lobby_manager import LobbyManager
+import logging
+
+logging.basicConfig(filename="run.log",level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 connection_manager = ConnectionManager(player_manager)
@@ -32,22 +36,18 @@ async def websocket_endpoint(websocket: WebSocket, player_name: str):
         return
     
     try:
-        await connection_manager.send_personal_message(
-            {"type": "connection_established", "player_name": player_name},
-            player_name
-        )
         
         while True:
             try:
                 data = await websocket.receive_json()
                 await connection_manager.handle_message(player_name, data)
             except ValueError as e:
-                print(f"Invalid message format from {player_name}: {e}")
+                logger.warning(f"Invalid message format from {player_name}: {e}")
                 continue
     except WebSocketDisconnect:
         await connection_manager.handle_disconnection(player_name)
     except Exception as e:
-        print(f"Error in websocket connection for {player_name}: {e}")
+        logger.warning(f"Error in websocket connection for {player_name}: {e}")
         await connection_manager.handle_disconnection(player_name)
 
 # Router setup
@@ -64,7 +64,7 @@ async def get_player_status(player_name: str):
         raise HTTPException(status_code=404, detail="Player not found")
     return {
         "status": player.get_status().name,
-        "current_lobby": player.get_current_lobby()
+        "current_lobby": player.get_current_lobby_id()
     }
 
 app.include_router(router_player)
@@ -74,7 +74,7 @@ router_lobby = APIRouter(
     responses={404: {"description": "Not found"}}
 )
 
-lobby_manager = LobbyManager(player_manager)
+lobby_manager = LobbyManager(player_manager, connection_manager)
 lobby_manager.register_router(router_lobby)
 app.include_router(router_lobby)
 

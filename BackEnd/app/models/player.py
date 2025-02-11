@@ -2,12 +2,12 @@ from pydantic import BaseModel
 import json
 from enum import Enum
 
-class PlayerState(Enum):
-    DISCONNECTED = -1,
-    IDLE = 0,
-    IN_LOBBY = 1,
-    READY = 1, 
-    PLAYING = 2,
+class PlayerState(str,Enum):
+    DISCONNECTED = 'DISCONNECTED',
+    IDLE = 'IDLE',
+    IN_LOBBY = 'IN_LOBBY',
+    READY = 'READY',
+    PLAYING = 'PLAYING'
 
 class Player(BaseModel):
     _name: str
@@ -23,7 +23,7 @@ class Player(BaseModel):
     def set_current_lobby(self, lobby_id: str):
         self.current_lobby = lobby_id
     
-    def get_current_lobby(self):
+    def get_current_lobby_id(self):
         return self.current_lobby
     
     

@@ -6,23 +6,28 @@ from app.models.lobby import Lobby, LobbyStatus
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.services.player_manager import PlayerManager
+from app.services.connection_manager import ConnectionManager
+import logging
+logger = logging.getLogger(__name__)
 
 class CreateLobbyRequest(BaseModel):
     player_name: str
     initial_chip_count: int
 
 class LobbyManager:
-    def __init__(self, player_manager:PlayerManager):
+    def __init__(self, player_manager:PlayerManager, connection_manager:ConnectionManager):
         self.lobbies: Dict[str, Lobby] = {}
         self.player_manager = player_manager
+        self.connection_manager = connection_manager
 
-    def get_active_lobbies(self) -> List[Lobby]:
+    def get_lobby_list(self) -> List[Lobby]:
         """Get all active lobbies."""
         return list(self.lobbies.values())
 
     def create_lobby(self, player_name: str, initial_chip_count:int) -> Lobby:
         """Create a new lobby with the given player as host."""
-        if self.player_manager.get_player(player_name) is None:
+        host_player = self.player_manager.get_player(player_name)
+        if host_player is None:
             raise HTTPException(status_code=400, detail="Player not found")
         
         lobby_id = str(uuid.uuid4())
@@ -30,16 +35,20 @@ class LobbyManager:
             id=lobby_id,
             host = player_name,
             players=[player_name],
-            created_at=datetime.now(),
+            created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             chip_count=initial_chip_count
         )
         
         self.lobbies[lobby_id] = new_lobby
+        host_player.set_current_lobby(lobby_id)
+        
         return new_lobby
 
     def join_lobby(self, lobby_id: str, player_name: str) -> Lobby:
         """Add a player to an existing lobby."""
-        if self.player_manager.get_player(player_name) is None:
+        
+        player = self.player_manager.get_player(player_name)
+        if player is None:
             raise HTTPException(status_code=400, detail="Player not found")
             
         if lobby_id not in self.lobbies:
@@ -53,7 +62,9 @@ class LobbyManager:
         if player_name in lobby.players:
             raise HTTPException(status_code=400, detail="Player already in lobby")
         
-        lobby.players.append(player_name)
+        lobby.add_player(player_name)
+        player.set_current_lobby(lobby_id)
+        
         return lobby
 
     def leave_lobby(self, lobby_id: str, player_name: str) -> dict:
@@ -66,16 +77,15 @@ class LobbyManager:
         if player_name not in lobby.players:
             raise HTTPException(status_code=400, detail="Player not in lobby")
         
-        lobby.players.remove(player_name)
+        lobby.remove_player(player_name)
+        self.player_manager.get_player(player_name).set_current_lobby("")
         
         # If lobby is empty, remove it
         if len(lobby.players) == 0:
             del self.lobbies[lobby_id]
             return {"status": "success", "message": "Lobby deleted"}
         
-        # If host leaves, assign new host
-        if player_name == lobby.host and lobby.players:
-            lobby.host = lobby.players[0]
+        
         
         return {"status": "success", "lobby": lobby}
 
@@ -98,9 +108,7 @@ class LobbyManager:
     def register_router(self, router: APIRouter):
         @router.get("/list")
         async def get_lobbies():
-            lobbies = self.get_active_lobbies()
-            print("Returning lobbies:", lobbies)  # Debug print
-            return [lobby.dict() for lobby in lobbies]  # Convert Pydantic models to dict
+            return self.serialize_lobbies()
             
         @router.post("/create")
         async def create_new_lobby(request: CreateLobbyRequest):
@@ -128,3 +136,12 @@ class LobbyManager:
             lobby = self.set_lobby_settings(lobby_id, chip_count)
             return lobby.dict()
         
+    def serialize_lobbies(self) -> List[dict]:
+        """Serialize lobbies for debugging."""
+        
+        return [lobby.dict() for lobby in self.get_lobby_list()]
+    
+    def broadcast_lobbies(self):
+        content = {}
+        content["lobby_list"] = self.serialize_lobbies()
+        self.connection_manager.broadcast("lobby_info",content)

@@ -74,15 +74,12 @@ class PlayerManager:
                 self.remove_player(player_name)
                 print(f"Cleaned up disconnected player: {player_name}")
         
-    def serialize_players(self) -> str:
+    def get_player_list(self) -> List[Player]:
+        return list(self.players.values())
+    def serialize_players(self) -> List[dict]:
         """Serialize all players to JSON string."""
-        player_data = {}
-        for name, player in self.players.items():
-            player_data[name] = {
-                "status": player.status.name,
-                "current_lobby": player.current_lobby,
-            }
-        return json.dumps(player_data, indent=2)
+        return [player.dict() for player in self.get_player_list()]
+    
 
 # Create a global instance
 player_manager = PlayerManager()
