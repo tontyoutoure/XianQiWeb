@@ -5,28 +5,62 @@
 ### 1.1 Auth
 - POST `/api/auth/register`
   - body: {"username":"", "password":""}
+  - resp: {"access_token":"", "expires_in":3600, "refresh_token":"", "refresh_expires_in":7776000, "user":{"id":0,"username":"","created_at":""}}
 - POST `/api/auth/login`
   - body: {"username":"", "password":""}
-  - resp: {"token":"", "user":{...}}
+  - resp: {"access_token":"", "expires_in":3600, "refresh_token":"", "refresh_expires_in":7776000, "user":{"id":0,"username":"","created_at":""}}
 - GET `/api/auth/me`
+  - header: Authorization: Bearer <access_token>
+  - resp: {"id":0,"username":"","created_at":""}
+- POST `/api/auth/refresh`
+  - body: {"refresh_token":""}
+  - resp: {"access_token":"", "expires_in":3600, "refresh_token":"", "refresh_expires_in":7776000}
+- POST `/api/auth/logout`
+  - body: {"refresh_token":""}
+  - resp: {"ok": true}
 
 ### 1.2 Rooms
 - GET `/api/rooms`
-  - resp: [{id, name, status, players, ready_count}]
+  - resp: [{room_id, room_name, status, player_count, ready_count}]
 - POST `/api/rooms`
-  - body: {"name":""}
+  - body: {"room_name":""}
+  - resp: room_detail
 - POST `/api/rooms/{room_id}/join`
+  - resp: room_detail
 - POST `/api/rooms/{room_id}/leave`
+  - resp: {"ok": true}
 - POST `/api/rooms/{room_id}/ready`
   - body: {"ready": true/false}
+  - resp: room_detail
 - GET `/api/rooms/{room_id}`
-  - resp: room + members + status
+  - resp: room_detail
+
+#### 1.2.1 Room structures
+room_summary：
+```json
+{"room_id":1,"room_name":"","status":"waiting","player_count":2,"ready_count":1}
+```
+
+room_detail：
+```json
+{
+  "room_id": 1,
+  "room_name": "",
+  "status": "waiting",
+  "owner_id": 10,
+  "members": [
+    {"user_id":10,"username":"","seat":0,"ready":true}
+  ],
+  "current_game_id": null
+}
+```
+status 枚举：`waiting` | `playing` | `settlement`。
 
 ### 1.3 Games / Actions / Reconnect
 - GET `/api/games/{game_id}/state`
-  - resp: {"public_state":{}, "private_state":{...}, "legal_actions": {...}}
+  - resp: {"game_id": "", "version": 0, "phase": "", "self_seat": 0, "public_state":{}, "private_state":{...}, "legal_actions": {...}}
 - POST `/api/games/{game_id}/actions`
-  - body: {"type":"PLAY|COVER|BUCKLE|REVEAL|PASS_REVEAL", "payload":{...}}
+  - body: {"action_idx": 0, "cover_list": [{"type":"B_NIU","count":1}], "client_version": 0}
 - GET `/api/games/{game_id}/settlement`
   - resp: result_json
 - POST `/api/games/{game_id}/continue`
@@ -34,16 +68,47 @@
 
 简化做法：也可用 `/api/rooms/{room_id}/actions` 由后端定位当前 game_id。
 
+#### 1.3.1 动作/牌载荷与 legal_actions
+说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
+
+牌面载荷统一使用 `cards` 结构：
+```json
+{"type": "R_SHI", "count": 1}
+```
+
+legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或不返回）：
+```jsonc
+{
+  "seat": 1,
+  "actions": [
+    {"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}]},
+    {"type": "COVER", "required_count": 1},
+    {"type": "BUCKLE"},
+    {"type": "REVEAL"},
+    {"type": "PASS_REVEAL"}
+  ]
+}
+```
+- PLAY：携带 `payload_cards`（推荐出牌牌面，前端用其决定 `action_idx`）。
+- COVER：只给出 `required_count`，前端自行从手牌选择同张数牌面，通过 `cover_list` 回传。
+- BUCKLE / REVEAL / PASS_REVEAL：无额外载荷，列表中最多各 1 个。
+
+#### 1.3.2 settlement / continue 调用时机
+- `/settlement`：仅当 `phase = settlement | finished` 时可调用，且仅限房间成员。
+- `/continue`：仅在结算阶段允许，房间成员各自提交是否继续；当三人均 `continue=true` 时服务端创建新局并重置房间为 `waiting` 或直接进入 `playing`（取决于是否要求再次准备）。
+- 若任一玩家提交 `continue=false`，则本局结束，房间返回 `waiting`。
+
 ## 2. WebSocket 协议
 
 ### 2.1 通道
-- `/ws/lobby`：大厅房间列表更新。
-- `/ws/rooms/{room_id}`：房间与对局公共消息（含开始/结算）。
+- `/ws/lobby?token=ACCESS_TOKEN`：大厅房间列表更新。
+- `/ws/rooms/{room_id}?token=ACCESS_TOKEN`：房间与对局公共消息（含开始/结算）。
 
 ### 2.2 消息结构
 ```json
 {
-  "type": "ROOM_LIST|ROOM_UPDATE|GAME_PUBLIC_STATE|GAME_PRIVATE_STATE|SETTLEMENT|ERROR",
+  "v": 1,
+  "type": "ROOM_LIST|ROOM_UPDATE|GAME_PUBLIC_STATE|GAME_PRIVATE_STATE|SETTLEMENT|ERROR|PING|PONG",
   "payload": {}
 }
 ```
@@ -54,8 +119,13 @@
 - GAME_PUBLIC_STATE：公共状态快照（不含他人手牌，适合旁观/观战）。
 - GAME_PRIVATE_STATE：仅发给单连接的私有快照（手牌、已垫棋子、legal_actions）。
 - SETTLEMENT：结算结果。
+- ERROR：{"code":"","message":"","detail":{}}。
+- PING/PONG：心跳保活。
 
+初始快照策略：连接成功后立即下发一次全量快照（大厅为 ROOM_LIST；房间为 ROOM_UPDATE + GAME_PUBLIC_STATE + GAME_PRIVATE_STATE）。
+心跳策略：服务端每 30s 发送一次 PING，客户端需在 10s 内回 PONG；连续 2 次未响应可断开连接。
 私有状态默认通过 WS 单连接私发；断线重连或兜底则通过 HTTP 拉取。
+鉴权失败：WS 连接直接关闭（推荐 close code 4401 + reason "UNAUTHORIZED"）。
 
 ## 3. 前端数据契约（页面字段）
 
@@ -71,19 +141,21 @@
 - actions: ready / leave
 
 ### 3.4 对局
-- 公共：
-  - current_player, round_index, last_combo
-  - each player: captured_count, remaining_cards_count
-- 私有：
-  - hand (cards)
-  - action_hints (allowed_actions, must_cover_count, must_beat_combo)
+仅列出前端需关心的“顶层字段”，具体结构按后端-引擎文档复用，避免重复与漂移。
+- 顶层：`game_id`, `self_seat`, `public_state`, `private_state`, `legal_actions`
+- public_state 详细字段见 `memory-bank/interfaces/backend-engine-interface.md` 的 1.5.1
+- private_state 详细字段见 `memory-bank/interfaces/backend-engine-interface.md` 的 1.5.2
+- legal_actions 详细字段见 `memory-bank/interfaces/backend-engine-interface.md` 的 1.5.3
 
 ### 3.5 结算
 - per player: captured柱数, is_enough, is_ceramic, chip_change
 - reveal/buckle relations
 
 ## 4. 约束与校验
-- 所有动作必须基于后端当前版本号（可选加 version 乐观锁）。
+- access_token 用于所有 REST/WS 鉴权；短期有效（建议 1 小时）。
+- refresh_token 用于静默刷新 access_token；长期有效（建议 90 天，滑动续期）。
+- 动作提交使用 `action_idx`（来自 `legal_actions.actions`）；COVER 动作需额外传 `cover_list`。
+- 所有动作必须基于后端当前版本号（可选加 `client_version` 乐观锁）。
 - 服务端为唯一权威；客户端只负责提交意图。
 - 断线重连：重新拉取 public_state + private_state + legal_actions 快照重建 UI。
 - 服务端重启后清空房间/对局，客户端需重新创建/加入房间。
