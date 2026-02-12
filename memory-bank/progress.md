@@ -1,8 +1,8 @@
 ## 1 总体架构与依赖方向 已评审
-## 2 MVP 范围与规则约束 已评审
+## 2 MVP 范围与规则约束 已评审（房间改为预设编号，无创建）
 ## 3 对局阶段与回合流程 已评审
 ## 4 逻辑引擎接口设计 已评审
-## 5 持久化策略调整（仅 users 入库，房间/对局内存态）已确认
+## 5 持久化策略调整（仅 users + refresh_tokens 入库，房间/对局内存态）已确认
 ## 6 前后端接口评审结论（已完成）
 - ✅ 鉴权方案与 WS 鉴权方式已定义（Bearer/WS token、/me 响应结构）。
 - ✅ 动作与牌载荷结构已定义，legal_actions/action_hints 已统一。
@@ -11,3 +11,6 @@
 - ✅ WS 协议已补充版本号/初始快照/错误格式/心跳策略。
 - ✅ settlement/continue 可调用时机与权限已说明。
 ## 7 鉴权方案已定义（access+refresh，WS query token，refresh 90 天）
+## 8 TODO
+- REST 错误响应结构未统一（建议与 WS ERROR 对齐：code/message/detail）。
+- WS 各类型 payload 结构未明确（ROOM_LIST/ROOM_UPDATE/GAME_PUBLIC_STATE/SETTLEMENT 等）。

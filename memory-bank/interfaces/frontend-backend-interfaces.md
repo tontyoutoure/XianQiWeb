@@ -18,13 +18,14 @@
 - POST `/api/auth/logout`
   - body: {"refresh_token":""}
   - resp: {"ok": true}
+Auth 说明：
+- access_token 为 JWT（短期有效），用于所有 REST/WS 鉴权。
+- refresh_token 为不透明随机串，服务端持久化（可撤销）。
+- refresh 时轮换 refresh_token（旧 token 立即失效）。
 
 ### 1.2 Rooms
 - GET `/api/rooms`
-  - resp: [{room_id, room_name, status, player_count, ready_count}]
-- POST `/api/rooms`
-  - body: {"room_name":""}
-  - resp: room_detail
+  - resp: [{room_id, status, player_count, ready_count}]
 - POST `/api/rooms/{room_id}/join`
   - resp: room_detail
 - POST `/api/rooms/{room_id}/leave`
@@ -38,27 +39,28 @@
 #### 1.2.1 Room structures
 room_summary：
 ```json
-{"room_id":1,"room_name":"","status":"waiting","player_count":2,"ready_count":1}
+{"room_id":1,"status":"waiting","player_count":2,"ready_count":1}
 ```
 
 room_detail：
 ```json
 {
   "room_id": 1,
-  "room_name": "",
   "status": "waiting",
   "owner_id": 10,
   "members": [
-    {"user_id":10,"username":"","seat":0,"ready":true}
+    {"user_id":10,"username":"","seat":0,"ready":true,"chips":10}
   ],
   "current_game_id": null
 }
 ```
 status 枚举：`waiting` | `playing` | `settlement`。
+MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使用 `room_name`。
+实现备注：采用“预设房间”模式，不提供创建房间接口。
 
 ### 1.3 Games / Actions / Reconnect
 - GET `/api/games/{game_id}/state`
-  - resp: {"game_id": "", "version": 0, "phase": "", "self_seat": 0, "public_state":{}, "private_state":{...}, "legal_actions": {...}}
+  - resp: {"game_id": "", "self_seat": 0, "public_state":{}, "private_state":{...}, "legal_actions": {...}}
 - POST `/api/games/{game_id}/actions`
   - body: {"action_idx": 0, "cover_list": [{"type":"B_NIU","count":1}], "client_version": 0}
 - GET `/api/games/{game_id}/settlement`
@@ -95,7 +97,7 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 
 #### 1.3.2 settlement / continue 调用时机
 - `/settlement`：仅当 `phase = settlement | finished` 时可调用，且仅限房间成员。
-- `/continue`：仅在结算阶段允许，房间成员各自提交是否继续；当三人均 `continue=true` 时服务端创建新局并重置房间为 `waiting` 或直接进入 `playing`（取决于是否要求再次准备）。
+- `/continue`：仅在结算阶段允许，房间成员各自提交是否继续；当三人均 `continue=true` 时服务端立即创建新局并将房间状态置为 `playing`（无需再次准备）。
 - 若任一玩家提交 `continue=false`，则本局结束，房间返回 `waiting`。
 
 ## 2. WebSocket 协议
@@ -133,11 +135,10 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - username / password
 
 ### 3.2 大厅
-- room_id, room_name, status, player_count, ready_count
+- room_id, status, player_count, ready_count
 
 ### 3.3 房间
-- members: [{user_id, username, seat, ready}]
-- room_status
+- room_detail（同 1.2.1）+ self_user_id
 - actions: ready / leave
 
 ### 3.4 对局
@@ -148,8 +149,7 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - legal_actions 详细字段见 `memory-bank/interfaces/backend-engine-interface.md` 的 1.5.3
 
 ### 3.5 结算
-- per player: captured柱数, is_enough, is_ceramic, chip_change
-- reveal/buckle relations
+结算结构以引擎文档为准，见 `memory-bank/interfaces/backend-engine-interface.md` 的 1.5.4。
 
 ## 4. 约束与校验
 - access_token 用于所有 REST/WS 鉴权；短期有效（建议 1 小时）。

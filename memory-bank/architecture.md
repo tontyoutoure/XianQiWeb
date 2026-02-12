@@ -30,7 +30,7 @@
 
 依赖方向：前端 → 后端 → 逻辑引擎；后端 → 数据库。
 
-## 2. 数据模型草图（SQLite，仅 users）
+## 2. 数据模型草图（SQLite，仅 users + refresh_tokens）
 仅 MVP 必要字段，字段名可在实现阶段微调，但语义需一致。
 
 约定：所有主键 id 使用 SQLite 的 `INTEGER PRIMARY KEY`（64 位整型），不规定位数。
@@ -42,11 +42,20 @@
 - password_hash
 - created_at
 
-### 2.2 内存态数据结构（不持久化）
+### 2.2 refresh_tokens
+用途：存储 refresh token（可撤销）。
+- id (PK)
+- user_id (FK -> users.id)
+- token_hash (unique)
+- expires_at
+- created_at
+- revoked_at (nullable)
+
+### 2.3 内存态数据结构（不持久化）
 用途：房间、对局与快照全部存于内存，断线重连直接下发最新快照；服务端重启会清空所有房间与对局。
 
 建议内存结构（字段名可实现时调整）：
-- rooms：{id, name, owner_id, status, created_at, updated_at}
+- rooms：{id, owner_id, status, created_at, updated_at}
 - room_members：{room_id, user_id, seat_index, is_ready, is_active, joined_at, left_at}
 - games：{id, room_id, status, rng_seed, first_player_id, settlement_json, started_at, ended_at}
 - game_players：{game_id, user_id, seat_index, hand_json, captured_pillar_count}
