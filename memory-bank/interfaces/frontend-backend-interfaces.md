@@ -121,14 +121,19 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 
 ### 2.3 关键消息（大厅）
 - ROOM_LIST：推送房间列表刷新。
+- payload: {"rooms":[room_summary, ...]}（room_summary 见 1.2.1）
 - ERROR：{"code":"","message":"","detail":{}}。
 - PING/PONG：心跳保活。
 
 ### 2.4 关键消息（房间）
 - ROOM_UPDATE：成员/就绪/状态变化。
+- payload: {"room": room_detail}（room_detail 见 1.2.1）
 - GAME_PUBLIC_STATE：公共状态快照（不含他人手牌，适合旁观/观战）。
+- payload: {"game_id":"", "public_state":{...}}（public_state 见引擎文档 1.5.1）
 - GAME_PRIVATE_STATE：仅发给单连接的私有快照（手牌、已垫棋子、legal_actions）。
+- payload: {"game_id":"", "self_seat":0, "private_state":{...}, "legal_actions":{...}}（private_state/ legal_actions 见引擎文档 1.5.2/1.5.3）
 - SETTLEMENT：结算结果。
+- payload: 见引擎文档 1.5.4（settlement）
 - ERROR：{"code":"","message":"","detail":{}}。
 - PING/PONG：心跳保活。
 
