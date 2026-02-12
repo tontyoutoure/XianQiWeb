@@ -9,7 +9,7 @@
 
 引擎对象建议提供的方法：
 - `init_game(config, rng_seed?) -> output`：初始化新局并返回一次输出快照（见 1.5）。
-- `apply_action(action_idx, cover_list=None) -> output`：按 `legal_actions` 列表序号执行动作并推进状态，返回输出快照（见 1.5）。
+- `apply_action(action_idx, cover_list=None, client_version=None) -> output`：按 `legal_actions` 列表序号执行动作并推进状态，返回输出快照（见 1.5）。
 - `settle() -> output`：在 `phase = settlement` 时计算结算并推进到 `finished`，返回输出快照（见 1.5）。
 - `get_public_state() -> public_state`：获取当前公共状态（脱敏）。
 - `get_private_state(seat) -> private_state`：获取指定 seat 的私有状态。
@@ -47,6 +47,7 @@
 
 ### 1.3 引擎状态结构（建议）
 说明：引擎状态为内部完整记录，包含垫棋牌面；对外 public_state 由后端脱敏处理。
+补充：`buckle_decision` 阶段视为新一轮开始，`round_kind` 应置为 0（表示尚未出牌确定牌型）。
 ```jsonc
 {
   "version": 12, // 状态版本号，单调递增，用于乐观锁与重连校验（每次动作被接受并更新状态后 +1）
@@ -123,12 +124,14 @@
 ```json
 {
   "action_idx": 0,
+  "client_version": 12,
   "cover_list": [{"type": "B_NIU", "count": 1}]
 }
 ```
 说明：
 - `action_idx` 为当前 `legal_actions.actions` 的下标（从 0 开始）。
-- `cover_list` 仅在 `action_idx` 指向 COVER 时需要，表示实际垫牌牌面；其他动作传 `null`。
+- `cover_list` 仅在 `action_idx` 指向 COVER 时需要，表示实际垫牌牌面；其他动作传 `null`。允许任意组合，但引擎必须校验该玩家是否持有这些牌。
+- `client_version` 为客户端认为的当前版本号（可选）；引擎必须校验并在不匹配时拒绝该动作。
 
 ### 1.5 引擎输出
 - new_state（完整状态，内部用）
@@ -196,6 +199,7 @@
 
 #### 1.5.3 legal_actions（仅当前行动玩家）
 同一状态下 `actions` 只包含当前阶段合法动作：`in_round` 阶段 PLAY 与 COVER 互斥；`buckle_decision` 阶段仅 PLAY 或 BUCKLE；REVEAL / PASS_REVEAL 仅在 `phase = reveal_decision` 出现。`actions` 的顺序按引擎输出顺序，后端与前端不做额外排序；`action_idx` 以该顺序为准。同一状态下无牌面动作（BUCKLE / REVEAL / PASS_REVEAL）各最多 1 个。
+所有动作都需要引擎校验；若校验失败，引擎应返回错误，后端需向客户端返回非 204 的错误码（MVP 阶段即可）。
 
 buckle_decision 阶段示例（起始玩家可出棋或扣棋）：
 ```jsonc
