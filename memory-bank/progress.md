@@ -12,5 +12,4 @@
 - ✅ settlement/continue 可调用时机与权限已说明。
 ## 7 鉴权方案已定义（access+refresh，WS query token，refresh 90 天）
 ## 8 TODO
-- REST 错误响应结构未统一（建议与 WS ERROR 对齐：code/message/detail）。
-- WS 各类型 payload 结构未明确（ROOM_LIST/ROOM_UPDATE/GAME_PUBLIC_STATE/SETTLEMENT 等）。
+- ✅ WS 各类型 payload 结构已明确（ROOM_LIST/ROOM_UPDATE/GAME_PUBLIC_STATE/SETTLEMENT 等）。
