@@ -101,9 +101,13 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - 若任一玩家提交 `continue=false`，则本局结束，房间返回 `waiting`。
 
 ## 2. WebSocket 协议
+使用原因：对局与房间状态需要实时推送（避免轮询延迟与无效请求），并保证多人同步看到一致状态；此外私有状态（手牌/可行动作）也需要安全、及时地下发。
 
 ### 2.1 通道
+**大厅 WS（/ws/lobby）**
 - `/ws/lobby?token=ACCESS_TOKEN`：大厅房间列表更新。
+
+**房间 WS（/ws/rooms/{room_id}）**
 - `/ws/rooms/{room_id}?token=ACCESS_TOKEN`：房间与对局公共消息（含开始/结算）。
 
 ### 2.2 消息结构
@@ -115,8 +119,12 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 }
 ```
 
-### 2.3 关键消息
+### 2.3 关键消息（大厅）
 - ROOM_LIST：推送房间列表刷新。
+- ERROR：{"code":"","message":"","detail":{}}。
+- PING/PONG：心跳保活。
+
+### 2.4 关键消息（房间）
 - ROOM_UPDATE：成员/就绪/状态变化。
 - GAME_PUBLIC_STATE：公共状态快照（不含他人手牌，适合旁观/观战）。
 - GAME_PRIVATE_STATE：仅发给单连接的私有快照（手牌、已垫棋子、legal_actions）。
