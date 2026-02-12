@@ -49,14 +49,16 @@ room_detail：
   "status": "waiting",
   "owner_id": 10,
   "members": [
-    {"user_id":10,"username":"","seat":0,"ready":true,"chips":10}
+    {"user_id":10,"username":"","seat":0,"ready":true,"chips":20}
   ],
   "current_game_id": null
 }
 ```
 status 枚举：`waiting` | `playing` | `settlement`。
+chips 为房间内筹码，MVP 固定初始值 20（后续可调整）。
 MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使用 `room_name`。
-实现备注：采用“预设房间”模式，不提供创建房间接口。
+实现备注：采用“预设房间”模式，不提供动态创建/解散房间接口。
+离开规则：任一成员调用 `/leave` 仅移除自身，不影响其他成员与房间存续；若对局进行中则当前对局冷结束（不做结算，筹码保持不变），`current_game_id` 置空，房间回到 `waiting`。
 
 ### 1.3 Games / Actions / Reconnect
 - GET `/api/games/{game_id}/state`
@@ -72,6 +74,7 @@ MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使
 
 #### 1.3.1 动作/牌载荷与 legal_actions
 说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
+`client_version` 为当前 `public_state.version`（由后端下发），用于后续版本冲突处理；MVP 暂不处理冲突。
 
 牌面载荷统一使用 `cards` 结构：
 ```json
@@ -168,7 +171,7 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - access_token 用于所有 REST/WS 鉴权；短期有效（建议 1 小时）。
 - refresh_token 用于静默刷新 access_token；长期有效（建议 90 天，滑动续期）。
 - 动作提交使用 `action_idx`（来自 `legal_actions.actions`）；COVER 动作需额外传 `cover_list`。
-- 所有动作必须基于后端当前版本号（可选加 `client_version` 乐观锁）。
+- 动作可携带 `client_version = public_state.version`；引擎在动作被接受并更新状态后 `version + 1`；MVP 暂不处理版本冲突。
 - 服务端为唯一权威；客户端只负责提交意图。
 - 断线重连：重新拉取 public_state + private_state + legal_actions 快照重建 UI。
 - 服务端重启后清空房间/对局，客户端需重新创建/加入房间。

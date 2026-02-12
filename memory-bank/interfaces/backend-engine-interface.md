@@ -49,7 +49,7 @@
 说明：引擎状态为内部完整记录，包含垫棋牌面；对外 public_state 由后端脱敏处理。
 ```jsonc
 {
-  "version": 12, // 状态版本号，单调递增，用于乐观锁与重连校验
+  "version": 12, // 状态版本号，单调递增，用于乐观锁与重连校验（每次动作被接受并更新状态后 +1）
   "phase": "in_round", // 对局阶段（init / buckle_decision / in_round / reveal_decision / settlement / finished）
   "players": [
     {
