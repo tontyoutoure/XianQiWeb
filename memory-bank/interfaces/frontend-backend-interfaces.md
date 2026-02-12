@@ -62,9 +62,10 @@ MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使
 
 ### 1.3 Games / Actions / Reconnect
 - GET `/api/games/{game_id}/state`
-  - resp: {"game_id": "", "self_seat": 0, "public_state":{}, "private_state":{...}, "legal_actions": {...}}
+  - resp: {"game_id": 1, "self_seat": 0, "public_state":{}, "private_state":{...}, "legal_actions": {...}}
 - POST `/api/games/{game_id}/actions`
   - body: {"action_idx": 0, "cover_list": [{"type":"B_NIU","count":1}], "client_version": 0}
+  - resp: 204 No Content（成功推进引擎状态）
 - GET `/api/games/{game_id}/settlement`
   - resp: result_json
 - POST `/api/games/{game_id}/continue`
@@ -73,7 +74,7 @@ MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使
 简化做法：也可用 `/api/rooms/{room_id}/actions` 由后端定位当前 game_id。
 
 #### 1.3.1 动作/牌载荷与 legal_actions
-说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
+说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标，按服务端返回顺序，不做额外排序）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
 `client_version` 为当前 `public_state.version`（由后端下发），用于后续版本冲突处理；MVP 暂不处理冲突。
 
 牌面载荷统一使用 `cards` 结构：
@@ -102,6 +103,7 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - `/settlement`：仅当 `phase = settlement | finished` 时可调用，且仅限房间成员。
 - `/continue`：仅在结算阶段允许，房间成员各自提交是否继续；当三人均 `continue=true` 时服务端立即创建新局并将房间状态置为 `playing`（无需再次准备）。
 - 若任一玩家提交 `continue=false`，则本局结束，房间返回 `waiting`。
+说明：此处 `phase` 指 `public_state.phase`。
 
 ## 2. WebSocket 协议
 使用原因：对局与房间状态需要实时推送（避免轮询延迟与无效请求），并保证多人同步看到一致状态；此外私有状态（手牌/可行动作）也需要安全、及时地下发。
@@ -132,9 +134,9 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - ROOM_UPDATE：成员/就绪/状态变化。
 - payload: {"room": room_detail}（room_detail 见 1.2.1）
 - GAME_PUBLIC_STATE：公共状态快照（不含他人手牌，适合旁观/观战）。
-- payload: {"game_id":"", "public_state":{...}}（public_state 见引擎文档 1.5.1）
+- payload: {"game_id":1, "public_state":{...}}（public_state 见引擎文档 1.5.1）
 - GAME_PRIVATE_STATE：仅发给单连接的私有快照（手牌、已垫棋子、legal_actions）。
-- payload: {"game_id":"", "self_seat":0, "private_state":{...}, "legal_actions":{...}}（private_state/ legal_actions 见引擎文档 1.5.2/1.5.3）
+- payload: {"game_id":1, "self_seat":0, "private_state":{...}, "legal_actions":{...}}（private_state/ legal_actions 见引擎文档 1.5.2/1.5.3）
 - SETTLEMENT：结算结果。
 - payload: 见引擎文档 1.5.4（settlement）
 - ERROR：{"code":"","message":"","detail":{}}。
@@ -156,6 +158,7 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 ### 3.3 房间
 - room_detail（同 1.2.1）+ self_user_id
 - actions: ready / leave
+说明：`self_user_id` 统一由 `/api/auth/me` 获取并在前端缓存（房间与 WS 消息不重复下发）。
 
 ### 3.4 对局
 仅列出前端需关心的“顶层字段”，具体结构按后端-引擎文档复用，避免重复与漂移。
@@ -175,6 +178,8 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - 服务端为唯一权威；客户端只负责提交意图。
 - 断线重连：重新拉取 public_state + private_state + legal_actions 快照重建 UI。
 - 服务端重启后清空房间/对局，客户端需重新创建/加入房间。
+- ID 约定：所有 *_id 字段均为数字（整数）。
+- 时间与时长：`created_at` 使用 UTC ISO 8601（如 `2026-02-12T08:30:00Z`）；`expires_in` / `refresh_expires_in` 单位为秒。
 
 ### 4.1 REST 错误响应规范（MVP）
 统一格式（与 WS ERROR 对齐）：

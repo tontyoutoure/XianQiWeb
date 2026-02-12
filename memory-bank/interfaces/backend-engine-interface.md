@@ -195,7 +195,7 @@
 - `covered` 为该玩家已垫棋子的计数表（card_type -> count），仅本人可见。
 
 #### 1.5.3 legal_actions（仅当前行动玩家）
-同一状态下 `actions` 只包含当前阶段合法动作：`in_round` 阶段 PLAY 与 COVER 互斥；`buckle_decision` 阶段仅 PLAY 或 BUCKLE；REVEAL / PASS_REVEAL 仅在 `phase = reveal_decision` 出现。`actions` 需稳定排序：先按 `type` 固定顺序（PLAY -> COVER -> BUCKLE -> REVEAL -> PASS_REVEAL），再按出牌张数，最后按 `card_type` 字符序。同一状态下无牌面动作（BUCKLE / REVEAL / PASS_REVEAL）各最多 1 个。
+同一状态下 `actions` 只包含当前阶段合法动作：`in_round` 阶段 PLAY 与 COVER 互斥；`buckle_decision` 阶段仅 PLAY 或 BUCKLE；REVEAL / PASS_REVEAL 仅在 `phase = reveal_decision` 出现。`actions` 的顺序按引擎输出顺序，后端与前端不做额外排序；`action_idx` 以该顺序为准。同一状态下无牌面动作（BUCKLE / REVEAL / PASS_REVEAL）各最多 1 个。
 
 buckle_decision 阶段示例（起始玩家可出棋或扣棋）：
 ```jsonc
