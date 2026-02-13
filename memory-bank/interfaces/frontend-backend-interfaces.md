@@ -22,6 +22,8 @@ Auth 说明：
 - access_token 为 JWT（短期有效），用于所有 REST/WS 鉴权。
 - refresh_token 为不透明随机串，服务端持久化（可撤销）。
 - refresh 时轮换 refresh_token（旧 token 立即失效）。
+- username 按 UTF-8 传输，大小写敏感；服务端对 username 做 NFC 归一化后再校验与匹配。
+- MVP 阶段 password 不做强规则限制，允许空密码注册/登录。
 
 ### 1.2 Rooms
 - GET `/api/rooms`
@@ -56,9 +58,13 @@ room_detail：
 ```
 status 枚举：`waiting` | `playing` | `settlement`。
 chips 为房间内筹码，MVP 固定初始值 20（后续可调整）。
-MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使用 `room_name`。
+MVP 约束：房间数量由服务端配置，`room_id` 固定为 `0..N-1`；不使用 `room_name`。
 实现备注：采用“预设房间”模式，不提供动态创建/解散房间接口。
 离开规则：任一成员调用 `/leave` 仅移除自身，不影响其他成员与房间存续；若对局进行中则当前对局冷结束（不做结算，筹码保持不变），`current_game_id` 置空，房间回到 `waiting`。
+加入规则：
+- 同房幂等：若用户已在目标房间，再次调用 `/join` 返回 `200 + room_detail`，不报错。
+- 跨房自动迁移：若用户已在其他房间，服务端先完成从原房间离开，再加入目标房间；若原房间处于 `playing`，原房间触发冷结束规则。
+前端提示约定：若房间状态由 `playing` 直接切到 `waiting` 且无结算消息，前端提示“对局结束”并进入等待态。
 
 ### 1.3 Games / Actions / Reconnect
 - GET `/api/games/{game_id}/state`
@@ -71,11 +77,9 @@ MVP 约束：房间数量由服务端预设，`room_id` 为唯一编号；不使
 - POST `/api/games/{game_id}/continue`
   - body: {"continue": true/false}
 
-简化做法：也可用 `/api/rooms/{room_id}/actions` 由后端定位当前 game_id。
-
 #### 1.3.1 动作/牌载荷与 legal_actions
 说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标，按服务端返回顺序，不做额外排序）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
-`client_version` 为当前 `public_state.version`（由后端下发），用于后续版本冲突处理；MVP 暂不处理冲突。
+`client_version` 为当前 `public_state.version`（由后端下发）。若与服务端版本不一致，后端返回 409，前端应立即通过 REST 拉取最新状态快照。
 
 牌面载荷统一使用 `cards` 结构：
 ```json
@@ -146,6 +150,7 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 心跳策略：服务端每 30s 发送一次 PING，客户端需在 10s 内回 PONG；连续 2 次未响应可断开连接。
 私有状态默认通过 WS 单连接私发；断线重连或兜底则通过 HTTP 拉取。
 鉴权失败：WS 连接直接关闭（推荐 close code 4401 + reason "UNAUTHORIZED"）。
+access_token 过期：服务端可主动关闭已建立连接（4401）；客户端应 refresh 后重连。
 
 ## 3. 前端数据契约（页面字段）
 
@@ -173,11 +178,12 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 ## 4. 约束与校验
 - access_token 用于所有 REST/WS 鉴权；短期有效（建议 1 小时）。
 - refresh_token 用于静默刷新 access_token；长期有效（建议 90 天，滑动续期）。
+- 客户端建议按固定周期主动刷新 access_token（默认 30 分钟，服务端可配置）。
 - 动作提交使用 `action_idx`（来自 `legal_actions.actions`）；COVER 动作需额外传 `cover_list`。
-- 动作可携带 `client_version = public_state.version`；引擎在动作被接受并更新状态后 `version + 1`；MVP 暂不处理版本冲突。
+- 动作可携带 `client_version = public_state.version`；引擎在动作被接受并更新状态后 `version + 1`；版本冲突返回 409，前端需拉取最新状态后再操作。
 - 服务端为唯一权威；客户端只负责提交意图。
 - 断线重连：重新拉取 public_state + private_state + legal_actions 快照重建 UI。
-- 服务端重启后清空房间/对局，客户端需重新创建/加入房间。
+- 服务端重启后清空房间/对局，客户端需重新登录并加入房间。
 - ID 约定：所有 *_id 字段均为数字（整数）。
 - 时间与时长：`created_at` 使用 UTC ISO 8601（如 `2026-02-12T08:30:00Z`）；`expires_in` / `refresh_expires_in` 单位为秒。
 
@@ -190,5 +196,5 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 - 400 参数错误
 - 401/403 鉴权失败或非房间成员
 - 404 资源不存在（房间/对局不存在）
-- 409 业务冲突（房间已满、非自己回合、重复加入）
+- 409 业务冲突（房间已满、非自己回合、状态不允许）
 - 500 服务器内部错误

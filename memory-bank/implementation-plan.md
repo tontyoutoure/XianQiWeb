@@ -53,7 +53,7 @@
 ### M4 后端-引擎集成与动作接口
 目标：将引擎能力完整映射到 REST/WS 协议。
 - 实现：房间座次与引擎 seat 映射、game 生命周期管理。
-- 实现：`/api/games/{game_id}/state`、`/api/games/{game_id}/actions`（204）以及按房间路由动作的可选封装。
+- 实现：`/api/games/{game_id}/state`、`/api/games/{game_id}/actions`（204）。
 - 实现：动作校验链路（成员、回合、phase、`cover_list`、版本）。
 - 实现：统一错误响应 `{code,message,detail}`。
 - 测试/验证：
@@ -103,5 +103,5 @@
 
 ## 风险与待决
 - 规则边界（尤其掀棋时刻“已够未瓷”的结算细则）需以 `XianQi_rules.md` 与测试样例固化。
-- `client_version` 在前后端文档中存在“MVP 暂不处理冲突”与“引擎需校验”的差异：建议以“引擎校验并返回 409”作为实现基线，避免并发覆盖。
+- `client_version` 冲突处理已定：后端返回 409，前端立即 REST 拉取最新状态，避免旧状态覆盖。
 - 服务端重启后内存态清空：前端需明确提示并引导用户重新入房。
