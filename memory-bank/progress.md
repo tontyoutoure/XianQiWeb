@@ -13,3 +13,11 @@
 ## 7 鉴权方案已定义（access+refresh，WS query token，refresh 90 天）
 ## 8 TODO
 - ✅ WS 各类型 payload 结构已明确（ROOM_LIST/ROOM_UPDATE/GAME_PUBLIC_STATE/SETTLEMENT 等）。
+## 9 开发计划修订（已完成）
+- ✅ `implementation-plan.md` 已按当前架构/接口重排里程碑（M0-M8）。
+- ✅ 已纳入预设房间、冷结束规则、continue 直开新局、WS 初始快照/心跳等实现顺序。
+- ✅ 已补充 `client_version` 冲突处理口径差异与建议基线（引擎校验并返回 409）。
+## 10 后端设计文档（M1-M2）已补充
+- ✅ 已在 `memory-bank/design/backend_design.md` 完成 M1（后端基础与鉴权）详细设计。
+- ✅ 已在 `memory-bank/design/backend_design.md` 完成 M2（预设房间与大厅）详细设计。
+- ✅ 已补充并发策略、错误码建议、测试清单与风险决策。

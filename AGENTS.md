@@ -13,3 +13,4 @@
 - memory-bank/tech-stack.md：技术栈说明。
 - memory-bank/interfaces/frontend-backend-interfaces.md：前后端接口协议。
 - memory-bank/interfaces/backend-engine-interface.md：后端与对局引擎接口协议。
+- memory-bank/design/backend_design.md：后端详细设计文档（模块、流程、异常与联调约定）。
