@@ -8,6 +8,7 @@
   - `memory-bank/architecture.md`
   - `memory-bank/interfaces/frontend-backend-interfaces.md`
   - `memory-bank/interfaces/backend-engine-interface.md`
+- 安全基线（MVP）：安全性保持基础可用，重点保障鉴权正确与服务稳定；对用户恶意行为暂不做强对抗防护（如复杂风控、反刷、设备指纹、行为审计）。
 - 非目标：M3+ 的引擎规则、结算细节与前端实现（仅做接口预留，不做实现展开）。
 
 ## 1. M1 后端基础与鉴权设计
@@ -53,13 +54,22 @@ backend/
 ```
 
 ### 1.3 配置与环境变量
-- `APP_ENV`：`dev|test|prod`
-- `APP_HOST` / `APP_PORT`
-- `JWT_SECRET`：Access token 签名密钥。
-- `ACCESS_TOKEN_EXPIRE_SECONDS`：默认 3600。
-- `REFRESH_TOKEN_EXPIRE_SECONDS`：默认 7776000（90 天）。
-- `SQLITE_PATH`：SQLite 文件路径。
-- `CORS_ALLOW_ORIGINS`：前端域名白名单。
+- 命名空间约定：后端环境变量统一使用 `XQWEB_` 前缀，避免污染系统级命名空间。
+- `XQWEB_APP_ENV`：`dev|test|prod`
+- `XQWEB_APP_HOST` / `XQWEB_APP_PORT`
+- `XQWEB_JWT_SECRET`：Access token 签名密钥。
+- `XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS`：默认 3600。
+- `XQWEB_REFRESH_TOKEN_EXPIRE_SECONDS`：默认 7776000（90 天）。
+- `XQWEB_SQLITE_PATH`：SQLite 文件路径。
+- `XQWEB_CORS_ALLOW_ORIGINS`：前端域名白名单。
+- `XQWEB_PRESET_ROOM_IDS`：预设房间编号列表（如 `1,2,3,4,5`）。
+
+本地开发/测试约定（无 Docker）：
+- 使用项目内 env 文件，不在 shell profile（如 `~/.bashrc`）做全局 `export`。
+- 开发环境使用 `.env.dev`。
+- 测试环境使用 `.env.test`（与开发隔离，避免误连开发库）。
+- 由应用启动参数或测试初始化逻辑按需加载对应 env 文件。
+- 配置加载策略：`pydantic-settings` 负责解析与校验；启动命令显式指定 env 文件（开发 `.env.dev`，测试 `.env.test`）。
 
 约束：
 - 所有时间使用 UTC。
@@ -90,6 +100,10 @@ backend/
 - 密码哈希：`bcrypt`（或 `passlib[bcrypt]`）。
 - Access token：JWT，payload 至少含 `sub(user_id)`、`exp`。
 - Refresh token：随机高熵字符串，仅存 `token_hash`，不明文落库。
+- 会话策略（MVP）：
+  - 单账号单活跃会话（以 refresh token 为准）。
+  - 每次 `register/login` 成功后，撤销该用户历史全部 refresh token，再签发新 token 对。
+  - 旧端 access token 不做立即失效处理，可使用到自身 `exp` 到期（默认 1 小时）。
 - Refresh 轮换：
   1. 校验旧 refresh token（存在、未撤销、未过期）。
   2. 旧 token 立即写 `revoked_at`。
@@ -109,6 +123,7 @@ backend/
 #### POST `/api/auth/login`
 - 使用 username + password 验证。
 - 密码错误返回 401（不区分账号不存在/密码错误）。
+- 登录成功后撤销该用户历史 refresh token（踢掉旧登录）。
 - 输出：登录态（与 register 一致）。
 
 #### GET `/api/auth/me`
@@ -123,7 +138,16 @@ backend/
 #### POST `/api/auth/logout`
 - 输入：`refresh_token`。
 - 成功：`{"ok": true}`。
+- 仅注销当前 refresh token，不影响同用户其他会话（若未来支持多会话）。
 - 不存在或已撤销按幂等处理，仍可返回成功。
+
+### 1.6.1 Refresh Token 清理任务（运行策略）
+- 目标：控制 `refresh_tokens` 体量，避免长期增长。
+- 清理范围：仅删除“已过期”或“已撤销”的 refresh token 记录；不删除未过期且未撤销记录。
+- 执行时机：
+  - 服务启动时执行一次清理。
+  - 每天 00:00 再执行一次定时清理（默认按服务器本地时区）。
+- 安全性：不会导致当前有效会话失效；被清理记录本身已不可用于 refresh。
 
 ### 1.7 鉴权依赖与中间件
 - REST：统一 `get_current_user()` 依赖，解析 Bearer JWT。
@@ -141,6 +165,7 @@ backend/
 - 结构化日志字段：`request_id`, `user_id`, `path`, `status_code`, `latency_ms`。
 
 ### 1.9 M1 测试设计
+- 测试配置：默认加载 `.env.test`，禁止复用 `.env.dev` 的数据库与密钥。
 - 单元测试：
   - 密码哈希/校验。
   - JWT 签发与过期。
@@ -177,7 +202,7 @@ backend/
 - `joined_at`
 
 #### RoomRegistry
-- 服务启动时加载预设房间（配置常量，例如 `PRESET_ROOM_IDS=[1,2,3,...]`）。
+- 服务启动时按配置加载预设房间（`XQWEB_PRESET_ROOM_IDS`）。
 - 仅内存保存，服务重启全部重置。
 
 ### 2.3 并发与一致性
@@ -267,18 +292,25 @@ backend/
 - [ ] 代码结构与配置文件落地。
 - [ ] DB 建表与索引落地。
 - [ ] Auth 五个接口通过测试。
+- [ ] 登录踢旧会话策略生效（旧 refresh 不可用，旧 access 可用至过期）。
+- [ ] refresh token 清理任务（启动一次 + 每天 00:00）生效。
 - [ ] 预设房间 CRUD（无创建/解散）能力可用。
 - [ ] Lobby/Room WS 推送与心跳可用。
 - [ ] 统一错误响应与关键日志字段可观测。
 
 ## 4. 已知风险与决策
 - 风险：refresh token 无限增长。
-  - 决策：增加定时清理任务（删除过期且 revoked 记录）。
+  - 决策：服务启动清理一次 + 每天 00:00 清理一次（仅删过期/撤销记录）。
 - 风险：房间并发写导致座位冲突。
   - 决策：采用房间级锁。
+- 风险：登录踢旧后，旧端 access token 仍短时可用。
+  - 决策：MVP 不做 access 立即失效（不做黑名单），接受最多 1 小时自然过期窗口。
 - 风险：`client_version` 在文档口径有差异（MVP 是否强校验）。
   - 决策：在 M4 统一为“引擎校验并返回 409”。
 
 ## 5. 变更记录
 - 2026-02-13：创建文档骨架。
 - 2026-02-13：补充 M1-M2 后端详细设计（目录、数据、接口、并发、测试、风险）。
+- 2026-02-13：统一环境变量前缀为 `XQWEB_`，补充 `.env.dev/.env.test` 本地约定。
+- 2026-02-13：确认登录踢旧、logout 仅当前会话、refresh 清理时机（启动+每日 00:00）、配置加载策略（pydantic-settings + 显式 env 文件）。
+- 2026-02-13：同步 MVP 安全边界说明（基础安全可用，暂不做强对抗防护）。

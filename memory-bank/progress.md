@@ -21,3 +21,10 @@
 - ✅ 已在 `memory-bank/design/backend_design.md` 完成 M1（后端基础与鉴权）详细设计。
 - ✅ 已在 `memory-bank/design/backend_design.md` 完成 M2（预设房间与大厅）详细设计。
 - ✅ 已补充并发策略、错误码建议、测试清单与风险决策。
+## 11 M1 鉴权策略细化（已确认）
+- ✅ 登录策略：新登录撤销该用户全部历史 refresh token（踢掉旧登录）。
+- ✅ logout 语义：仅注销当前 refresh token。
+- ✅ refresh token 清理：服务启动执行一次 + 每日 00:00 执行一次。
+- ✅ access token：MVP 暂不做立即失效，按 `exp` 自然过期。
+## 12 MVP 安全边界口径已同步
+- ✅ `backend_design.md` 已同步“安全性基础可用、暂不做强对抗防护”的 MVP 口径。
