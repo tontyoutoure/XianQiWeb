@@ -44,3 +44,29 @@
 - refresh 轮换与撤销行为符合约定：旧 refresh 不可复用。
 - REST/WS 未授权行为一致：REST 返回 `401`，WS 关闭码 `4401`。
 - 用户名规则（trim/NFC/长度/大小写敏感）与空密码口径与文档一致。
+
+## 5) TDD 执行进度（2026-02-14）
+
+### 5.1 单元测试（UT）
+
+| 测试ID | 当前状态 | TDD阶段 | 备注 |
+|---|---|---|---|
+| M1-UT-01 | ✅ 已通过 | Red → Green 完成 | `hash_password/verify_password` 已实现，测试 4 项通过 |
+| M1-UT-02 | ✅ 已通过 | Red → Green 完成 | `create_access_token/decode_access_token` 已实现，覆盖 `sub/exp` 与过期 |
+| M1-UT-03 | ✅ 已通过 | Red → Green 完成 | `RefreshTokenStore issue/validate/rotate` 已实现，旧 token 失效 |
+| M1-UT-04 | ✅ 已通过 | Red → Green 完成 | `create_sqlite_connection` 强制 `PRAGMA foreign_keys=ON` |
+| M1-UT-05 | ✅ 已通过 | Red → Green 完成 | username `trim + NFC + grapheme(1~10)` 已实现 |
+| M1-UT-06 | ⏳ 未完成 | 未进入 Red | 仍为占位测试（skip），待补配置模型与校验测试 |
+
+当前单测汇总（`backend/tests/unit`）：`12 passed, 1 skipped`（其中 skip 对应 UT-06 占位）。
+
+### 5.2 API / WS 测试
+
+| 测试组 | 当前状态 | 备注 |
+|---|---|---|
+| M1-API-01~12 | ⏳ 未开始（占位） | 现为 skeleton，依赖 FastAPI auth 路由实现 |
+| M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
+
+### 5.3 下一步建议
+
+先完成 `M1-UT-06`，再进入 API 红阶段；这样更符合当前开发计划“先通过对应测试再进入下一里程碑”的约束。
