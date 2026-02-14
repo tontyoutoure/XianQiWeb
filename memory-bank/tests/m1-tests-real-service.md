@@ -74,11 +74,11 @@
 | M1-RS-REST-03 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
 | M1-RS-REST-04 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
 | M1-RS-REST-05 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
-| M1-RS-REST-06 | ⏳ 待执行 | 未开始 | - | - |
-| M1-RS-REST-07 | ⏳ 待执行 | 未开始 | - | - |
-| M1-RS-REST-08 | ⏳ 待执行 | 未开始 | - | - |
-| M1-RS-REST-09 | ⏳ 待执行 | 未开始 | - | - |
-| M1-RS-REST-10 | ⏳ 待执行 | 未开始 | - | - |
+| M1-RS-REST-06 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
+| M1-RS-REST-07 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
+| M1-RS-REST-08 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
+| M1-RS-REST-09 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
+| M1-RS-REST-10 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
 | M1-RS-REST-11 | ⏳ 待执行 | 未开始 | - | - |
 | M1-RS-REST-12 | ⏳ 待执行 | 未开始 | - | - |
 | M1-RS-REST-13 | ⏳ 待执行 | 未开始 | - | - |
