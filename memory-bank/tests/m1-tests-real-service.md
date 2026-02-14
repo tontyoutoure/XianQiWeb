@@ -7,7 +7,7 @@
 
 - 建议环境：conda `XQB`。
 - 服务启动（示例）：
-  - `XQWEB_JWT_SECRET=<test-secret>`（必填）
+  - `XQWEB_JWT_SECRET=<at-least-32-byte-secret>`（必填）
   - `XQWEB_SQLITE_PATH=/tmp/xqweb-m1-real-service.sqlite3`（建议独立测试库）
   - `conda run -n XQB bash scripts/start-backend.sh`
   - 可选：`XQWEB_APP_PORT=18080`、`XQWEB_RELOAD=1` 覆盖端口与热重载。

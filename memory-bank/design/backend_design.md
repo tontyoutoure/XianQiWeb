@@ -75,6 +75,7 @@ backend/
 约束：
 - 所有时间使用 UTC。
 - secret 缺失时服务启动失败。
+- `XQWEB_JWT_SECRET` 长度至少 32 字节（避免 HS256 弱密钥告警与安全风险）。
 - `XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS < XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS`。
 
 ### 1.4 数据库设计（SQLite）

@@ -17,7 +17,7 @@ def test_m1_api_05_login_success_returns_new_token_pair(
     """Contract: POST /api/auth/login returns a fresh token pair."""
     db_path = tmp_path / "m1_api_05.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-05-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-05-test-secret-key-32-bytes-minimum")
 
     import app.auth.session as auth_session
     import app.main as app_main

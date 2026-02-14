@@ -15,7 +15,7 @@ def test_m1_api_07_me_requires_valid_bearer_token(
     """Contract: GET /api/auth/me returns current user for valid access token."""
     db_path = tmp_path / "m1_api_07.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-07-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-07-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

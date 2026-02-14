@@ -18,7 +18,7 @@ import jwt
 import pytest
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
-JWT_SECRET = "m1-rs-red-test-secret"
+JWT_SECRET = "m1-rs-red-test-secret-key-32-bytes-minimum"
 
 
 def _pick_free_port() -> int:

@@ -31,7 +31,7 @@ def test_m1_api_02_register_rejects_duplicate_username_with_nfc_equivalence(
     """Contract: equivalent normalized usernames conflict with 409 + unified error shape."""
     db_path = tmp_path / "m1_api_02.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-02-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-02-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

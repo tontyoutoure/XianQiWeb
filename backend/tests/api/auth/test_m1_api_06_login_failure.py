@@ -31,7 +31,7 @@ def test_m1_api_06_login_failure_returns_401_with_unified_error_shape(
     """Contract: invalid credentials return 401 + {code,message,detail}."""
     db_path = tmp_path / "m1_api_06.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-06-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-06-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

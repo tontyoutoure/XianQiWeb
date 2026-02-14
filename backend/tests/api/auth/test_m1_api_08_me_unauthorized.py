@@ -42,7 +42,7 @@ def test_m1_api_08_me_rejects_missing_invalid_and_expired_access_token(
     """Contract: GET /api/auth/me returns 401 when access token is missing/invalid/expired."""
     db_path = tmp_path / "m1_api_08.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-08-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-08-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

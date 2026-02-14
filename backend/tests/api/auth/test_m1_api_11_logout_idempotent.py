@@ -40,7 +40,7 @@ def test_m1_api_11_logout_revokes_specified_refresh_token_idempotently(
     """Contract: /logout is idempotent and refresh token becomes unusable."""
     db_path = tmp_path / "m1_api_11.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-11-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-11-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

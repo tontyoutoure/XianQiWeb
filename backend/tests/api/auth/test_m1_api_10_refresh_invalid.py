@@ -41,7 +41,7 @@ def test_m1_api_10_refresh_rejects_revoked_expired_or_random_token(
     """Contract: revoked/expired/random refresh token must all return 401."""
     db_path = tmp_path / "m1_api_10.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-10-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-10-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

@@ -17,7 +17,7 @@ def test_m1_api_01_register_returns_auth_session(
     """Contract: register returns auth session and persists user/session rows."""
     db_path = tmp_path / "m1_api_01.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-01-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-01-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

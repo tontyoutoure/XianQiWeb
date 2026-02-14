@@ -15,7 +15,7 @@ def test_m1_api_04_empty_password_is_allowed_in_mvp(
     """Contract: register/login accepts empty password in MVP."""
     db_path = tmp_path / "m1_api_04.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-04-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-04-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

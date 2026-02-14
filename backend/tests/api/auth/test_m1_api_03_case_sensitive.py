@@ -16,7 +16,7 @@ def test_m1_api_03_username_is_case_sensitive(
     """Contract: Tom and tom can both register as different users."""
     db_path = tmp_path / "m1_api_03.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-03-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-03-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 

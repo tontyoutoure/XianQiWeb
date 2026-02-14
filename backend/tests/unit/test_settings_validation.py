@@ -23,7 +23,17 @@ def test_m1_ut_06_refresh_interval_less_than_access_expire(
     """Input: refresh interval >= access expiry -> Output: settings validation fails."""
     with pytest.raises(ValidationError):
         Settings(
-            xqweb_jwt_secret="unit-test-secret",
+            xqweb_jwt_secret="unit-test-secret-key-32-bytes-minimum",
             xqweb_access_token_refresh_interval_seconds=refresh_interval,
             xqweb_access_token_expire_seconds=access_expire,
+        )
+
+
+def test_m1_ut_06_jwt_secret_requires_minimum_32_bytes() -> None:
+    """Input: secret shorter than 32 bytes -> Output: settings validation fails."""
+    with pytest.raises(ValidationError):
+        Settings(
+            xqweb_jwt_secret="1234567890123456789012345678901",
+            xqweb_access_token_refresh_interval_seconds=1800,
+            xqweb_access_token_expire_seconds=3600,
         )

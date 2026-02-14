@@ -37,7 +37,7 @@ def test_m1_api_12_login_kicks_old_session_refresh_but_old_access_still_works_un
     """Contract: second login invalidates previous refresh but not previous access token."""
     db_path = tmp_path / "m1_api_12.sqlite3"
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
-    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-12-test-secret")
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "api-12-test-secret-key-32-bytes-minimum")
 
     import app.main as app_main
 
