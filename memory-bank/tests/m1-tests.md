@@ -73,9 +73,13 @@
 | M1-API-05 | ✅ 已通过 | 红绿完成：新增登录成功契约测试并验证“fresh token 对”；通过在 access token 中加入 `jti` 保证同秒重复签发也不同；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_05_login_success.py -q` 通过 |
 | M1-API-06 | ✅ 已通过 | 红测意外通过后，经人类确认直接认定绿阶段完成；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_06_login_failure.py -q` 结果 `1 passed` |
 | M1-API-07 | ✅ 已通过 | 绿阶段完成：实现 `me`/`GET /api/auth/me` 与 access token 校验链路；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_07_me_success.py -q` 通过 |
-| M1-API-08~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
+| M1-API-08 | ✅ 已通过 | 红阶段新增了缺失/伪造/过期 access token 三类 401 断言；红测意外通过（当前 `me` 鉴权链路已满足契约） |
+| M1-API-09 | 🔴 红阶段已完成（失败） | 新增 refresh 轮换契约测试；执行 `conda run -n XQB pytest ...test_m1_api_09_refresh_rotate.py -q` 失败于 `AttributeError: module 'app.main' has no attribute 'refresh'` |
+| M1-API-10 | 🔴 红阶段已完成（失败） | 新增 revoked/expired/random refresh token 全部 401 契约测试；执行失败于缺少 `refresh` 接口实现 |
+| M1-API-11 | 🔴 红阶段已完成（失败） | 新增 logout 幂等 + 后续 refresh 失效契约测试；执行失败于 `AttributeError: module 'app.main' has no attribute 'logout'` |
+| M1-API-12 | 🔴 红阶段已完成（失败） | 新增“登录踢旧 refresh、旧 access 可用到过期”契约测试；执行失败于缺少 `refresh` 接口实现 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-下一步建议进入 `M1-API-08` 红阶段（`/me` 对无效或缺失 token 返回 401）。
+下一步建议进入 `M1-API-09 ~ M1-API-12` 绿阶段：实现 `/api/auth/refresh`、`/api/auth/logout` 及“登录踢旧登录”会话撤销策略，并逐条回归上述 4 个失败用例。
