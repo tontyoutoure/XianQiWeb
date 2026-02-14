@@ -3,6 +3,14 @@
 > 依据文档：`memory-bank/implementation-plan.md`（M2）、`memory-bank/interfaces/frontend-backend-interfaces.md`（Rooms/WS）、`memory-bank/design/backend_design.md`（2.1~2.9）。
 > 目标：先固化 M2 TDD 测试清单，再按“人类指定用例 -> 编写测试 -> 红绿推进”执行。
 
+## 0) 测试运行环境与当前执行策略
+
+- 建议环境：conda `XQB`。
+- 常规执行（默认）：`conda run -n XQB pytest backend/tests -q`（按测试文件或测试ID分批执行）。
+- 当前阶段决策（暂不真实服务）：M2 红绿循环阶段优先使用 TestClient/进程内集成测试，不阻塞在服务拉起、端口与外部环境问题。
+- 必须真实服务的用例：`M2-CC-01`、`M2-CC-02`、`M2-CC-03`、`M2-WS-06`（并发与心跳时序）。
+- 里程碑收口策略：在 M2 进入验收前，补充一轮真实服务联调（参考 M1 的 real-service 文档模式）验证 Rooms API 与 WS 主链路。
+
 ## 1) 单元测试（RoomRegistry / 业务规则）
 
 | 测试ID | 测试描述 | 通过条件 |
@@ -68,7 +76,10 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
-| M2-UT-01 ~ M2-UT-08 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
+| M2-UT-01 | 🔴 红阶段完成（失败符合预期） | Red | `conda run -n XQB pytest backend/tests/unit/test_m2_ut_01_03_room_registry.py -q`，当前失败点：`No module named app.rooms` |
+| M2-UT-02 | 🔴 红阶段完成（失败符合预期） | Red | 同上；当前失败点：`RoomRegistry` 所在模块未实现 |
+| M2-UT-03 | 🔴 红阶段完成（失败符合预期） | Red | 同上；当前失败点：owner 迁移契约尚未实现（模块缺失） |
+| M2-UT-04 ~ M2-UT-08 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
 | M2-API-01 ~ M2-API-14 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
 | M2-CC-01 ~ M2-CC-03 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
 | M2-WS-01 ~ M2-WS-06 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
