@@ -1,4 +1,4 @@
-"""M1 API auth contract tests (API-01 in RED phase)."""
+"""M1 API auth contract tests (API-01 in GREEN phase)."""
 
 from __future__ import annotations
 
@@ -6,9 +6,6 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-
-from fastapi.testclient import TestClient
-
 
 def test_m1_api_01_register_returns_auth_session(
     register_payload: dict[str, str],
@@ -20,13 +17,13 @@ def test_m1_api_01_register_returns_auth_session(
     monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
     monkeypatch.setenv("XQWEB_JWT_SECRET", "api-01-test-secret")
 
-    from app.main import app
+    from app.main import RegisterRequest
+    from app.main import register
+    from app.main import startup
 
-    client = TestClient(app)
-    response = client.post("/api/auth/register", json=register_payload)
+    startup()
+    payload = register(RegisterRequest(**register_payload))
 
-    assert response.status_code == 200
-    payload = response.json()
     assert {"access_token", "refresh_token", "expires_in", "refresh_expires_in", "user"} <= set(
         payload
     )
@@ -35,21 +32,23 @@ def test_m1_api_01_register_returns_auth_session(
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    try:
+        user_row = conn.execute(
+            "SELECT id, username, password_hash FROM users WHERE username = ?",
+            ("Alice",),
+        ).fetchone()
+        assert user_row is not None
+        assert user_row["password_hash"] != register_payload["password"]
 
-    user_row = conn.execute(
-        "SELECT id, username, password_hash FROM users WHERE username = ?",
-        ("Alice",),
-    ).fetchone()
-    assert user_row is not None
-    assert user_row["password_hash"] != register_payload["password"]
-
-    refresh_row = conn.execute(
-        "SELECT user_id, token_hash, revoked_at FROM refresh_tokens WHERE user_id = ?",
-        (user_row["id"],),
-    ).fetchone()
-    assert refresh_row is not None
-    assert refresh_row["revoked_at"] is None
-    assert refresh_row["token_hash"] != payload["refresh_token"]
+        refresh_row = conn.execute(
+            "SELECT user_id, token_hash, revoked_at FROM refresh_tokens WHERE user_id = ?",
+            (user_row["id"],),
+        ).fetchone()
+        assert refresh_row is not None
+        assert refresh_row["revoked_at"] is None
+        assert refresh_row["token_hash"] != payload["refresh_token"]
+    finally:
+        conn.close()
 
 
 @pytest.mark.usefixtures("app_not_ready")

@@ -64,10 +64,10 @@
 
 | 测试组 | 当前状态 | 备注 |
 |---|---|---|
-| M1-API-01 | 🔴 Red中 | 已落地真实契约断言（调用 `POST /api/auth/register` + 校验 `users/refresh_tokens` 落库）；当前因缺少 `app.main` 失败（`ModuleNotFoundError`） |
+| M1-API-01 | ✅ 已通过 | 已实现最小注册链路（`app.main` + register）；断言覆盖响应字段与 `users/refresh_tokens` 落库（`token_hash` 非明文） |
 | M1-API-02~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-下一步可进入 M1-API-01 绿阶段（先实现最小 `app.main` 与 `POST /api/auth/register` 路由）。
+下一步建议进入 `M1-API-02` 红阶段（重复用户名 / NFC 等价冲突）。
