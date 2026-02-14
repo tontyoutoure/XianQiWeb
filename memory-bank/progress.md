@@ -25,3 +25,4 @@
 - 2026-02-14：进入 M1 API 红阶段：`M1-API-01` 已改为真实契约测试，执行 `conda run -n XQB pytest backend/tests/api/auth/test_auth_endpoints.py -q` 结果为 `1 failed, 11 skipped`（失败原因为缺少 `app.main`，符合红阶段预期）。
 - 2026-02-14：按需求调整 API-01 约定：register 除响应字段外需校验数据库落库（`users` + `refresh_tokens`，仅存 `token_hash`）；已同步更新接口/设计文档与 API-01 测试样例。
 - 2026-02-14：完成 M1-API-01 绿阶段：新增 `app.main` 最小可用注册链路（建表、username 归一化、password hash、access/refresh 签发、refresh 仅存 hash），并通过 API-01 测试（`1 passed, 11 skipped`）。
+- 2026-02-14：进入 M1-API-02 红阶段：新增“重复用户名（含 NFC 等价）返回 409 + 统一错误体”测试，当前结果 `1 failed, 1 passed, 10 skipped`；失败原因为冲突错误体仍是 `{\"detail\":{...}}`。

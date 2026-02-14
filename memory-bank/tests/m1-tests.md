@@ -18,7 +18,7 @@
 | 测试ID | 对应约定 | 预期输入 | 预期输出 |
 |---|---|---|---|
 | M1-API-01 | `POST /api/auth/register` 成功返回登录态并落库 | `{"username":"Alice","password":"123"}` | `200`；返回 `access_token/refresh_token/expires_in/refresh_expires_in/user`；`users` 新增用户且 `refresh_tokens` 新增一条未撤销记录（仅存 `token_hash`） |
-| M1-API-02 | username 重复（含 NFC 等价）返回冲突 | 先注册 `"é"`，再注册 `"é"` | 第二次 `409`（用户名冲突） |
+| M1-API-02 | username 重复（含 NFC 等价）返回冲突 | 先注册 `"é"`，再注册 `"é"` | 第二次 `409`（用户名冲突）；错误体结构为 `{code,message,detail}` |
 | M1-API-03 | username 大小写敏感 | 依次注册 `"Tom"`、`"tom"` | 两次都成功，且为不同用户 |
 | M1-API-04 | MVP 允许空密码注册/登录 | 注册与登录都使用 `password=""` | 注册成功且登录成功 |
 | M1-API-05 | `POST /api/auth/login` 账号/密码正确可登录 | 已注册用户使用正确密码登录 | `200`；返回新的 token 对与 user |
@@ -65,9 +65,10 @@
 | 测试组 | 当前状态 | 备注 |
 |---|---|---|
 | M1-API-01 | ✅ 已通过 | 已实现最小注册链路（`app.main` + register）；断言覆盖响应字段与 `users/refresh_tokens` 落库（`token_hash` 非明文） |
-| M1-API-02~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
+| M1-API-02 | 🔴 Red中 | 真实测试已落地（NFC 等价重复注册）；当前失败点为冲突错误体被包装为 `{\"detail\":{...}}`，未满足 `{code,message,detail}` |
+| M1-API-03~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-下一步建议进入 `M1-API-02` 红阶段（重复用户名 / NFC 等价冲突）。
+下一步建议进入 `M1-API-02` 绿阶段（补齐统一错误响应，去除外层 `detail` 包装）。
