@@ -57,7 +57,13 @@ def _assert_ws_closed_unauthorized(*, ws_url: str) -> None:
     """Connect and assert the server closes with 4401/UNAUTHORIZED."""
 
     async def _run() -> tuple[int | None, str | None]:
-        ws = await websockets.connect(ws_url, open_timeout=3, close_timeout=3, ping_interval=None)
+        ws = await websockets.connect(
+            ws_url,
+            open_timeout=3,
+            close_timeout=3,
+            ping_interval=None,
+            proxy=None,
+        )
         await ws.wait_closed()
         return ws.close_code, ws.close_reason
 
@@ -75,6 +81,7 @@ def _assert_ws_connectable(*, ws_url: str) -> None:
             open_timeout=3,
             close_timeout=3,
             ping_interval=None,
+            proxy=None,
         ) as ws:
             await ws.send("ping")
             return ws.close_code is None
