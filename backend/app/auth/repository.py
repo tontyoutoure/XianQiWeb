@@ -8,6 +8,7 @@ from app.core.config import Settings
 from app.core.db import create_sqlite_connection
 
 UserAuthRow = tuple[int, str, str, str]
+UserProfileRow = tuple[int, str, str]
 
 
 def create_user(
@@ -77,5 +78,25 @@ def create_refresh_token(
             (user_id, token_hash, expires_at, created_at),
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_profile_by_id(*, settings: Settings, user_id: int) -> UserProfileRow | None:
+    """Fetch user profile returned by /api/auth/me."""
+    conn = create_sqlite_connection(settings.xqweb_sqlite_path)
+    try:
+        row = conn.execute(
+            """
+            SELECT id, username, created_at
+            FROM users
+            WHERE id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        uid, username, created_at = row
+        return (int(uid), str(username), str(created_at))
     finally:
         conn.close()

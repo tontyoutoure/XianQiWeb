@@ -5,14 +5,17 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi import Header
 from fastapi import HTTPException
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from app.auth.errors import raise_token_invalid
 from app.auth.http import handle_http_exception
 from app.auth.models import LoginRequest
 from app.auth.models import RegisterRequest
 from app.auth.service import login_user
+from app.auth.service import me_user
 from app.auth.service import register_user
 from app.auth.service import startup_auth_schema
 from app.core.config import Settings
@@ -53,6 +56,24 @@ def login(payload: LoginRequest) -> dict[str, object]:
     return login_user(settings=settings, payload=payload)
 
 
+def me(access_token: str) -> dict[str, object]:
+    """Return current user profile for a valid access token."""
+    return me_user(settings=settings, access_token=access_token)
+
+
+@app.get("/api/auth/me")
+def me_route(authorization: str | None = Header(default=None, alias="Authorization")) -> dict[str, object]:
+    """HTTP wrapper for /api/auth/me Bearer auth."""
+    if authorization is None:
+        raise_token_invalid()
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise_token_invalid()
+
+    return me(token)
+
+
 __all__ = [
     "Settings",
     "RegisterRequest",
@@ -60,6 +81,7 @@ __all__ = [
     "app",
     "handle_http_exception",
     "login",
+    "me",
     "register",
     "settings",
     "startup",

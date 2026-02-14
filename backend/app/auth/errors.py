@@ -40,3 +40,27 @@ def raise_username_conflict(exc: Exception) -> NoReturn:
             detail={},
         ),
     ) from exc
+
+
+def raise_token_invalid() -> NoReturn:
+    """Raise unified invalid-token response."""
+    raise HTTPException(
+        status_code=401,
+        detail=api_error(
+            code="AUTH_TOKEN_INVALID",
+            message="invalid access token",
+            detail={},
+        ),
+    )
+
+
+def raise_token_expired() -> NoReturn:
+    """Raise unified expired-token response."""
+    raise HTTPException(
+        status_code=401,
+        detail=api_error(
+            code="AUTH_TOKEN_EXPIRED",
+            message="access token expired",
+            detail={},
+        ),
+    )

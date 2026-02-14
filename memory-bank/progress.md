@@ -11,7 +11,8 @@
 - M1-API-03（username 大小写敏感）已完成绿阶段并通过测试。
 - M1-API-04（MVP 空密码注册/登录）已完成绿阶段并通过测试。
 - M1-API-05（登录成功返回 fresh token 对）已完成红绿闭环并通过测试。
-- M1-API-06 已进入红阶段并完成红测用例落地（当前红测意外通过，待人类确认是否直接转绿）。
+- M1-API-06（登录失败统一 401）已按人类确认认定为绿阶段完成。
+- M1-API-07（`/api/auth/me` 成功链路）已完成绿阶段并通过测试。
 - 后端入口已完成拆分重构，`main.py` 不再承载全部鉴权实现细节。
 - auth 模块已进一步细分为 service/repository/session/errors 分层，职责更清晰。
 
@@ -41,3 +42,6 @@
 - 2026-02-14：进入 M1-API-05 红阶段：新增“登录成功返回 fresh token 对”可执行测试，并通过固定签发时间捕获“同秒登录 access token 重复”问题；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_05_login_success.py -q` 结果 `1 failed`，红阶段符合预期。
 - 2026-02-14：完成 M1-API-05 绿阶段：在 `app.core.tokens.create_access_token` 增加 `jti` 声明，确保同秒重复签发 access token 仍唯一；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_05_login_success.py -q` 结果 `1 passed`，并回归 `conda run -n XQB pytest backend/tests -q` 结果 `19 passed, 10 skipped`。
 - 2026-02-14：进入 M1-API-06 红阶段：新增“错误用户名/密码均返回 401 + 统一错误体”可执行测试；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_06_login_failure.py -q` 结果 `1 passed`（红测意外通过，说明当前实现已满足契约，待人类确认是否直接转绿）。
+- 2026-02-14：经人类确认，将 M1-API-06 直接认定为绿阶段完成（无代码改动）。
+- 2026-02-14：进入 M1-API-07 红阶段：新增“valid access token 获取当前用户”可执行测试；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_07_me_success.py -q` 结果 `1 failed`（`app.main` 缺少 `me`），红阶段符合预期。
+- 2026-02-14：完成 M1-API-07 绿阶段：新增 `me_user` 服务、`users` 按 id 查询、token invalid/expired 401 错误映射，并在 `app.main` 增加 `me` 与 `GET /api/auth/me`；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_07_me_success.py -q` 结果 `1 passed`，全量回归 `conda run -n XQB pytest backend/tests -q` 结果 `21 passed, 8 skipped`。

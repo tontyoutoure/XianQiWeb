@@ -2,6 +2,7 @@
 
 > 依据文档：`memory-bank/implementation-plan.md`（M1）、`memory-bank/interfaces/frontend-backend-interfaces.md`（Auth/WS）、`memory-bank/design/backend_design.md`（1.9 M1 测试设计）。
 > 本地执行环境约定：使用 conda 环境 `XQB`（例如：`conda run -n XQB pytest ...`）。
+> 红绿循环的进度更新在本文档，不要更新进progress.md，后者仅记录阶段性里程碑完成情况。
 
 ## 1) 单元测试（服务与数据层）
 
@@ -70,10 +71,11 @@
 | M1-API-03 | ✅ 已通过 | 绿阶段完成：`Tom/tom` 可分别注册且落库为不同用户；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_03_case_sensitive.py -q` 通过 |
 | M1-API-04 | ✅ 已通过 | 绿阶段完成：新增 `LoginRequest/login` 后空密码注册+登录通过；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_04_empty_password.py -q` 通过 |
 | M1-API-05 | ✅ 已通过 | 红绿完成：新增登录成功契约测试并验证“fresh token 对”；通过在 access token 中加入 `jti` 保证同秒重复签发也不同；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_05_login_success.py -q` 通过 |
-| M1-API-06 | 🟡 红测意外通过 | 已新增“错误用户名/密码均返回 401 + 统一错误体”可执行测试；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_06_login_failure.py -q` 结果 `1 passed`（当前实现已覆盖） |
-| M1-API-07~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
+| M1-API-06 | ✅ 已通过 | 红测意外通过后，经人类确认直接认定绿阶段完成；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_06_login_failure.py -q` 结果 `1 passed` |
+| M1-API-07 | ✅ 已通过 | 绿阶段完成：实现 `me`/`GET /api/auth/me` 与 access token 校验链路；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_07_me_success.py -q` 通过 |
+| M1-API-08~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-下一步建议由人类确认：是否将 `M1-API-06` 直接认定为绿阶段完成，并进入 `M1-API-07` 红阶段。
+下一步建议进入 `M1-API-08` 红阶段（`/me` 对无效或缺失 token 返回 401）。
