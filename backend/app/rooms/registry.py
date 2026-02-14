@@ -25,6 +25,10 @@ class RoomNotMemberError(RoomError):
     """Raised when an operation requires existing room membership."""
 
 
+class RoomNotWaitingError(RoomError):
+    """Raised when ready state is changed outside waiting phase."""
+
+
 @dataclass(slots=True)
 class RoomMember:
     """Room member state tracked in memory."""
@@ -123,6 +127,21 @@ class RoomRegistry:
 
         return room
 
+    def set_ready(self, room_id: int, user_id: int, ready: bool) -> Room:
+        """Update member ready flag when room is in waiting state."""
+        room = self.get_room(room_id)
+        if room.status != "waiting":
+            raise RoomNotWaitingError(
+                f"room_id={room_id} status={room.status} does not allow ready updates"
+            )
+
+        idx = self._find_member_index(room, user_id)
+        if idx is None:
+            raise RoomNotMemberError(f"user_id={user_id} not in room_id={room_id}")
+
+        room.members[idx].ready = ready
+        return room
+
     @staticmethod
     def _find_member_index(room: Room, user_id: int) -> int | None:
         for idx, member in enumerate(room.members):
@@ -155,5 +174,6 @@ __all__ = [
     "RoomMember",
     "RoomNotFoundError",
     "RoomNotMemberError",
+    "RoomNotWaitingError",
     "RoomRegistry",
 ]

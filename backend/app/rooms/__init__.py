@@ -8,6 +8,7 @@ from app.rooms.registry import RoomFullError
 from app.rooms.registry import RoomMember
 from app.rooms.registry import RoomNotFoundError
 from app.rooms.registry import RoomNotMemberError
+from app.rooms.registry import RoomNotWaitingError
 from app.rooms.registry import RoomRegistry
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "RoomMember",
     "RoomNotFoundError",
     "RoomNotMemberError",
+    "RoomNotWaitingError",
     "RoomRegistry",
 ]
