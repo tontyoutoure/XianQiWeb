@@ -17,3 +17,15 @@ class LoginRequest(BaseModel):
 
     username: str
     password: str
+
+
+class RefreshRequest(BaseModel):
+    """POST /api/auth/refresh request body."""
+
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    """POST /api/auth/logout request body."""
+
+    refresh_token: str

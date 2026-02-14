@@ -5,16 +5,22 @@ from __future__ import annotations
 import sqlite3
 
 from app.auth.errors import raise_invalid_credentials
+from app.auth.errors import raise_refresh_rejected
 from app.auth.errors import raise_token_expired
 from app.auth.errors import raise_token_invalid
 from app.auth.errors import raise_username_conflict
 from app.auth.errors import raise_validation_error
+from app.auth.models import LogoutRequest
 from app.auth.models import LoginRequest
+from app.auth.models import RefreshRequest
 from app.auth.models import RegisterRequest
+from app.auth.repository import consume_refresh_token
 from app.auth.repository import create_user
 from app.auth.repository import get_user_auth_row
 from app.auth.repository import get_user_profile_by_id
+from app.auth.repository import revoke_refresh_token_by_hash
 from app.auth.schema import init_auth_schema
+from app.auth.session import hash_refresh_token
 from app.auth.session import issue_auth_session
 from app.auth.session import to_utc_iso
 from app.auth.session import utc_now
@@ -61,6 +67,7 @@ def register_user(*, settings: Settings, payload: RegisterRequest) -> dict[str, 
         user_id=user_id,
         username=normalized_username,
         created_at=created_at,
+        revoke_existing_refresh_tokens=True,
     )
 
 
@@ -81,6 +88,7 @@ def login_user(*, settings: Settings, payload: LoginRequest) -> dict[str, object
         user_id=user_id,
         username=username,
         created_at=created_at,
+        revoke_existing_refresh_tokens=True,
     )
 
 
@@ -106,3 +114,40 @@ def me_user(*, settings: Settings, access_token: str) -> dict[str, object]:
 
     uid, username, created_at = row
     return {"id": uid, "username": username, "created_at": created_at}
+
+
+def refresh_user(*, settings: Settings, payload: RefreshRequest) -> dict[str, object]:
+    """Rotate refresh token and return a fresh token pair."""
+    now = utc_now()
+    now_iso = to_utc_iso(now)
+    user_id = consume_refresh_token(
+        settings=settings,
+        token_hash=hash_refresh_token(payload.refresh_token),
+        now_iso=now_iso,
+        revoked_at=now_iso,
+    )
+    if user_id is None:
+        raise_refresh_rejected()
+
+    user_row = get_user_profile_by_id(settings=settings, user_id=user_id)
+    if user_row is None:
+        raise_refresh_rejected()
+
+    _, username, created_at = user_row
+    return issue_auth_session(
+        settings=settings,
+        user_id=user_id,
+        username=username,
+        created_at=created_at,
+        include_user=False,
+    )
+
+
+def logout_user(*, settings: Settings, payload: LogoutRequest) -> dict[str, bool]:
+    """Revoke one refresh token idempotently."""
+    revoke_refresh_token_by_hash(
+        settings=settings,
+        token_hash=hash_refresh_token(payload.refresh_token),
+        revoked_at=to_utc_iso(utc_now()),
+    )
+    return {"ok": True}

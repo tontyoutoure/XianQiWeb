@@ -11,11 +11,15 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from app.auth.errors import raise_token_invalid
+from app.auth.models import LogoutRequest
 from app.auth.http import handle_http_exception
 from app.auth.models import LoginRequest
+from app.auth.models import RefreshRequest
 from app.auth.models import RegisterRequest
 from app.auth.service import login_user
+from app.auth.service import logout_user
 from app.auth.service import me_user
+from app.auth.service import refresh_user
 from app.auth.service import register_user
 from app.auth.service import startup_auth_schema
 from app.core.config import Settings
@@ -61,6 +65,18 @@ def me(access_token: str) -> dict[str, object]:
     return me_user(settings=settings, access_token=access_token)
 
 
+@app.post("/api/auth/refresh")
+def refresh(payload: RefreshRequest) -> dict[str, object]:
+    """Rotate refresh token and issue a new access/refresh pair."""
+    return refresh_user(settings=settings, payload=payload)
+
+
+@app.post("/api/auth/logout")
+def logout(payload: LogoutRequest) -> dict[str, bool]:
+    """Revoke the provided refresh token idempotently."""
+    return logout_user(settings=settings, payload=payload)
+
+
 @app.get("/api/auth/me")
 def me_route(authorization: str | None = Header(default=None, alias="Authorization")) -> dict[str, object]:
     """HTTP wrapper for /api/auth/me Bearer auth."""
@@ -78,10 +94,14 @@ __all__ = [
     "Settings",
     "RegisterRequest",
     "LoginRequest",
+    "LogoutRequest",
+    "RefreshRequest",
     "app",
     "handle_http_exception",
     "login",
+    "logout",
     "me",
+    "refresh",
     "register",
     "settings",
     "startup",

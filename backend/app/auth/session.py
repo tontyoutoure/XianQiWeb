@@ -9,6 +9,7 @@ from datetime import timedelta
 from datetime import timezone
 
 from app.auth.repository import create_refresh_token
+from app.auth.repository import revoke_refresh_tokens_for_user
 from app.core.config import Settings
 from app.core.tokens import create_access_token
 
@@ -25,7 +26,15 @@ def hash_refresh_token(plain_token: str) -> str:
     return hashlib.sha256(plain_token.encode("utf-8")).hexdigest()
 
 
-def issue_auth_session(*, settings: Settings, user_id: int, username: str, created_at: str) -> dict[str, object]:
+def issue_auth_session(
+    *,
+    settings: Settings,
+    user_id: int,
+    username: str,
+    created_at: str,
+    include_user: bool = True,
+    revoke_existing_refresh_tokens: bool = False,
+) -> dict[str, object]:
     """Create access/refresh tokens and persist refresh hash."""
     now = utc_now()
     access_token = create_access_token(
@@ -39,6 +48,13 @@ def issue_auth_session(*, settings: Settings, user_id: int, username: str, creat
         now + timedelta(seconds=settings.xqweb_refresh_token_expire_seconds)
     )
 
+    if revoke_existing_refresh_tokens:
+        revoke_refresh_tokens_for_user(
+            settings=settings,
+            user_id=user_id,
+            revoked_at=refresh_created_at,
+        )
+
     create_refresh_token(
         settings=settings,
         user_id=user_id,
@@ -47,10 +63,12 @@ def issue_auth_session(*, settings: Settings, user_id: int, username: str, creat
         created_at=refresh_created_at,
     )
 
-    return {
+    response: dict[str, object] = {
         "access_token": access_token,
         "expires_in": settings.xqweb_access_token_expire_seconds,
         "refresh_token": refresh_token_plain,
         "refresh_expires_in": settings.xqweb_refresh_token_expire_seconds,
-        "user": {"id": user_id, "username": username, "created_at": created_at},
     }
+    if include_user:
+        response["user"] = {"id": user_id, "username": username, "created_at": created_at}
+    return response

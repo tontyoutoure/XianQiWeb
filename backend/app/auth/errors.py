@@ -64,3 +64,15 @@ def raise_token_expired() -> NoReturn:
             detail={},
         ),
     )
+
+
+def raise_refresh_rejected() -> NoReturn:
+    """Raise unified refresh-token rejection response."""
+    raise HTTPException(
+        status_code=401,
+        detail=api_error(
+            code="AUTH_REFRESH_REVOKED",
+            message="refresh token is invalid, revoked, or expired",
+            detail={},
+        ),
+    )

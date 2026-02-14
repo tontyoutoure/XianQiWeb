@@ -13,6 +13,7 @@
 - M1-API-05（登录成功返回 fresh token 对）已完成红绿闭环并通过测试。
 - M1-API-06（登录失败统一 401）已按人类确认认定为绿阶段完成。
 - M1-API-07（`/api/auth/me` 成功链路）已完成绿阶段并通过测试。
+- M1-API-08~12（`/me` 未授权、`/refresh`、`/logout`、登录踢旧 refresh）已完成绿阶段并通过测试。
 - 后端入口已完成拆分重构，`main.py` 不再承载全部鉴权实现细节。
 - auth 模块已进一步细分为 service/repository/session/errors 分层，职责更清晰。
 
@@ -45,3 +46,4 @@
 - 2026-02-14：经人类确认，将 M1-API-06 直接认定为绿阶段完成（无代码改动）。
 - 2026-02-14：进入 M1-API-07 红阶段：新增“valid access token 获取当前用户”可执行测试；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_07_me_success.py -q` 结果 `1 failed`（`app.main` 缺少 `me`），红阶段符合预期。
 - 2026-02-14：完成 M1-API-07 绿阶段：新增 `me_user` 服务、`users` 按 id 查询、token invalid/expired 401 错误映射，并在 `app.main` 增加 `me` 与 `GET /api/auth/me`；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_07_me_success.py -q` 结果 `1 passed`，全量回归 `conda run -n XQB pytest backend/tests -q` 结果 `21 passed, 8 skipped`。
+- 2026-02-14：完成 M1-API-09~12 绿阶段：新增 `RefreshRequest/LogoutRequest`、`refresh_user/logout_user`、refresh token 仓储层消费/撤销能力，并在 `app.main` 落地 `POST /api/auth/refresh` 与 `POST /api/auth/logout`；同时实现 register/login 撤销历史 refresh 的单会话策略。回归结果：`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_09_refresh_rotate.py backend/tests/api/auth/test_m1_api_10_refresh_invalid.py backend/tests/api/auth/test_m1_api_11_logout_idempotent.py backend/tests/api/auth/test_m1_api_12_login_kick_old_session.py -q` 为 `4 passed`，`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_0*.py backend/tests/api/auth/test_m1_api_1*.py -q` 为 `12 passed`。
