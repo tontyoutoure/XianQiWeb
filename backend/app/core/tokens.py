@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -33,7 +34,7 @@ def _jwt_secret() -> str:
 def create_access_token(*, user_id: int, now: datetime, expires_in_seconds: int) -> str:
     """Create a JWT access token containing at least sub and exp."""
     exp = int((now + timedelta(seconds=expires_in_seconds)).timestamp())
-    payload = {"sub": str(user_id), "exp": exp}
+    payload = {"sub": str(user_id), "exp": exp, "jti": uuid.uuid4().hex}
     return jwt.encode(payload, _jwt_secret(), algorithm=ALGORITHM)
 
 
