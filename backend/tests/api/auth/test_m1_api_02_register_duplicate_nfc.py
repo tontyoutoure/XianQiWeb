@@ -1,4 +1,4 @@
-"""M1-API-02 contract test (RED phase)."""
+"""M1-API-02 contract test (GREEN phase)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
-from fastapi.exception_handlers import http_exception_handler
 from starlette.requests import Request
 
 
@@ -44,9 +43,7 @@ def test_m1_api_02_register_rejects_duplicate_username_with_nfc_equivalence(
     with pytest.raises(HTTPException) as exc_info:
         app_main.register(app_main.RegisterRequest(username="é", password="123"))
 
-    response = asyncio.run(
-        http_exception_handler(_build_http_request("/api/auth/register"), exc_info.value)
-    )
+    response = asyncio.run(app_main.handle_http_exception(_build_http_request("/api/auth/register"), exc_info.value))
     payload = json.loads(response.body.decode("utf-8"))
 
     assert response.status_code == 409

@@ -65,10 +65,10 @@
 | 测试组 | 当前状态 | 备注 |
 |---|---|---|
 | M1-API-01 | ✅ 已通过 | 已实现最小注册链路（`app.main` + register）；断言覆盖响应字段与 `users/refresh_tokens` 落库（`token_hash` 非明文） |
-| M1-API-02 | 🔴 Red中 | 真实测试已落地（NFC 等价重复注册）；当前失败点为冲突错误体被包装为 `{\"detail\":{...}}`，未满足 `{code,message,detail}` |
+| M1-API-02 | ✅ 已通过 | 新增统一 HTTP 错误处理后，NFC 等价重复注册返回 `409` 且错误体满足 `{code,message,detail}` |
 | M1-API-03~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-下一步建议进入 `M1-API-02` 绿阶段（补齐统一错误响应，去除外层 `detail` 包装）。
+下一步建议进入 `M1-API-03` 红阶段（大小写敏感注册契约）。

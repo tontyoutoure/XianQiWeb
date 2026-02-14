@@ -9,9 +9,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.core.config import Settings
@@ -108,6 +111,10 @@ def _build_auth_response(*, settings: Settings, user_id: int, username: str, cre
     }
 
 
+def _api_error(*, code: str, message: str, detail: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {"code": code, "message": message, "detail": detail or {}}
+
+
 settings = load_settings()
 
 
@@ -125,6 +132,27 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+@app.exception_handler(HTTPException)
+async def handle_http_exception(_: Request, exc: HTTPException) -> JSONResponse:
+    """Unify HTTP errors to {code,message,detail} payload."""
+    if isinstance(exc.detail, dict) and {"code", "message", "detail"} <= set(exc.detail):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.detail,
+            headers=exc.headers,
+        )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=_api_error(
+            code="HTTP_ERROR",
+            message=str(exc.detail),
+            detail={},
+        ),
+        headers=exc.headers,
+    )
+
+
 @app.post("/api/auth/register")
 def register(payload: RegisterRequest) -> dict[str, object]:
     """Create user + auth session for MVP register flow."""
@@ -133,7 +161,7 @@ def register(payload: RegisterRequest) -> dict[str, object]:
     except UsernameValidationError as exc:
         raise HTTPException(
             status_code=400,
-            detail={"code": "VALIDATION_ERROR", "message": str(exc), "detail": {}},
+            detail=_api_error(code="VALIDATION_ERROR", message=str(exc), detail={}),
         ) from exc
 
     created_at = _to_utc_iso(_utc_now())
@@ -155,7 +183,11 @@ def register(payload: RegisterRequest) -> dict[str, object]:
         conn.rollback()
         raise HTTPException(
             status_code=409,
-            detail={"code": "AUTH_USERNAME_CONFLICT", "message": "username already exists", "detail": {}},
+            detail=_api_error(
+                code="AUTH_USERNAME_CONFLICT",
+                message="username already exists",
+                detail={},
+            ),
         ) from exc
     finally:
         conn.close()
