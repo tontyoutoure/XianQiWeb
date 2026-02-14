@@ -76,9 +76,9 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
-| M2-UT-01 | 🔴 红阶段完成（失败符合预期） | Red | `conda run -n XQB pytest backend/tests/unit/test_m2_ut_01_03_room_registry.py -q`，当前失败点：`No module named app.rooms` |
-| M2-UT-02 | 🔴 红阶段完成（失败符合预期） | Red | 同上；当前失败点：`RoomRegistry` 所在模块未实现 |
-| M2-UT-03 | 🔴 红阶段完成（失败符合预期） | Red | 同上；当前失败点：owner 迁移契约尚未实现（模块缺失） |
+| M2-UT-01 | ✅ 已通过 | Red -> Green 完成 | 红阶段：模块缺失导致失败；绿阶段实现 `app.rooms.registry.RoomRegistry` 后通过 |
+| M2-UT-02 | ✅ 已通过 | Red -> Green 完成 | 通过断言：seat 初始分配 `0/1/2` 且离房后复用最小空位 |
+| M2-UT-03 | ✅ 已通过 | Red -> Green 完成 | 通过断言：首入房为 owner，owner 离开后按最早加入顺序转移 |
 | M2-UT-04 ~ M2-UT-08 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
 | M2-API-01 ~ M2-API-14 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
 | M2-CC-01 ~ M2-CC-03 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
