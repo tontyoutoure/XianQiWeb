@@ -9,7 +9,8 @@
 - 服务启动（示例）：
   - `XQWEB_JWT_SECRET=<test-secret>`（必填）
   - `XQWEB_SQLITE_PATH=/tmp/xqweb-m1-real-service.sqlite3`（建议独立测试库）
-  - `conda run -n XQB uvicorn app.main:app --host 127.0.0.1 --port 18080`
+  - `conda run -n XQB bash scripts/start-backend.sh`
+  - 可选：`XQWEB_APP_PORT=18080`、`XQWEB_RELOAD=1` 覆盖端口与热重载。
 - 基础地址：`BASE_URL=http://127.0.0.1:18080`
 - WS 地址：
   - `ws://127.0.0.1:18080/ws/lobby?token=<access_token>`
@@ -19,6 +20,10 @@
   - 失败响应统一为 `{code,message,detail}`。
   - REST 未授权状态码为 `401`。
   - WS 未授权关闭码 `4401`，reason=`UNAUTHORIZED`。
+- 代理环境注意事项（本次联调已踩坑）：
+  - 若本机设置了 `HTTP_PROXY/HTTPS_PROXY`，访问 `127.0.0.1` 可能被代理劫持并返回 `502 Bad Gateway`。
+  - 本地健康检查建议使用：`curl --noproxy '*' -i http://127.0.0.1:18080/api/auth/me`（预期 `401`）。
+  - 自动化脚本（如 `httpx`）应显式设置 `trust_env=False`，避免读取代理环境变量。
 
 ## 1) REST 接口可用性测试
 
@@ -64,11 +69,11 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M1-RS-REST-01 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
-| M1-RS-REST-02 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
-| M1-RS-REST-03 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
-| M1-RS-REST-04 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
-| M1-RS-REST-05 | 🟥 已编写 | Red（待人类执行） | 2026-02-14 | 对应 `backend/tests/integration/real_service/test_m1_rs_rest_red.py` |
+| M1-RS-REST-01 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
+| M1-RS-REST-02 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
+| M1-RS-REST-03 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
+| M1-RS-REST-04 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
+| M1-RS-REST-05 | ✅ 已通过 | Red（实测通过） | 2026-02-14 | 人类执行 `pytest backend/tests/integration/real_service/test_m1_rs_rest_red.py -q` 通过 |
 | M1-RS-REST-06 | ⏳ 待执行 | 未开始 | - | - |
 | M1-RS-REST-07 | ⏳ 待执行 | 未开始 | - | - |
 | M1-RS-REST-08 | ⏳ 待执行 | 未开始 | - | - |

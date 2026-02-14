@@ -31,7 +31,11 @@ def _wait_for_server_ready(*, base_url: str, process: subprocess.Popen[str], tim
             raise RuntimeError("uvicorn exited before becoming ready")
 
         try:
-            response = httpx.get(f"{base_url}/api/auth/me", timeout=0.3)
+            response = httpx.get(
+                f"{base_url}/api/auth/me",
+                timeout=0.3,
+                trust_env=False,
+            )
             if response.status_code == 401:
                 return
         except httpx.HTTPError:
@@ -95,7 +99,7 @@ def _assert_error_payload(*, response: httpx.Response, expected_status: int) -> 
 
 def test_m1_rs_rest_01_register_success(live_server: str) -> None:
     """M1-RS-REST-01: register returns auth session fields."""
-    with httpx.Client(base_url=live_server, timeout=3) as client:
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
         response = client.post(
             "/api/auth/register",
             json={"username": "Alice", "password": "123"},
@@ -109,7 +113,7 @@ def test_m1_rs_rest_01_register_success(live_server: str) -> None:
 
 def test_m1_rs_rest_02_register_duplicate_nfc_conflict(live_server: str) -> None:
     """M1-RS-REST-02: NFC-equivalent usernames conflict."""
-    with httpx.Client(base_url=live_server, timeout=3) as client:
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
         first = client.post(
             "/api/auth/register",
             json={"username": "é", "password": "123"},
@@ -125,7 +129,7 @@ def test_m1_rs_rest_02_register_duplicate_nfc_conflict(live_server: str) -> None
 
 def test_m1_rs_rest_03_register_case_sensitive(live_server: str) -> None:
     """M1-RS-REST-03: username matching is case-sensitive."""
-    with httpx.Client(base_url=live_server, timeout=3) as client:
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
         tom_upper = client.post(
             "/api/auth/register",
             json={"username": "Tom", "password": "123"},
@@ -142,7 +146,7 @@ def test_m1_rs_rest_03_register_case_sensitive(live_server: str) -> None:
 
 def test_m1_rs_rest_04_empty_password_register_and_login(live_server: str) -> None:
     """M1-RS-REST-04: MVP allows empty password for register/login."""
-    with httpx.Client(base_url=live_server, timeout=3) as client:
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
         register_response = client.post(
             "/api/auth/register",
             json={"username": "NoPwd", "password": ""},
@@ -158,7 +162,7 @@ def test_m1_rs_rest_04_empty_password_register_and_login(live_server: str) -> No
 
 def test_m1_rs_rest_05_login_success_returns_fresh_token_pair(live_server: str) -> None:
     """M1-RS-REST-05: login returns a fresh token pair for registered user."""
-    with httpx.Client(base_url=live_server, timeout=3) as client:
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
         register_response = client.post(
             "/api/auth/register",
             json={"username": "Alice", "password": "123"},
