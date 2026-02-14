@@ -8,6 +8,10 @@
 - M1-UT-05（username 规则）已完整实现并通过单测。
 - M1-UT-01（密码 hash/verify）已按 TDD 红绿流程实现并通过单测。
 - M1-UT-02/03/04 已按 TDD 完成红绿闭环并通过单测。
+- M1-API-03（username 大小写敏感）已完成绿阶段并通过测试。
+- M1-API-04（MVP 空密码注册/登录）已完成绿阶段并通过测试。
+- 后端入口已完成拆分重构，`main.py` 不再承载全部鉴权实现细节。
+- auth 模块已进一步细分为 service/repository/session/errors 分层，职责更清晰。
 
 ## 当前阶段
 - 文档评审阶段已完成，进入后端实现与测试落地阶段。
@@ -27,3 +31,8 @@
 - 2026-02-14：完成 M1-API-01 绿阶段：新增 `app.main` 最小可用注册链路（建表、username 归一化、password hash、access/refresh 签发、refresh 仅存 hash），并通过 API-01 测试（`1 passed, 11 skipped`）。
 - 2026-02-14：进入 M1-API-02 红阶段：新增“重复用户名（含 NFC 等价）返回 409 + 统一错误体”测试，当前结果 `1 failed, 1 passed, 10 skipped`；失败原因为冲突错误体仍是 `{\"detail\":{...}}`。
 - 2026-02-14：完成 M1-API-02 绿阶段：在 `app.main` 增加统一 HTTP 错误处理（`{code,message,detail}`），并使 NFC 等价重复注册返回 `409` 标准错误体；API 鉴权测试现状 `2 passed, 10 skipped`。
+- 2026-02-14：完成 M1-API-03 绿阶段：`Tom/tom` 大小写敏感注册契约通过，执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_03_case_sensitive.py -q` 结果 `1 passed`；并回归 `API-01~03` 结果 `3 passed`。
+- 2026-02-14：进入 M1-API-04 红阶段：新增“空密码可注册且可登录”可执行契约测试；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_04_empty_password.py -q` 结果 `1 failed`（`app.main` 缺少 `LoginRequest/login`），红阶段符合预期。
+- 2026-02-14：完成 M1-API-04 绿阶段：在 `app.main` 新增 `LoginRequest` 与 `POST /api/auth/login`（复用 username 归一化与密码校验，支持空密码）；执行 `conda run -n XQB pytest backend/tests/api/auth/test_m1_api_04_empty_password.py -q` 结果 `1 passed`，并回归 `API-01~04` 结果 `4 passed`。
+- 2026-02-14：完成 `app.main` 拆分重构：新增 `app/auth/{models,schema,http,service}.py` 承载鉴权模型/建表/错误处理/业务逻辑，`main.py` 仅保留应用装配与路由入口；回归 `conda run -n XQB pytest backend/tests -q` 结果 `18 passed, 11 skipped`。
+- 2026-02-14：完成 auth 进一步拆分：新增 `app/auth/{repository,session,errors}.py`，将数据访问、会话签发、错误构造从 `service.py` 拆离；再次回归 `conda run -n XQB pytest backend/tests -q` 结果 `18 passed, 11 skipped`。

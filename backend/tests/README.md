@@ -6,4 +6,6 @@ This folder contains the M1 pytest skeleton based on `memory-bank/tests/m1-tests
 - `api/auth/`: auth endpoint contracts (M1-API-01..12)
 - `integration/ws/`: WebSocket auth contracts (M1-WS-01..03)
 
+Recommended local test environment: conda env `XQB`.
+
 Current status: tests are intentionally skipped via `app_not_ready` until the FastAPI app and dependencies are implemented.

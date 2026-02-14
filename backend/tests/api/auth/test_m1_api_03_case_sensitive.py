@@ -1,4 +1,4 @@
-"""M1-API-03 contract test (RED phase)."""
+"""M1-API-03 contract test (GREEN phase)."""
 
 from __future__ import annotations
 
