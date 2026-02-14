@@ -1,82 +1,122 @@
-"""M1 WebSocket auth contract tests (RED phase)."""
+"""M1 WebSocket auth contract tests."""
 
 from __future__ import annotations
 
-import json
-import os
+import asyncio
+import importlib
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 from pathlib import Path
-import subprocess
-import sys
 
 import pytest
+from starlette.websockets import WebSocketDisconnect
 
-PROBE_SCRIPT = Path(__file__).with_name("ws_probe.py")
-BACKEND_ROOT = Path(__file__).resolve().parents[3]
+from app.core.tokens import create_access_token
 
 
-def _run_ws_probe(*, mode: str, tmp_path: Path) -> dict[str, object]:
-    db_path = tmp_path / f"m1_{mode}.sqlite3"
-    env = os.environ.copy()
-    existing_pythonpath = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = f"{BACKEND_ROOT}:{existing_pythonpath}" if existing_pythonpath else str(
-        BACKEND_ROOT
-    )
-    env["XQWEB_SQLITE_PATH"] = str(db_path)
-    env["XQWEB_JWT_SECRET"] = "ws-test-secret-key-32-bytes-minimum"
+class _FakeWebSocket:
+    def __init__(self, *, token: str | None) -> None:
+        self.query_params: dict[str, str] = {}
+        if token is not None:
+            self.query_params["token"] = token
 
-    try:
-        completed = subprocess.run(
-            [sys.executable, str(PROBE_SCRIPT), mode],
-            capture_output=True,
-            text=True,
-            env=env,
-            check=False,
-            timeout=8,
-        )
-    except subprocess.TimeoutExpired as exc:
-        pytest.fail(f"WS probe timed out in mode={mode}: {exc}")
+        self.accept_count = 0
+        self.close_code: int | None = None
+        self.close_reason: str | None = None
+        self.receive_count = 0
 
-    lines = [line for line in completed.stdout.splitlines() if line.strip()]
-    if not lines:
-        pytest.fail(
-            f"WS probe returned no stdout in mode={mode}, rc={completed.returncode}, stderr={completed.stderr}"
-        )
+    async def accept(self) -> None:
+        self.accept_count += 1
 
-    try:
-        payload = json.loads(lines[-1])
-    except json.JSONDecodeError as exc:
-        raise AssertionError(
-            f"WS probe returned non-JSON output in mode={mode}: {lines[-1]!r}, stderr={completed.stderr}"
-        ) from exc
+    async def close(self, *, code: int = 1000, reason: str | None = None) -> None:
+        self.close_code = code
+        self.close_reason = reason
 
-    payload["_returncode"] = completed.returncode
-    payload["_stderr"] = completed.stderr
-    return payload
+    async def receive_text(self) -> str:
+        self.receive_count += 1
+        raise WebSocketDisconnect(code=1000)
+
+
+def _setup_app(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_name: str,
+) -> tuple[object, str, int]:
+    db_path = tmp_path / db_name
+    monkeypatch.setenv("XQWEB_SQLITE_PATH", str(db_path))
+    monkeypatch.setenv("XQWEB_JWT_SECRET", "ws-test-secret-key-32-bytes-minimum")
+
+    import app.main as app_main
+
+    app_main = importlib.reload(app_main)
+    app_main.startup()
+    register_result = app_main.register(app_main.RegisterRequest(username="Alice", password="123"))
+    return app_main, str(register_result["access_token"]), int(register_result["user"]["id"])
 
 
 def test_m1_ws_01_ws_connects_with_valid_access_token(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Contract: WS with valid access token should connect successfully."""
-    payload = _run_ws_probe(mode="valid", tmp_path=tmp_path)
-    assert payload["result"] == "connected"
+    app_main, access_token, _ = _setup_app(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        db_name="m1_ws_01.sqlite3",
+    )
+    websocket = _FakeWebSocket(token=access_token)
+
+    asyncio.run(app_main.ws_lobby(websocket))
+
+    assert websocket.accept_count == 1
+    assert websocket.close_code is None
+    assert websocket.close_reason is None
+    assert websocket.receive_count == 1
 
 
 def test_m1_ws_02_ws_rejects_invalid_token_with_4401(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Contract: WS auth failure closes with code 4401 and UNAUTHORIZED reason."""
-    payload = _run_ws_probe(mode="invalid", tmp_path=tmp_path)
-    assert payload["result"] == "disconnect"
-    assert payload["code"] == 4401
-    assert payload["reason"] == "UNAUTHORIZED"
+    app_main, _, _ = _setup_app(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        db_name="m1_ws_02.sqlite3",
+    )
+    websocket = _FakeWebSocket(token="invalid-token")
+
+    asyncio.run(app_main.ws_lobby(websocket))
+
+    assert websocket.accept_count == 1
+    assert websocket.close_code == 4401
+    assert websocket.close_reason == "UNAUTHORIZED"
+    assert websocket.receive_count == 0
 
 
 def test_m1_ws_03_ws_rejects_expired_token_with_4401(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Contract: expired access token cannot establish WS connection."""
-    payload = _run_ws_probe(mode="expired", tmp_path=tmp_path)
-    assert payload["result"] == "disconnect"
-    assert payload["code"] == 4401
-    assert payload["reason"] == "UNAUTHORIZED"
+    app_main, _, user_id = _setup_app(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        db_name="m1_ws_03.sqlite3",
+    )
+    websocket = _FakeWebSocket(
+        token=create_access_token(
+            user_id=user_id,
+            now=datetime(2026, 2, 14, tzinfo=timezone.utc) - timedelta(hours=2),
+            expires_in_seconds=3600,
+        )
+    )
+
+    asyncio.run(app_main.ws_lobby(websocket))
+
+    assert websocket.accept_count == 1
+    assert websocket.close_code == 4401
+    assert websocket.close_reason == "UNAUTHORIZED"
+    assert websocket.receive_count == 0

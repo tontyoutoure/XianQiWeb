@@ -78,10 +78,10 @@
 | M1-API-10 | ✅ 已通过 | 绿阶段完成：实现 refresh token 校验（已撤销/已过期/随机均拒绝）；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_10_refresh_invalid.py -q` 通过 |
 | M1-API-11 | ✅ 已通过 | 绿阶段完成：实现 `LogoutRequest`、`logout_user` 与 `/api/auth/logout` 幂等撤销；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_11_logout_idempotent.py -q` 通过 |
 | M1-API-12 | ✅ 已通过 | 绿阶段完成：实现登录踢旧 refresh（register/login 撤销历史 refresh）；`conda run -n XQB pytest backend/tests/api/auth/test_m1_api_12_login_kick_old_session.py -q` 通过 |
-| M1-WS-01 | 🔴 红阶段已完成（失败） | 新增有效 access token 建连契约测试（子进程探针方式），执行 `conda run -n XQB pytest backend/tests/integration/ws/test_ws_auth.py -q` 失败（`WS probe timed out in mode=valid`） |
-| M1-WS-02 | 🔴 红阶段已完成（失败） | 新增无效 token 需 `4401/UNAUTHORIZED` 的契约测试；当前失败（`WS probe timed out in mode=invalid`） |
-| M1-WS-03 | 🔴 红阶段已完成（失败） | 新增过期 token 需 `4401` 的契约测试；当前失败（`WS probe timed out in mode=expired`） |
+| M1-WS-01 | ✅ 已通过 | 绿阶段完成：实现 `/ws/lobby` 鉴权入口；有效 access token 可通过鉴权并建立连接路径；`conda run -n XQB pytest backend/tests/integration/ws/test_ws_auth.py -q` 通过 |
+| M1-WS-02 | ✅ 已通过 | 绿阶段完成：无效 token 鉴权失败时关闭码为 `4401`，reason=`UNAUTHORIZED`；WS 用例通过 |
+| M1-WS-03 | ✅ 已通过 | 绿阶段完成：过期 token 鉴权失败时关闭码为 `4401`；WS 用例通过 |
 
 ### 5.3 下一步建议
 
-下一步建议进入 `M1-WS-01 ~ M1-WS-03` 绿阶段：实现 `/ws/lobby`（及/或房间 WS）接入 token 鉴权，并在鉴权失败时以 close code `4401` + reason `UNAUTHORIZED` 关闭连接。
+下一步建议执行一次 M1 阶段验收回归（Auth API + WS 鉴权），确认闭环后进入 M2 房间大厅阶段的红测设计。

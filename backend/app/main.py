@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi import Header
 from fastapi import HTTPException
 from fastapi import Request
+from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from app.auth.errors import raise_token_invalid
@@ -65,6 +67,12 @@ def me(access_token: str) -> dict[str, object]:
     return me_user(settings=settings, access_token=access_token)
 
 
+async def _close_ws_unauthorized(websocket: WebSocket) -> None:
+    """Close websocket with unified unauthorized semantics."""
+    await websocket.accept()
+    await websocket.close(code=4401, reason="UNAUTHORIZED")
+
+
 @app.post("/api/auth/refresh")
 def refresh(payload: RefreshRequest) -> dict[str, object]:
     """Rotate refresh token and issue a new access/refresh pair."""
@@ -90,6 +98,51 @@ def me_route(authorization: str | None = Header(default=None, alias="Authorizati
     return me(token)
 
 
+@app.websocket("/ws/lobby")
+async def ws_lobby(websocket: WebSocket) -> None:
+    """Minimal M1 lobby websocket with access-token auth."""
+    token = websocket.query_params.get("token")
+    if token is None or token == "":
+        await _close_ws_unauthorized(websocket)
+        return
+
+    try:
+        me(token)
+    except HTTPException:
+        await _close_ws_unauthorized(websocket)
+        return
+
+    await websocket.accept()
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        return
+
+
+@app.websocket("/ws/rooms/{room_id}")
+async def ws_room(websocket: WebSocket, room_id: int) -> None:
+    """Room websocket auth stub for M1."""
+    _ = room_id
+    token = websocket.query_params.get("token")
+    if token is None or token == "":
+        await _close_ws_unauthorized(websocket)
+        return
+
+    try:
+        me(token)
+    except HTTPException:
+        await _close_ws_unauthorized(websocket)
+        return
+
+    await websocket.accept()
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        return
+
+
 __all__ = [
     "Settings",
     "RegisterRequest",
@@ -105,4 +158,6 @@ __all__ = [
     "register",
     "settings",
     "startup",
+    "ws_lobby",
+    "ws_room",
 ]
