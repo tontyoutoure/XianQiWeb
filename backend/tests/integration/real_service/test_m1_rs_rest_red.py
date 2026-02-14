@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 import socket
 import subprocess
 import sys
@@ -297,3 +298,110 @@ def test_m1_rs_rest_10_refresh_rotates_and_revokes_old_refresh_token(live_server
     assert {"access_token", "refresh_token", "expires_in", "refresh_expires_in"} <= set(refreshed_payload)
     assert refreshed_payload["refresh_token"] != old_refresh_token
     _assert_error_payload(response=old_refresh_reuse, expected_status=401)
+
+
+def test_m1_rs_rest_11_refresh_rejects_invalid_revoked_and_random_token(live_server: str) -> None:
+    """M1-RS-REST-11: /refresh rejects invalid/revoked/random refresh token."""
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        register_response = client.post(
+            "/api/auth/register",
+            json={"username": "Alice", "password": "123"},
+        )
+        valid_refresh_token = register_response.json()["refresh_token"]
+
+        first_refresh = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": valid_refresh_token},
+        )
+        revoked_refresh = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": valid_refresh_token},
+        )
+        invalid_refresh = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": ""},
+        )
+        random_refresh = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": secrets.token_urlsafe(32)},
+        )
+
+    assert register_response.status_code == 200
+    assert first_refresh.status_code == 200
+    for response in (revoked_refresh, invalid_refresh, random_refresh):
+        _assert_error_payload(response=response, expected_status=401)
+        assert response.json()["code"] == "AUTH_REFRESH_REVOKED"
+
+
+def test_m1_rs_rest_12_logout_is_idempotent_and_revokes_refresh_token(live_server: str) -> None:
+    """M1-RS-REST-12: /logout is idempotent and logged-out refresh token cannot refresh."""
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        register_response = client.post(
+            "/api/auth/register",
+            json={"username": "Alice", "password": "123"},
+        )
+        refresh_token = register_response.json()["refresh_token"]
+
+        first_logout = client.post(
+            "/api/auth/logout",
+            json={"refresh_token": refresh_token},
+        )
+        second_logout = client.post(
+            "/api/auth/logout",
+            json={"refresh_token": refresh_token},
+        )
+        refresh_after_logout = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+
+    assert register_response.status_code == 200
+    for response in (first_logout, second_logout):
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+    _assert_error_payload(response=refresh_after_logout, expected_status=401)
+    assert refresh_after_logout.json()["code"] == "AUTH_REFRESH_REVOKED"
+
+
+def test_m1_rs_rest_13_login_kicks_old_refresh_but_old_access_still_works(live_server: str) -> None:
+    """M1-RS-REST-13: second login revokes old refresh while old access remains valid before expiry."""
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        register_response = client.post(
+            "/api/auth/register",
+            json={"username": "Alice", "password": "123"},
+        )
+        first_login = client.post(
+            "/api/auth/login",
+            json={"username": "Alice", "password": "123"},
+        )
+        second_login = client.post(
+            "/api/auth/login",
+            json={"username": "Alice", "password": "123"},
+        )
+
+        old_refresh_use = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": first_login.json()["refresh_token"]},
+        )
+        new_refresh_use = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": second_login.json()["refresh_token"]},
+        )
+        old_access_still_valid = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {first_login.json()['access_token']}"},
+        )
+
+    assert register_response.status_code == 200
+    assert first_login.status_code == 200
+    assert second_login.status_code == 200
+    assert first_login.json()["refresh_token"] != second_login.json()["refresh_token"]
+
+    _assert_error_payload(response=old_refresh_use, expected_status=401)
+    assert old_refresh_use.json()["code"] == "AUTH_REFRESH_REVOKED"
+
+    assert new_refresh_use.status_code == 200
+    assert {"access_token", "refresh_token", "expires_in", "refresh_expires_in"} <= set(new_refresh_use.json())
+
+    assert old_access_still_valid.status_code == 200
+    assert old_access_still_valid.json()["username"] == "Alice"
