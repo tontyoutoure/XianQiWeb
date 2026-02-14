@@ -56,17 +56,18 @@
 | M1-UT-03 | ✅ 已通过 | Red → Green 完成 | `RefreshTokenStore issue/validate/rotate` 已实现，旧 token 失效 |
 | M1-UT-04 | ✅ 已通过 | Red → Green 完成 | `create_sqlite_connection` 强制 `PRAGMA foreign_keys=ON` |
 | M1-UT-05 | ✅ 已通过 | Red → Green 完成 | username `trim + NFC + grapheme(1~10)` 已实现 |
-| M1-UT-06 | ⏳ 未完成 | 未进入 Red | 仍为占位测试（skip），待补配置模型与校验测试 |
+| M1-UT-06 | ✅ 已通过 | Red → Green 完成 | 新增 `app.core.config.Settings` 与约束校验：`refresh_interval < access_expire` |
 
-当前单测汇总（`backend/tests/unit`）：`12 passed, 1 skipped`（其中 skip 对应 UT-06 占位）。
+当前单测汇总（`backend/tests/unit`）：`14 passed`。
 
 ### 5.2 API / WS 测试
 
 | 测试组 | 当前状态 | 备注 |
 |---|---|---|
-| M1-API-01~12 | ⏳ 未开始（占位） | 现为 skeleton，依赖 FastAPI auth 路由实现 |
+| M1-API-01 | 🔴 Red中 | 已落地真实契约断言（调用 `POST /api/auth/register`）；当前因缺少 `app.main` 失败（`ModuleNotFoundError`） |
+| M1-API-02~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-先完成 `M1-UT-06`，再进入 API 红阶段；这样更符合当前开发计划“先通过对应测试再进入下一里程碑”的约束。
+下一步可进入 M1-API-01 绿阶段（先实现最小 `app.main` 与 `POST /api/auth/register` 路由）。

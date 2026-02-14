@@ -20,3 +20,6 @@
 - 2026-02-14：完成 `app.core.tokens`（JWT sub/exp + 过期校验）、`app.core.refresh_tokens`（issue/validate/rotate + 旧 token 失效）、`app.core.db`（SQLite foreign_keys=ON）实现，M1-UT-02/03/04 通过。
 - 2026-02-14：`conda run -n XQB pytest backend/tests/unit -q` 结果：12 passed, 1 skipped。
 - 2026-02-14：在 `memory-bank/tests/m1-tests.md` 追加 TDD 执行进度节，明确 UT-06 仍待完成（暂不建议直接进入 API 实现）。
+- 2026-02-14：完成 M1-UT-06 红阶段：将占位测试替换为 2 个真实失败用例（refresh interval = / > access expire），当前因缺少 `app.core.config.Settings` 导致 `ModuleNotFoundError`，红阶段结果符合预期。
+- 2026-02-14：完成 M1-UT-06 绿阶段：新增 `app.core.config.Settings`（pydantic-settings）并实现约束校验 `XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS < XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS`，单测结果更新为 `14 passed`。
+- 2026-02-14：进入 M1 API 红阶段：`M1-API-01` 已改为真实契约测试，执行 `conda run -n XQB pytest backend/tests/api/auth/test_auth_endpoints.py -q` 结果为 `1 failed, 11 skipped`（失败原因为缺少 `app.main`，符合红阶段预期）。
