@@ -66,9 +66,10 @@
 |---|---|---|
 | M1-API-01 | ✅ 已通过 | 已实现最小注册链路（`app.main` + register）；断言覆盖响应字段与 `users/refresh_tokens` 落库（`token_hash` 非明文） |
 | M1-API-02 | ✅ 已通过 | 新增统一 HTTP 错误处理后，NFC 等价重复注册返回 `409` 且错误体满足 `{code,message,detail}` |
-| M1-API-03~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
+| M1-API-03 | 🔴 红阶段已完成 | 已将 `Tom/tom` 大小写敏感契约落地为可执行测试（移除 skeleton）；待人类执行并确认失败 |
+| M1-API-04~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 
 ### 5.3 下一步建议
 
-下一步建议进入 `M1-API-03` 红阶段（大小写敏感注册契约）。
+下一步建议由人类执行 `M1-API-03` 用例并确认失败，再进入对应绿阶段实现。
