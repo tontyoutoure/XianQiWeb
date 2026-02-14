@@ -24,6 +24,7 @@ Auth 说明：
 - refresh 时轮换 refresh_token（旧 token 立即失效）。
 - username 按 UTF-8 传输，大小写敏感；服务端对 username 做 NFC 归一化后再校验与匹配。
 - MVP 阶段 password 不做强规则限制，允许空密码注册/登录。
+- register 成功后服务端应完成落库：`users` 新增用户记录，`refresh_tokens` 新增一条未撤销记录（仅存 `token_hash`）。
 
 ### 1.2 Rooms
 - GET `/api/rooms`

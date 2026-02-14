@@ -17,7 +17,7 @@
 
 | 测试ID | 对应约定 | 预期输入 | 预期输出 |
 |---|---|---|---|
-| M1-API-01 | `POST /api/auth/register` 成功返回登录态 | `{"username":"Alice","password":"123"}` | `200`；返回 `access_token/refresh_token/expires_in/refresh_expires_in/user` |
+| M1-API-01 | `POST /api/auth/register` 成功返回登录态并落库 | `{"username":"Alice","password":"123"}` | `200`；返回 `access_token/refresh_token/expires_in/refresh_expires_in/user`；`users` 新增用户且 `refresh_tokens` 新增一条未撤销记录（仅存 `token_hash`） |
 | M1-API-02 | username 重复（含 NFC 等价）返回冲突 | 先注册 `"é"`，再注册 `"é"` | 第二次 `409`（用户名冲突） |
 | M1-API-03 | username 大小写敏感 | 依次注册 `"Tom"`、`"tom"` | 两次都成功，且为不同用户 |
 | M1-API-04 | MVP 允许空密码注册/登录 | 注册与登录都使用 `password=""` | 注册成功且登录成功 |
@@ -64,7 +64,7 @@
 
 | 测试组 | 当前状态 | 备注 |
 |---|---|---|
-| M1-API-01 | 🔴 Red中 | 已落地真实契约断言（调用 `POST /api/auth/register`）；当前因缺少 `app.main` 失败（`ModuleNotFoundError`） |
+| M1-API-01 | 🔴 Red中 | 已落地真实契约断言（调用 `POST /api/auth/register` + 校验 `users/refresh_tokens` 落库）；当前因缺少 `app.main` 失败（`ModuleNotFoundError`） |
 | M1-API-02~12 | ⏳ 未开始（占位） | 仍为 skeleton，暂由 `app_not_ready` 跳过 |
 | M1-WS-01~03 | ⏳ 未开始（占位） | 现为 skeleton，依赖 WS 鉴权实现 |
 

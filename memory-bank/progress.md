@@ -23,3 +23,4 @@
 - 2026-02-14：完成 M1-UT-06 红阶段：将占位测试替换为 2 个真实失败用例（refresh interval = / > access expire），当前因缺少 `app.core.config.Settings` 导致 `ModuleNotFoundError`，红阶段结果符合预期。
 - 2026-02-14：完成 M1-UT-06 绿阶段：新增 `app.core.config.Settings`（pydantic-settings）并实现约束校验 `XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS < XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS`，单测结果更新为 `14 passed`。
 - 2026-02-14：进入 M1 API 红阶段：`M1-API-01` 已改为真实契约测试，执行 `conda run -n XQB pytest backend/tests/api/auth/test_auth_endpoints.py -q` 结果为 `1 failed, 11 skipped`（失败原因为缺少 `app.main`，符合红阶段预期）。
+- 2026-02-14：按需求调整 API-01 约定：register 除响应字段外需校验数据库落库（`users` + `refresh_tokens`，仅存 `token_hash`）；已同步更新接口/设计文档与 API-01 测试样例。

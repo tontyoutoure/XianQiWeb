@@ -126,6 +126,9 @@ backend/
   - username 按 UTF-8 编码传输，大小写敏感（如 `Tom` 与 `tom` 视为不同用户名）。
   - MVP 阶段 password 不做强规则校验，允许空密码。
   - username 重复返回 409。
+- 成功后的持久化约定：
+  - `users` 表新增 1 条用户记录（保存 `password_hash`，不保存明文密码）。
+  - `refresh_tokens` 表新增 1 条未撤销记录（仅保存 `token_hash`，不保存明文 refresh token）。
 - 输出：登录态（access + refresh + user）。
 
 #### POST `/api/auth/login`
@@ -187,6 +190,7 @@ backend/
   - `foreign_keys=ON` 生效（禁止写入孤儿 refresh token）。
 - API 测试：
   - register/login/me/refresh/logout 正常流。
+  - register 成功后校验数据库落库：`users` 新增用户，`refresh_tokens` 新增未撤销记录，且仅存 `token_hash`。
   - 非法 token、过期 token、重复注册、错误密码。
   - username 用户可见字符长度校验（<=10 通过，>10 拒绝）。
   - username NFC 归一化一致性（组合字符与预组字符按同一用户名处理）。
