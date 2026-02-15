@@ -40,7 +40,7 @@ def test_m2_api_01_get_rooms_summary(
 ) -> None:
     """Contract: GET /api/rooms returns room_summary list."""
     with _new_client(tmp_path, monkeypatch, "m2_api_01.sqlite3") as client:
-        _, access_token = _register_and_get_access_token(client, username="m2_api_01_user")
+        _, access_token = _register_and_get_access_token(client, username="m2a01u")
 
         response = client.get(
             "/api/rooms",
@@ -61,7 +61,7 @@ def test_m2_api_02_get_room_detail_and_404(
 ) -> None:
     """Contract: room detail succeeds for valid id and returns ROOM_NOT_FOUND for invalid id."""
     with _new_client(tmp_path, monkeypatch, "m2_api_02.sqlite3") as client:
-        _, access_token = _register_and_get_access_token(client, username="m2_api_02_user")
+        _, access_token = _register_and_get_access_token(client, username="m2a02u")
         headers = {"Authorization": f"Bearer {access_token}"}
 
         ok_response = client.get("/api/rooms/0", headers=headers)
@@ -85,7 +85,7 @@ def test_m2_api_03_join_first_member_success(
 ) -> None:
     """Contract: first join returns room_detail with owner and seat assignment."""
     with _new_client(tmp_path, monkeypatch, "m2_api_03.sqlite3") as client:
-        user_id, access_token = _register_and_get_access_token(client, username="m2_api_03_user")
+        user_id, access_token = _register_and_get_access_token(client, username="m2a03u")
 
         response = client.post(
             "/api/rooms/0/join",
@@ -113,7 +113,7 @@ def test_m2_api_04_join_returns_room_full_when_4th_user_joins(
     with _new_client(tmp_path, monkeypatch, "m2_api_04.sqlite3") as client:
         tokens: list[str] = []
         for idx in range(4):
-            _, token = _register_and_get_access_token(client, username=f"m2_api_04_user_{idx}")
+            _, token = _register_and_get_access_token(client, username=f"m2a04u{idx}")
             tokens.append(token)
 
         for idx in range(3):
@@ -141,7 +141,7 @@ def test_m2_api_05_join_is_idempotent_for_same_room(
 ) -> None:
     """Contract: joining the same room twice keeps one member and stable seat."""
     with _new_client(tmp_path, monkeypatch, "m2_api_05.sqlite3") as client:
-        user_id, access_token = _register_and_get_access_token(client, username="m2_api_05_user")
+        user_id, access_token = _register_and_get_access_token(client, username="m2a05u")
         headers = {"Authorization": f"Bearer {access_token}"}
 
         first_join = client.post("/api/rooms/0/join", headers=headers)

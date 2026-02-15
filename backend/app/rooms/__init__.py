@@ -10,6 +10,7 @@ from app.rooms.registry import RoomNotFoundError
 from app.rooms.registry import RoomNotMemberError
 from app.rooms.registry import RoomNotWaitingError
 from app.rooms.registry import RoomRegistry
+from app.rooms.models import ReadyRequest
 
 __all__ = [
     "DEFAULT_CHIPS",
@@ -22,4 +23,5 @@ __all__ = [
     "RoomNotMemberError",
     "RoomNotWaitingError",
     "RoomRegistry",
+    "ReadyRequest",
 ]

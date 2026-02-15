@@ -73,6 +73,10 @@ class RoomRegistry:
             raise RoomNotFoundError(f"room_id={room_id} not found")
         return room
 
+    def list_rooms(self) -> list[Room]:
+        """Return all preset rooms sorted by room_id."""
+        return [self._rooms[room_id] for room_id in sorted(self._rooms)]
+
     def join(self, room_id: int, user_id: int, username: str) -> Room:
         """Join a target room, with same-room idempotency and cross-room migration."""
         target_room = self.get_room(room_id)

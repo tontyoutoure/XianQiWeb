@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi import Header
@@ -13,8 +14,9 @@ from fastapi import WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from app.auth.errors import raise_token_invalid
-from app.auth.models import LogoutRequest
 from app.auth.http import handle_http_exception
+from app.auth.http import api_error
+from app.auth.models import LogoutRequest
 from app.auth.models import LoginRequest
 from app.auth.models import RefreshRequest
 from app.auth.models import RegisterRequest
@@ -26,13 +28,25 @@ from app.auth.service import register_user
 from app.auth.service import startup_auth_schema
 from app.core.config import Settings
 from app.core.config import load_settings
+from app.rooms.models import ReadyRequest
+from app.rooms.registry import MAX_ROOM_MEMBERS
+from app.rooms.registry import Room
+from app.rooms.registry import RoomFullError
+from app.rooms.registry import RoomMember
+from app.rooms.registry import RoomNotFoundError
+from app.rooms.registry import RoomNotMemberError
+from app.rooms.registry import RoomNotWaitingError
+from app.rooms.registry import RoomRegistry
 
 settings = load_settings()
+room_registry = RoomRegistry(room_count=settings.xqweb_room_count)
 
 
 def startup() -> None:
     """Ensure M1 auth tables exist before handling traffic."""
+    global room_registry
     startup_auth_schema(settings)
+    room_registry = RoomRegistry(room_count=settings.xqweb_room_count)
 
 
 @asynccontextmanager
@@ -42,6 +56,68 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+def _require_current_user(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, object]:
+    if authorization is None:
+        raise_token_invalid()
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise_token_invalid()
+    return me(token)
+
+
+def _room_summary(room: Room) -> dict[str, object]:
+    return {
+        "room_id": room.room_id,
+        "status": room.status,
+        "player_count": len(room.members),
+        "ready_count": sum(1 for member in room.members if member.ready),
+    }
+
+
+def _room_member_detail(member: RoomMember) -> dict[str, object]:
+    return {
+        "user_id": member.user_id,
+        "username": member.username,
+        "seat": member.seat,
+        "ready": member.ready,
+        "chips": member.chips,
+    }
+
+
+def _room_detail(room: Room) -> dict[str, object]:
+    return {
+        "room_id": room.room_id,
+        "status": room.status,
+        "owner_id": room.owner_id,
+        "members": [_room_member_detail(member) for member in room.members],
+        "current_game_id": room.current_game_id,
+    }
+
+
+def _raise_room_error(
+    *,
+    status_code: int,
+    code: str,
+    message: str,
+    detail: dict[str, Any],
+) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail=api_error(code=code, message=message, detail=detail),
+    )
+
+
+def _start_game_hook_if_all_ready(room: Room) -> None:
+    # M2 keeps this as a hook placeholder until game-engine integration in M3+.
+    if len(room.members) != MAX_ROOM_MEMBERS:
+        return
+    if not all(member.ready for member in room.members):
+        return
 
 
 @app.exception_handler(HTTPException)
@@ -67,6 +143,126 @@ def me(access_token: str) -> dict[str, object]:
     return me_user(settings=settings, access_token=access_token)
 
 
+@app.get("/api/rooms")
+def list_rooms(authorization: str | None = Header(default=None, alias="Authorization")) -> list[dict[str, object]]:
+    """Return lobby room summary list."""
+    _require_current_user(authorization)
+    return [_room_summary(room) for room in room_registry.list_rooms()]
+
+
+@app.get("/api/rooms/{room_id}")
+def get_room_detail(
+    room_id: int,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, object]:
+    """Return one room detail."""
+    _require_current_user(authorization)
+    try:
+        room = room_registry.get_room(room_id)
+    except RoomNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="ROOM_NOT_FOUND",
+            message="room not found",
+            detail={"room_id": room_id},
+        )
+    return _room_detail(room)
+
+
+@app.post("/api/rooms/{room_id}/join")
+def join_room(
+    room_id: int,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, object]:
+    """Join target room."""
+    user = _require_current_user(authorization)
+    user_id = int(user["id"])
+    username = str(user["username"])
+
+    try:
+        room = room_registry.join(room_id=room_id, user_id=user_id, username=username)
+    except RoomNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="ROOM_NOT_FOUND",
+            message="room not found",
+            detail={"room_id": room_id},
+        )
+    except RoomFullError:
+        _raise_room_error(
+            status_code=409,
+            code="ROOM_FULL",
+            message="room is full",
+            detail={"room_id": room_id},
+        )
+    return _room_detail(room)
+
+
+@app.post("/api/rooms/{room_id}/leave")
+def leave_room(
+    room_id: int,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, bool]:
+    """Leave one room."""
+    user = _require_current_user(authorization)
+    user_id = int(user["id"])
+
+    try:
+        room_registry.leave(room_id=room_id, user_id=user_id)
+    except RoomNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="ROOM_NOT_FOUND",
+            message="room not found",
+            detail={"room_id": room_id},
+        )
+    except RoomNotMemberError:
+        _raise_room_error(
+            status_code=403,
+            code="ROOM_NOT_MEMBER",
+            message="user is not a room member",
+            detail={"room_id": room_id, "user_id": user_id},
+        )
+    return {"ok": True}
+
+
+@app.post("/api/rooms/{room_id}/ready")
+def set_room_ready(
+    room_id: int,
+    payload: ReadyRequest,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, object]:
+    """Update room ready state."""
+    user = _require_current_user(authorization)
+    user_id = int(user["id"])
+
+    try:
+        room = room_registry.set_ready(room_id=room_id, user_id=user_id, ready=payload.ready)
+    except RoomNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="ROOM_NOT_FOUND",
+            message="room not found",
+            detail={"room_id": room_id},
+        )
+    except RoomNotMemberError:
+        _raise_room_error(
+            status_code=403,
+            code="ROOM_NOT_MEMBER",
+            message="user is not a room member",
+            detail={"room_id": room_id, "user_id": user_id},
+        )
+    except RoomNotWaitingError:
+        _raise_room_error(
+            status_code=409,
+            code="ROOM_NOT_WAITING",
+            message="room is not in waiting status",
+            detail={"room_id": room_id},
+        )
+    _start_game_hook_if_all_ready(room)
+    return _room_detail(room)
+
+
 async def _close_ws_unauthorized(websocket: WebSocket) -> None:
     """Close websocket with unified unauthorized semantics."""
     await websocket.accept()
@@ -88,14 +284,7 @@ def logout(payload: LogoutRequest) -> dict[str, bool]:
 @app.get("/api/auth/me")
 def me_route(authorization: str | None = Header(default=None, alias="Authorization")) -> dict[str, object]:
     """HTTP wrapper for /api/auth/me Bearer auth."""
-    if authorization is None:
-        raise_token_invalid()
-
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise_token_invalid()
-
-    return me(token)
+    return _require_current_user(authorization)
 
 
 @app.websocket("/ws/lobby")
