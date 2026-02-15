@@ -7,9 +7,9 @@
 
 - 建议环境：conda `XQB`。
 - 常规执行（默认）：`conda run -n XQB pytest backend/tests -q`（按测试文件或测试ID分批执行）。
-- 当前阶段决策（暂不真实服务）：M2 红绿循环阶段优先使用 TestClient/进程内集成测试，不阻塞在服务拉起、端口与外部环境问题。
-- 必须真实服务的用例：`M2-CC-01`、`M2-CC-02`、`M2-CC-03`、`M2-WS-06`（并发与心跳时序）。
-- 里程碑收口策略：在 M2 进入验收前，补充一轮真实服务联调（参考 M1 的 real-service 文档模式）验证 Rooms API 与 WS 主链路。
+- 当前阶段决策：M2 红绿循环阶段以 TestClient/进程内集成为主，收口阶段补充真实服务联调。
+- 真实服务收口现状（2026-02-15）：REST `M2-RS-01~18` 与 WS `M2-RS-01~10` 已执行（其中 REST `16~17` 因 M3 未接入开局能力暂为 skip）。
+- 真实服务明细记录：`memory-bank/tests/m2-tests-real-service.md`。
 
 ## 1) 单元测试（RoomRegistry / 业务规则）
 
@@ -89,7 +89,9 @@
 | M2-API-11 ~ M2-API-12 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（non-member ready、non-waiting ready 拒绝契约满足） |
 | M2-API-13 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露 hook 触发 3 次问题；Green 阶段调整为仅在“从非全员 ready 到全员 ready”时触发一次；回归 `conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_11_14_rooms.py -q` 通过 |
 | M2-API-14 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（playing 中 leave 冷结束重置契约满足） |
-| M2-CC-01 | ❌ 未通过 | Red 已执行 | 2026-02-15：新增并执行 `backend/tests/integration/concurrency/test_m2_cc_01_03_rooms.py`，并发 join 在放大竞态后出现超员与重复 seat（期望 `<=3` 且 seat 唯一） |
-| M2-CC-02 | ❌ 未通过 | Red 已执行 | 2026-02-15：同文件执行中观测到并发 ready 写操作重叠（`max_active=3`，期望按房间串行 `max_active=1`） |
-| M2-CC-03 | ❌ 未通过 | Red 已执行 | 2026-02-15：同文件执行中双向跨房迁移出现超时（`TimeoutError`），暴露跨房并发缺少有序双锁保护 |
+| M2-CC-01 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Green 阶段为房间写操作补充房间级锁与 join 串行化保护；回归 `python -m pytest -q backend/tests/integration/concurrency/test_m2_cc_01_03_rooms.py` 结果 `3 passed`，并发 join 不再超员且 seat 唯一 |
+| M2-CC-02 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：在 `/ready` 调用链补充房间写锁包裹，确保同房间 ready 写入串行；并发观测满足 `max_active=1` |
+| M2-CC-03 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：join 路径采用按 `room_id` 排序加锁，跨房互换在超时前稳定完成，无 `TimeoutError`，最终成员关系一致 |
 | M2-WS-01 ~ M2-WS-06 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露缺少 ROOM_LIST/ROOM_UPDATE 推送与心跳；Green 阶段实现 lobby/room 连接管理、初始快照与 join/ready/leave 增量推送、PING/PONG；回归 `conda run -n XQB pytest backend/tests/integration/ws/test_m2_ws_01_06_rooms.py -q` 结果 `6 passed` |
+| M2-RS-REST-01 ~ M2-RS-REST-18 | ✅ 部分通过 | Red（实测通过/部分跳过） | 2026-02-15：真实服务收口已落地；`01~15,18` 通过，`16~17` 因 M3 开局未接入暂 skip（详见 `memory-bank/tests/m2-tests-real-service.md`） |
+| M2-RS-WS-01 ~ M2-RS-WS-10 | ✅ 已通过 | Red（实测通过） | 2026-02-15：真实服务 WS 收口通过（文件：`test_m2_rs_ws_01_05_red.py`、`test_m2_rs_ws_06_10_red.py`） |

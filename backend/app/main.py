@@ -285,9 +285,14 @@ def join_room(
     user_id = int(user["id"])
     username = str(user["username"])
     previous_room_id = room_registry.find_room_id_by_user(user_id)
+    lock_room_ids = [room_id]
+    if previous_room_id is not None and previous_room_id != room_id:
+        lock_room_ids.append(previous_room_id)
 
     try:
-        room = room_registry.join(room_id=room_id, user_id=user_id, username=username)
+        with room_registry.lock_rooms(lock_room_ids):
+            previous_room_id = room_registry.find_room_id_by_user(user_id)
+            room = room_registry.join(room_id=room_id, user_id=user_id, username=username)
     except RoomNotFoundError:
         _raise_room_error(
             status_code=404,
@@ -319,7 +324,8 @@ def leave_room(
     user_id = int(user["id"])
 
     try:
-        room_registry.leave(room_id=room_id, user_id=user_id)
+        with room_registry.lock_room(room_id):
+            room_registry.leave(room_id=room_id, user_id=user_id)
     except RoomNotFoundError:
         _raise_room_error(
             status_code=404,
@@ -350,12 +356,13 @@ def set_room_ready(
     was_all_ready = False
 
     try:
-        room_before = room_registry.get_room(room_id)
-        was_all_ready = (
-            len(room_before.members) == MAX_ROOM_MEMBERS
-            and all(member.ready for member in room_before.members)
-        )
-        room = room_registry.set_ready(room_id=room_id, user_id=user_id, ready=payload.ready)
+        with room_registry.lock_room(room_id):
+            room_before = room_registry.get_room(room_id)
+            was_all_ready = (
+                len(room_before.members) == MAX_ROOM_MEMBERS
+                and all(member.ready for member in room_before.members)
+            )
+            room = room_registry.set_ready(room_id=room_id, user_id=user_id, ready=payload.ready)
     except RoomNotFoundError:
         _raise_room_error(
             status_code=404,

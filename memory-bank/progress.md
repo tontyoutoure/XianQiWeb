@@ -9,10 +9,10 @@
   - 已完成：真实服务 REST `M2-RS-REST-01~15,18` 已编写并实测通过（`test_m2_rs_rest_01_10_red.py`、`test_m2_rs_rest_11_18_red.py`）。
   - 已记录：真实服务 REST `M2-RS-REST-16~17` 当前为 skip（2026-02-15，`pytest .../test_m2_rs_rest_11_18_red.py -q` 结果 `6 passed, 2 skipped`）；原因是 M3 开局未接入，房间暂无法进入 non-waiting。
   - 已完成：真实服务 WS `M2-RS-WS-01~10` 已编写并实测通过（`test_m2_rs_ws_01_05_red.py`、`test_m2_rs_ws_06_10_red.py`）。
-  - 待完成：并发 `M2-CC-01~03` 仍在 Red（需房间级串行化写操作与跨房迁移有序双锁）。
+  - 已完成：并发 `M2-CC-01~03` 已 Green（房间级写锁串行、跨房 join 有序加锁，回归 `backend/tests/integration/concurrency/test_m2_cc_01_03_rooms.py` 通过）。
 
 ## 当前阶段
-- M2（房间大厅）进行中：API/WS 主链路已完成，当前聚焦并发 Green（`M2-CC-01~03`）。
+- M2（房间大厅）收口中：API/WS/并发主链路已全绿，等待 M3 开局能力接入后回补 `M2-RS-REST-16~17`。
 
 ## 记录位置
 - M1 真实服务结果：`memory-bank/tests/m1-tests-real-service.md`。
