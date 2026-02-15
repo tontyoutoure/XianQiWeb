@@ -105,11 +105,11 @@
 | M2-RS-WS-03 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（lobby 缺失 token 返回 `4401/UNAUTHORIZED`） |
 | M2-RS-WS-04 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（room 无效 token 返回 `4401/UNAUTHORIZED`） |
 | M2-RS-WS-05 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（room 不存在返回 `4404/ROOM_NOT_FOUND`） |
-| M2-RS-WS-06 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-07 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-08 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-09 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-10 | ⬜ 未执行 | 待执行 | - | - |
+| M2-RS-WS-06 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 新增 `backend/tests/integration/real_service/test_m2_rs_ws_06_10_red.py` 并执行通过（join 触发 lobby+room 推送） |
+| M2-RS-WS-07 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（ready 触发 lobby+room 推送） |
+| M2-RS-WS-08 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（owner leave 后 owner_id/player_count 推送正确） |
+| M2-RS-WS-09 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（跨房迁移触发 room0+room1+lobby 三路更新） |
+| M2-RS-WS-10 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（收到服务端 PING 后客户端回 PONG，连接保持） |
 | M2-RS-CC-01 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-CC-02 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-CC-03 | ⬜ 未执行 | 待执行 | - | - |
