@@ -89,5 +89,7 @@
 | M2-API-11 ~ M2-API-12 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（non-member ready、non-waiting ready 拒绝契约满足） |
 | M2-API-13 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露 hook 触发 3 次问题；Green 阶段调整为仅在“从非全员 ready 到全员 ready”时触发一次；回归 `conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_11_14_rooms.py -q` 通过 |
 | M2-API-14 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（playing 中 leave 冷结束重置契约满足） |
-| M2-CC-01 ~ M2-CC-03 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
+| M2-CC-01 | ❌ 未通过 | Red 已执行 | 2026-02-15：新增并执行 `backend/tests/integration/concurrency/test_m2_cc_01_03_rooms.py`，并发 join 在放大竞态后出现超员与重复 seat（期望 `<=3` 且 seat 唯一） |
+| M2-CC-02 | ❌ 未通过 | Red 已执行 | 2026-02-15：同文件执行中观测到并发 ready 写操作重叠（`max_active=3`，期望按房间串行 `max_active=1`） |
+| M2-CC-03 | ❌ 未通过 | Red 已执行 | 2026-02-15：同文件执行中双向跨房迁移出现超时（`TimeoutError`），暴露跨房并发缺少有序双锁保护 |
 | M2-WS-01 ~ M2-WS-06 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露缺少 ROOM_LIST/ROOM_UPDATE 推送与心跳；Green 阶段实现 lobby/room 连接管理、初始快照与 join/ready/leave 增量推送、PING/PONG；回归 `conda run -n XQB pytest backend/tests/integration/ws/test_m2_ws_01_06_rooms.py -q` 结果 `6 passed` |
