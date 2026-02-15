@@ -110,6 +110,6 @@
 | M2-RS-WS-08 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（owner leave 后 owner_id/player_count 推送正确） |
 | M2-RS-WS-09 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（跨房迁移触发 room0+room1+lobby 三路更新） |
 | M2-RS-WS-10 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（收到服务端 PING 后客户端回 PONG，连接保持） |
-| M2-RS-CC-01 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-CC-02 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-CC-03 | ⬜ 未执行 | 待执行 | - | - |
+| M2-RS-CC-01 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 新增 `backend/tests/integration/real_service/test_m2_rs_cc_01_03_red.py` 并执行通过（并发 join 后成员数 `<=3` 且 seat 无重复） |
+| M2-RS-CC-02 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（并发 ready 后 `ready_count` 与成员 ready 实际值一致） |
+| M2-RS-CC-03 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（A->B / B->A 并发迁移均成功，无死锁且最终成员关系正确） |

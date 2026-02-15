@@ -3,16 +3,12 @@
 - M1 鉴权能力已完成：Auth REST + WS 鉴权链路可用。
 - 真实服务联调（2026-02-14）已全绿：REST 01-13、WS 01-06、E2E 01-03 全部通过。
 - M2（房间大厅）进展（2026-02-15）：
-  - 已完成：Rooms API `M2-API-01~14` 全绿（含幂等 join、跨房迁移/回滚、ready 约束、cold end、start_game hook 单次触发）。
-  - 已完成：WS `M2-WS-01~06` 全绿（lobby/room 初始快照、join/ready/leave 推送、PING/PONG 心跳）。
-  - 已完成：真实服务收口清单已落地（`memory-bank/tests/m2-tests-real-service.md`）。
-  - 已完成：真实服务 REST `M2-RS-REST-01~15,18` 已编写并实测通过（`test_m2_rs_rest_01_10_red.py`、`test_m2_rs_rest_11_18_red.py`）。
-  - 已记录：真实服务 REST `M2-RS-REST-16~17` 当前为 skip（2026-02-15，`pytest .../test_m2_rs_rest_11_18_red.py -q` 结果 `6 passed, 2 skipped`）；原因是 M3 开局未接入，房间暂无法进入 non-waiting。
-  - 已完成：真实服务 WS `M2-RS-WS-01~10` 已编写并实测通过（`test_m2_rs_ws_01_05_red.py`、`test_m2_rs_ws_06_10_red.py`）。
-  - 已完成：并发 `M2-CC-01~03` 已 Green（房间级写锁串行、跨房 join 有序加锁，回归 `backend/tests/integration/concurrency/test_m2_cc_01_03_rooms.py` 通过）。
+  - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
+  - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。
+  - 待补：`M2-RS-REST-16~17` 因 M3 开局未接入暂时 skip。
 
 ## 当前阶段
-- M2（房间大厅）收口中：API/WS/并发主链路已全绿，等待 M3 开局能力接入后回补 `M2-RS-REST-16~17`。
+- M2（房间大厅）收口中：仅剩 `M2-RS-REST-16~17` 待 M3 开局能力接入后回补。
 
 ## 记录位置
 - M1 真实服务结果：`memory-bank/tests/m1-tests-real-service.md`。

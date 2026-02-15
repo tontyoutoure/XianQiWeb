@@ -95,3 +95,4 @@
 | M2-WS-01 ~ M2-WS-06 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露缺少 ROOM_LIST/ROOM_UPDATE 推送与心跳；Green 阶段实现 lobby/room 连接管理、初始快照与 join/ready/leave 增量推送、PING/PONG；回归 `conda run -n XQB pytest backend/tests/integration/ws/test_m2_ws_01_06_rooms.py -q` 结果 `6 passed` |
 | M2-RS-REST-01 ~ M2-RS-REST-18 | ✅ 部分通过 | Red（实测通过/部分跳过） | 2026-02-15：真实服务收口已落地；`01~15,18` 通过，`16~17` 因 M3 开局未接入暂 skip（详见 `memory-bank/tests/m2-tests-real-service.md`） |
 | M2-RS-WS-01 ~ M2-RS-WS-10 | ✅ 已通过 | Red（实测通过） | 2026-02-15：真实服务 WS 收口通过（文件：`test_m2_rs_ws_01_05_red.py`、`test_m2_rs_ws_06_10_red.py`） |
+| M2-RS-CC-01 ~ M2-RS-CC-03 | ✅ 已通过 | Red（实测通过） | 2026-02-15：新增并执行 `backend/tests/integration/real_service/test_m2_rs_cc_01_03_red.py`，并发 join/ready/双向跨房迁移均通过（无超员、无 seat 冲突、无死锁） |
