@@ -90,4 +90,4 @@
 | M2-API-13 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露 hook 触发 3 次问题；Green 阶段调整为仅在“从非全员 ready 到全员 ready”时触发一次；回归 `conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_11_14_rooms.py -q` 通过 |
 | M2-API-14 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（playing 中 leave 冷结束重置契约满足） |
 | M2-CC-01 ~ M2-CC-03 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
-| M2-WS-01 ~ M2-WS-06 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
+| M2-WS-01 ~ M2-WS-06 | ❌ 未通过 | Red 已执行 | 2026-02-15：新增 `backend/tests/integration/ws/test_m2_ws_01_06_rooms.py` 并执行 `conda run -n XQB pytest backend/tests/integration/ws/test_m2_ws_01_06_rooms.py -q`，6/6 失败；当前后端尚未实现 ROOM_LIST/ROOM_UPDATE 推送与心跳 PING/PONG |
