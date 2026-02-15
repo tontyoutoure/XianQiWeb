@@ -8,6 +8,7 @@
   - 已完成：真实服务收口清单已落地（`memory-bank/tests/m2-tests-real-service.md`）。
   - 已完成：真实服务 REST `M2-RS-REST-01~15,18` 已编写并实测通过（`test_m2_rs_rest_01_10_red.py`、`test_m2_rs_rest_11_18_red.py`）。
   - 已记录：真实服务 REST `M2-RS-REST-16~17` 当前为 skip（2026-02-15，`pytest .../test_m2_rs_rest_11_18_red.py -q` 结果 `6 passed, 2 skipped`）；原因是 M3 开局未接入，房间暂无法进入 non-waiting。
+  - 已完成：真实服务 WS `M2-RS-WS-01~05` 已编写并实测通过（`test_m2_rs_ws_01_05_red.py`）。
   - 待完成：并发 `M2-CC-01~03` 仍在 Red（需房间级串行化写操作与跨房迁移有序双锁）。
 
 ## 当前阶段

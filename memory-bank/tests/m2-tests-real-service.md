@@ -100,11 +100,11 @@
 | M2-RS-REST-16 | ⏭️ 已跳过 | Red（受阶段阻塞） | 2026-02-15 | 当前真实服务无法进入 non-waiting（M3 开局集成未接入），用例已写并在条件满足后自动执行 |
 | M2-RS-REST-17 | ⏭️ 已跳过 | Red（受阶段阻塞） | 2026-02-15 | 同上；依赖房间先进入 non-waiting 才可验证 `ROOM_NOT_WAITING` |
 | M2-RS-REST-18 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（join/leave/ready 缺失 token 均 `401`） |
-| M2-RS-WS-01 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-02 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-03 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-04 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-WS-05 | ⬜ 未执行 | 待执行 | - | - |
+| M2-RS-WS-01 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 新增 `backend/tests/integration/real_service/test_m2_rs_ws_01_05_red.py` 并执行通过 |
+| M2-RS-WS-02 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（`/ws/rooms/{id}` 初始 `ROOM_UPDATE` 与 REST 一致） |
+| M2-RS-WS-03 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（lobby 缺失 token 返回 `4401/UNAUTHORIZED`） |
+| M2-RS-WS-04 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（room 无效 token 返回 `4401/UNAUTHORIZED`） |
+| M2-RS-WS-05 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（room 不存在返回 `4404/ROOM_NOT_FOUND`） |
 | M2-RS-WS-06 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-WS-07 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-WS-08 | ⬜ 未执行 | 待执行 | - | - |
