@@ -82,11 +82,11 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M2-RS-REST-01 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-02 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-03 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-04 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-05 | ⬜ 未执行 | 待执行 | - | - |
+| M2-RS-REST-01 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 人类指定用例后新增 `backend/tests/integration/real_service/test_m2_rs_rest_01_05_red.py` 并执行通过 |
+| M2-RS-REST-02 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；`conda run -n XQB pytest backend/tests/integration/real_service/test_m2_rs_rest_01_05_red.py -q` 结果 `5 passed` |
+| M2-RS-REST-03 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过 |
+| M2-RS-REST-04 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过 |
+| M2-RS-REST-05 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过 |
 | M2-RS-REST-06 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-REST-07 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-REST-08 | ⬜ 未执行 | 待执行 | - | - |
