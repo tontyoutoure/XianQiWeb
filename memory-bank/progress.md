@@ -6,7 +6,8 @@
   - 已完成：Rooms API `M2-API-01~14` 全绿（含幂等 join、跨房迁移/回滚、ready 约束、cold end、start_game hook 单次触发）。
   - 已完成：WS `M2-WS-01~06` 全绿（lobby/room 初始快照、join/ready/leave 推送、PING/PONG 心跳）。
   - 已完成：真实服务收口清单已落地（`memory-bank/tests/m2-tests-real-service.md`）。
-  - 已完成：真实服务 REST `M2-RS-REST-01~10` 已编写并实测通过（`backend/tests/integration/real_service/test_m2_rs_rest_01_10_red.py`）。
+  - 已完成：真实服务 REST `M2-RS-REST-01~15,18` 已编写并实测通过（`test_m2_rs_rest_01_10_red.py`、`test_m2_rs_rest_11_18_red.py`）。
+  - 已记录：真实服务 REST `M2-RS-REST-16~17` 当前为 skip（2026-02-15，`pytest .../test_m2_rs_rest_11_18_red.py -q` 结果 `6 passed, 2 skipped`）；原因是 M3 开局未接入，房间暂无法进入 non-waiting。
   - 待完成：并发 `M2-CC-01~03` 仍在 Red（需房间级串行化写操作与跨房迁移有序双锁）。
 
 ## 当前阶段

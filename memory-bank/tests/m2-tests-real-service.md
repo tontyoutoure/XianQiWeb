@@ -92,14 +92,14 @@
 | M2-RS-REST-08 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；同房重复 join 幂等（成员不重复、seat 不变） |
 | M2-RS-REST-09 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；跨房自动迁移后仅在目标房间存在 |
 | M2-RS-REST-10 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；目标满员迁移失败回滚（保留原房成员身份与 seat） |
-| M2-RS-REST-11 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-12 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-13 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-14 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-15 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-16 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-17 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-18 | ⬜ 未执行 | 待执行 | - | - |
+| M2-RS-REST-11 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 新增 `backend/tests/integration/real_service/test_m2_rs_rest_11_18_red.py`，owner leave 后正确转移 |
+| M2-RS-REST-12 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（non-member leave 返回 `403 + ROOM_NOT_MEMBER`） |
+| M2-RS-REST-13 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（waiting 成员 ready true/false 切换成功） |
+| M2-RS-REST-14 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（non-member ready 返回 `403 + ROOM_NOT_MEMBER`） |
+| M2-RS-REST-15 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（三人 all-ready 行为兼容 M2 占位与后续 M3 playing） |
+| M2-RS-REST-16 | ⏭️ 已跳过 | Red（受阶段阻塞） | 2026-02-15 | 当前真实服务无法进入 non-waiting（M3 开局集成未接入），用例已写并在条件满足后自动执行 |
+| M2-RS-REST-17 | ⏭️ 已跳过 | Red（受阶段阻塞） | 2026-02-15 | 同上；依赖房间先进入 non-waiting 才可验证 `ROOM_NOT_WAITING` |
+| M2-RS-REST-18 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过（join/leave/ready 缺失 token 均 `401`） |
 | M2-RS-WS-01 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-WS-02 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-WS-03 | ⬜ 未执行 | 待执行 | - | - |
