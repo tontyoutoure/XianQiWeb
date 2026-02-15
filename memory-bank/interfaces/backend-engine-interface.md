@@ -6,6 +6,7 @@
 - 引擎是一个对象，内部维护当前对局状态（state），对外暴露明确的方法。
 - 所有校验在引擎完成（手牌合法性、轮次、必须压制/垫棋等）。
 - 引擎内部只使用座次（seat）标识玩家；用户 id 与座次映射由后端维护。
+- “当前谁在决策（谁的计时在走）”属于一等状态；最少应可由 `turn.current_seat` 表达，推荐额外显式输出 `decision` 字段。
 
 引擎对象建议提供的方法：
 - `init_game(config, rng_seed?) -> output`：初始化新局并返回一次输出快照（见 1.5）。
@@ -61,7 +62,7 @@
     {"seat": 2, "hand": {}}
   ],
   "turn": {
-    "current_seat": 0, // 当前该行动的座次
+    "current_seat": 0, // 当前该行动/当前决策（当前烧时间）的座次
     "round_index": 2, // 第几回合（从0开始）
     "round_kind": 1, // 本轮牌型/张数（1/2/3）
     "last_combo": {
@@ -81,6 +82,12 @@
         "cards": [{"type": "B_NIU", "count": 1}]
       }
     ]
+  },
+  "decision": {
+    "seat": 0, // 当前决策座次（与 turn.current_seat 一致）
+    "context": "in_round", // buckle_decision / in_round / reveal_decision
+    "started_at_ms": 1739600000, // 进入该决策位时间
+    "timeout_at_ms": null // MVP 可为空；后续支持超时时填截止时间
   },
   "pillar_groups": [
     {
@@ -164,6 +171,11 @@
       {"seat": 2, "power": -1, "covered_count": 1}
     ]
   },
+  "decision": {
+    "seat": 0,
+    "context": "in_round",
+    "timeout_at_ms": null
+  },
   "pillar_groups": [
     {
       "round_index": 1,
@@ -185,6 +197,7 @@
 ```
 - `hand_count`、`captured_pillar_count` 为公开信息；`captured_pillar_count` 可由 `pillar_groups` 推导，但为前端便利提供且必须由引擎计算输出。
 - 垫棋在公共视图中不暴露牌面，使用 `covered_count` 代替 `cards`。
+- `decision` 用于明确“当前轮到谁决策/谁的时钟在走”；与 `turn.current_seat` 必须一致。
 
 #### 1.5.2 private_state_by_seat
 ```jsonc
