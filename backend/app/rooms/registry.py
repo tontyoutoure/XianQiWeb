@@ -77,6 +77,10 @@ class RoomRegistry:
         """Return all preset rooms sorted by room_id."""
         return [self._rooms[room_id] for room_id in sorted(self._rooms)]
 
+    def find_room_id_by_user(self, user_id: int) -> int | None:
+        """Return current room id for user, or None if user is not in any room."""
+        return self._member_room.get(user_id)
+
     def join(self, room_id: int, user_id: int, username: str) -> Room:
         """Join a target room, with same-room idempotency and cross-room migration."""
         target_room = self.get_room(room_id)

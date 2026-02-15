@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
+import json
 from typing import Any
 
 from fastapi import FastAPI
@@ -40,13 +42,18 @@ from app.rooms.registry import RoomRegistry
 
 settings = load_settings()
 room_registry = RoomRegistry(room_count=settings.xqweb_room_count)
+_lobby_connections: set[Any] = set()
+_room_connections: dict[int, set[Any]] = {}
+WS_PROTOCOL_VERSION = 1
 
 
 def startup() -> None:
     """Ensure M1 auth tables exist before handling traffic."""
-    global room_registry
+    global room_registry, _lobby_connections, _room_connections
     startup_auth_schema(settings)
     room_registry = RoomRegistry(room_count=settings.xqweb_room_count)
+    _lobby_connections = set()
+    _room_connections = {}
 
 
 @asynccontextmanager
@@ -120,6 +127,105 @@ def _start_game_hook_if_all_ready(room: Room) -> None:
         return
 
 
+def _ws_event(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return {"v": WS_PROTOCOL_VERSION, "type": event_type, "payload": payload}
+
+
+async def _ws_send_event(websocket: Any, event_type: str, payload: dict[str, Any]) -> None:
+    message = _ws_event(event_type, payload)
+    if hasattr(websocket, "send_json"):
+        await websocket.send_json(message)
+        return
+    if hasattr(websocket, "send_text"):
+        await websocket.send_text(json.dumps(message))
+
+
+async def _send_lobby_snapshot(websocket: Any) -> None:
+    rooms = [_room_summary(room) for room in room_registry.list_rooms()]
+    await _ws_send_event(websocket, "ROOM_LIST", {"rooms": rooms})
+
+
+async def _send_room_snapshot(websocket: Any, room_id: int) -> None:
+    room = room_registry.get_room(room_id)
+    await _ws_send_event(websocket, "ROOM_UPDATE", {"room": _room_detail(room)})
+
+
+async def _send_heartbeat_ping(websocket: Any) -> None:
+    await _ws_send_event(websocket, "PING", {})
+
+
+async def _heartbeat_loop(websocket: Any, interval_seconds: float = 30.0) -> None:
+    await _send_heartbeat_ping(websocket)
+    while True:
+        await asyncio.sleep(interval_seconds)
+        await _send_heartbeat_ping(websocket)
+
+
+async def _ws_message_loop(websocket: Any) -> None:
+    heartbeat_task = asyncio.create_task(_heartbeat_loop(websocket))
+    try:
+        while True:
+            message = await websocket.receive_text()
+            if message == "PING":
+                await _ws_send_event(websocket, "PONG", {})
+    except WebSocketDisconnect:
+        return
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+
+
+def _dispatch_async(coro: Any) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(coro)
+        return
+    loop.create_task(coro)
+
+
+async def _broadcast_lobby_rooms() -> None:
+    stale: list[Any] = []
+    for websocket in list(_lobby_connections):
+        try:
+            await _send_lobby_snapshot(websocket)
+        except Exception:
+            stale.append(websocket)
+    for websocket in stale:
+        _lobby_connections.discard(websocket)
+
+
+async def _broadcast_room_update(room_id: int) -> None:
+    listeners = _room_connections.get(room_id)
+    if not listeners:
+        return
+
+    stale: list[Any] = []
+    for websocket in list(listeners):
+        try:
+            await _send_room_snapshot(websocket, room_id)
+        except Exception:
+            stale.append(websocket)
+
+    for websocket in stale:
+        listeners.discard(websocket)
+    if not listeners:
+        _room_connections.pop(room_id, None)
+
+
+async def _broadcast_room_changes(room_ids: list[int]) -> None:
+    seen: set[int] = set()
+    for room_id in room_ids:
+        if room_id in seen:
+            continue
+        seen.add(room_id)
+        await _broadcast_room_update(room_id)
+    await _broadcast_lobby_rooms()
+
+
 @app.exception_handler(HTTPException)
 async def handle_http_exception_route(request: Request, exc: HTTPException) -> JSONResponse:
     """Adapter used by FastAPI exception handling."""
@@ -178,6 +284,7 @@ def join_room(
     user = _require_current_user(authorization)
     user_id = int(user["id"])
     username = str(user["username"])
+    previous_room_id = room_registry.find_room_id_by_user(user_id)
 
     try:
         room = room_registry.join(room_id=room_id, user_id=user_id, username=username)
@@ -195,6 +302,10 @@ def join_room(
             message="room is full",
             detail={"room_id": room_id},
         )
+    changed_room_ids = [room_id]
+    if previous_room_id is not None and previous_room_id != room_id:
+        changed_room_ids.append(previous_room_id)
+    _dispatch_async(_broadcast_room_changes(changed_room_ids))
     return _room_detail(room)
 
 
@@ -223,6 +334,7 @@ def leave_room(
             message="user is not a room member",
             detail={"room_id": room_id, "user_id": user_id},
         )
+    _dispatch_async(_broadcast_room_changes([room_id]))
     return {"ok": True}
 
 
@@ -268,6 +380,7 @@ def set_room_ready(
     is_all_ready = len(room.members) == MAX_ROOM_MEMBERS and all(member.ready for member in room.members)
     if is_all_ready and not was_all_ready:
         _start_game_hook_if_all_ready(room)
+    _dispatch_async(_broadcast_room_changes([room_id]))
     return _room_detail(room)
 
 
@@ -297,7 +410,7 @@ def me_route(authorization: str | None = Header(default=None, alias="Authorizati
 
 @app.websocket("/ws/lobby")
 async def ws_lobby(websocket: WebSocket) -> None:
-    """Minimal M1 lobby websocket with access-token auth."""
+    """Lobby websocket: auth + initial ROOM_LIST + incremental room updates."""
     token = websocket.query_params.get("token")
     if token is None or token == "":
         await _close_ws_unauthorized(websocket)
@@ -310,17 +423,19 @@ async def ws_lobby(websocket: WebSocket) -> None:
         return
 
     await websocket.accept()
+    _lobby_connections.add(websocket)
     try:
-        while True:
-            await websocket.receive_text()
+        await _send_lobby_snapshot(websocket)
+        await _ws_message_loop(websocket)
     except WebSocketDisconnect:
         return
+    finally:
+        _lobby_connections.discard(websocket)
 
 
 @app.websocket("/ws/rooms/{room_id}")
 async def ws_room(websocket: WebSocket, room_id: int) -> None:
-    """Room websocket auth stub for M1."""
-    _ = room_id
+    """Room websocket: auth + initial ROOM_UPDATE + incremental room updates."""
     token = websocket.query_params.get("token")
     if token is None or token == "":
         await _close_ws_unauthorized(websocket)
@@ -332,12 +447,25 @@ async def ws_room(websocket: WebSocket, room_id: int) -> None:
         await _close_ws_unauthorized(websocket)
         return
 
-    await websocket.accept()
     try:
-        while True:
-            await websocket.receive_text()
+        room_registry.get_room(room_id)
+    except RoomNotFoundError:
+        await websocket.accept()
+        await websocket.close(code=4404, reason="ROOM_NOT_FOUND")
+        return
+
+    await websocket.accept()
+    listeners = _room_connections.setdefault(room_id, set())
+    listeners.add(websocket)
+    try:
+        await _send_room_snapshot(websocket, room_id)
+        await _ws_message_loop(websocket)
     except WebSocketDisconnect:
         return
+    finally:
+        listeners.discard(websocket)
+        if not listeners:
+            _room_connections.pop(room_id, None)
 
 
 __all__ = [
