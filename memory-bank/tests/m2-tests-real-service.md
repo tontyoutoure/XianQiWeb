@@ -82,16 +82,16 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M2-RS-REST-01 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 人类指定用例后新增 `backend/tests/integration/real_service/test_m2_rs_rest_01_05_red.py` 并执行通过 |
-| M2-RS-REST-02 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；`conda run -n XQB pytest backend/tests/integration/real_service/test_m2_rs_rest_01_05_red.py -q` 结果 `5 passed` |
+| M2-RS-REST-01 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 人类指定用例后新增 `backend/tests/integration/real_service/test_m2_rs_rest_01_10_red.py` 并执行通过 |
+| M2-RS-REST-02 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；`conda run -n XQB pytest backend/tests/integration/real_service/test_m2_rs_rest_01_10_red.py -q` 结果 `5 passed` |
 | M2-RS-REST-03 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过 |
 | M2-RS-REST-04 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过 |
 | M2-RS-REST-05 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同批次执行通过 |
-| M2-RS-REST-06 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-07 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-08 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-09 | ⬜ 未执行 | 待执行 | - | - |
-| M2-RS-REST-10 | ⬜ 未执行 | 待执行 | - | - |
+| M2-RS-REST-06 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 人类指定继续后在同文件补充 06~10；座位分配（0/1/2）实测通过 |
+| M2-RS-REST-07 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；第 4 人 join 返回 `409 + ROOM_FULL` |
+| M2-RS-REST-08 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；同房重复 join 幂等（成员不重复、seat 不变） |
+| M2-RS-REST-09 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；跨房自动迁移后仅在目标房间存在 |
+| M2-RS-REST-10 | ✅ 已通过 | Red（实测通过） | 2026-02-15 | 同上；目标满员迁移失败回滚（保留原房成员身份与 seat） |
 | M2-RS-REST-11 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-REST-12 | ⬜ 未执行 | 待执行 | - | - |
 | M2-RS-REST-13 | ⬜ 未执行 | 待执行 | - | - |

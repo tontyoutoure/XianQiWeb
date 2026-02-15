@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import socket
-import subprocess
-import sys
 import time
 from collections.abc import Generator
 from pathlib import Path
@@ -15,39 +11,9 @@ import httpx
 import jwt
 import pytest
 import websockets
+from tests.integration.real_service.live_server import run_live_server
 
-BACKEND_ROOT = Path(__file__).resolve().parents[3]
 JWT_SECRET = "m1-rs-red-test-secret-key-32-bytes-minimum"
-
-
-def _pick_free_port() -> int:
-    """Reserve a free localhost TCP port for the live test server."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
-def _wait_for_server_ready(*, base_url: str, process: subprocess.Popen[str], timeout_seconds: float) -> None:
-    """Poll the API until the live server starts accepting requests."""
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            raise RuntimeError("uvicorn exited before becoming ready")
-
-        try:
-            response = httpx.get(
-                f"{base_url}/api/auth/me",
-                timeout=0.3,
-                trust_env=False,
-            )
-            if response.status_code == 401:
-                return
-        except httpx.HTTPError:
-            pass
-
-        time.sleep(0.1)
-
-    raise RuntimeError("uvicorn did not become ready before timeout")
 
 
 def _assert_ws_closed_unauthorized(*, ws_url: str) -> None:
@@ -89,48 +55,16 @@ def _assert_ws_connectable(*, ws_url: str) -> None:
 @pytest.fixture
 def live_server(tmp_path: Path) -> Generator[tuple[str, str], None, None]:
     """Start a real uvicorn process for one test case."""
-    port = _pick_free_port()
-    base_url = f"http://127.0.0.1:{port}"
-    ws_base_url = f"ws://127.0.0.1:{port}"
-    db_path = tmp_path / "m1_rs_e2e_red.sqlite3"
-
-    env = os.environ.copy()
-    env["XQWEB_SQLITE_PATH"] = str(db_path)
-    env["XQWEB_JWT_SECRET"] = JWT_SECRET
-    env["XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS"] = "8"
-    env["XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS"] = "4"
-
-    process = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "app.main:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            str(port),
-            "--log-level",
-            "warning",
-        ],
-        cwd=str(BACKEND_ROOT),
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
-
-    _wait_for_server_ready(base_url=base_url, process=process, timeout_seconds=10)
-
-    try:
-        yield base_url, ws_base_url
-    finally:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+    with run_live_server(
+        tmp_path=tmp_path,
+        db_filename="m1_rs_e2e_red.sqlite3",
+        jwt_secret=JWT_SECRET,
+        env_overrides={
+            "XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS": "8",
+            "XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS": "4",
+        },
+    ) as server:
+        yield server.base_url, server.ws_base_url
 
 
 def test_m1_rs_e2e_01_rest_login_access_token_can_connect_ws(live_server: tuple[str, str]) -> None:
