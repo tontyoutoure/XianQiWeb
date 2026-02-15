@@ -87,7 +87,7 @@
 | M2-API-01 ~ M2-API-05 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：先执行 Red（register 因用户名超长返回 `400`，并记录）；随后修正测试用用户名到 M1 合法长度并完成 Rooms list/detail/join 接口实现；回归 `conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_01_05_rooms.py -q` 结果 `5 passed` |
 | M2-API-06 ~ M2-API-10 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：新增并执行 `backend/tests/api/rooms/test_m2_api_06_10_rooms.py`，命令 `conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_06_10_rooms.py -q` 结果 `5 passed` |
 | M2-API-11 ~ M2-API-12 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（non-member ready、non-waiting ready 拒绝契约满足） |
-| M2-API-13 | ❌ 未通过 | Red 已执行 | 2026-02-15：`conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_11_14_rooms.py -q` 结果显示 hook 被调用 3 次（期望第 3 人 ready 时仅触发 1 次） |
+| M2-API-13 | ✅ 已通过 | Red -> Green 完成 | 2026-02-15：Red 暴露 hook 触发 3 次问题；Green 阶段调整为仅在“从非全员 ready 到全员 ready”时触发一次；回归 `conda run -n XQB pytest backend/tests/api/rooms/test_m2_api_11_14_rooms.py -q` 通过 |
 | M2-API-14 | ✅ 已通过 | Red（意外绿）已确认 | 2026-02-15：随 `backend/tests/api/rooms/test_m2_api_11_14_rooms.py` 执行通过（playing 中 leave 冷结束重置契约满足） |
 | M2-CC-01 ~ M2-CC-03 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |
 | M2-WS-01 ~ M2-WS-06 | ⬜ 未开始 | 待执行 | 等待人类指定优先用例 |

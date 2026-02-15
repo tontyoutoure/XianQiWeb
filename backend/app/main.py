@@ -235,8 +235,14 @@ def set_room_ready(
     """Update room ready state."""
     user = _require_current_user(authorization)
     user_id = int(user["id"])
+    was_all_ready = False
 
     try:
+        room_before = room_registry.get_room(room_id)
+        was_all_ready = (
+            len(room_before.members) == MAX_ROOM_MEMBERS
+            and all(member.ready for member in room_before.members)
+        )
         room = room_registry.set_ready(room_id=room_id, user_id=user_id, ready=payload.ready)
     except RoomNotFoundError:
         _raise_room_error(
@@ -259,7 +265,9 @@ def set_room_ready(
             message="room is not in waiting status",
             detail={"room_id": room_id},
         )
-    _start_game_hook_if_all_ready(room)
+    is_all_ready = len(room.members) == MAX_ROOM_MEMBERS and all(member.ready for member in room.members)
+    if is_all_ready and not was_all_ready:
+        _start_game_hook_if_all_ready(room)
     return _room_detail(room)
 
 
