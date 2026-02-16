@@ -53,6 +53,16 @@
 | M3-LA-10 | `settlement/finished` 无动作 | `get_legal_actions` 返回空 `actions` |
 | M3-LA-11 | `action_idx` 稳定性 | 同一状态多次获取 `actions`，索引含义不漂移 |
 | M3-LA-12 | phase 切换后动作刷新 | `apply_action` 后下一状态的 `actions` 与新 `decision.seat` 一致 |
+| M3-LA-13 | `buckle_decision` 下 PLAY 组合全集覆盖 | PLAY 必须覆盖单张/对子/狗脚对/三牛全部可出组合 |
+| M3-LA-14 | `buckle_decision` PLAY 与组合枚举一致性 | PLAY 的 `payload_cards` 与 `enumerate_combos` 结果一一对应 |
+| M3-LA-15 | `in_round` 单张可压制全集 | 仅返回所有 `power > last_combo.power` 的单张 PLAY |
+| M3-LA-16 | `in_round` 对子可压制全集（含狗脚对） | 返回所有可压制对子 PLAY，且包含狗脚对压制场景 |
+| M3-LA-17 | `in_round` 对子严格大于边界 | `power == last_combo.power` 的对子不得出现在 PLAY 列表 |
+| M3-LA-18 | `in_round` 三牛可压制全集 | 仅返回可压制三牛 PLAY，黑三牛不可压制红三牛 |
+| M3-LA-19 | `in_round` PLAY 张数与 `round_kind` 一致 | 所有 PLAY 的牌张总数都必须等于 `round_kind` |
+| M3-LA-20 | `in_round` 单张去重 | 同一 `card_type` 即使 `count>1`，PLAY 单张也只出现一次 |
+| M3-LA-21 | `buckle_decision` PLAY 顺序稳定性（扩展） | 连续多次获取动作，PLAY 组合顺序完全一致 |
+| M3-LA-22 | `in_round` PLAY 顺序稳定性（扩展） | 连续多次获取动作，PLAY 组合顺序完全一致 |
 
 ## 4) 动作执行与校验补充测试
 
@@ -108,16 +118,27 @@
 | M3-LA-10 | `phase=settlement` 或 `phase=finished` | actions 为空 |
 | M3-LA-11 | 固定同一状态（建议 LA-04）连续取 `actions` | 每个 `action_idx` 语义不漂移 |
 | M3-LA-12 | 对同一局面先执行一次 `apply_action` 再取 `actions` | 新状态 actions 与新的 `decision.seat` 一致 |
+| M3-LA-13 | `phase=buckle_decision`，`decision.seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
+| M3-LA-14 | 同 LA-13 | PLAY 的 `payload_cards` 集合与 `enumerate_combos(hand)` 输出一致 |
+| M3-LA-15 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_CHE":1}` | PLAY 仅含红士/黑士/红相（全部 `power>3`） |
+| M3-LA-16 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=4`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1,"B_NIU":2}` | PLAY 含狗脚对、红士对、黑士对、红马对；不含黑牛对 |
+| M3-LA-17 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=18`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1}` | PLAY 仅含狗脚对与红士对，不含黑士对（等于边界） |
+| M3-LA-18 | `phase=in_round`，`decision.seat=1`，`round_kind=3`，`last_combo.power=10`，`seat1.hand={"R_NIU":3,"B_NIU":3}` | PLAY 仅含红三牛 |
+| M3-LA-19 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1,"R_NIU":3,"R_MA":2}` | 所有 PLAY 均为 2 张组合，不混入单张/三张 |
+| M3-LA-20 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1}` | `R_SHI` 单张 PLAY 仅出现 1 次 |
+| M3-LA-21 | 固定 LA-13 状态，连续调用 3 次 `get_legal_actions` | PLAY 序列（签名）完全一致 |
+| M3-LA-22 | 固定 LA-16 状态，连续调用 3 次 `get_legal_actions` | PLAY 序列（签名）完全一致 |
 
-## 7) TDD 执行记录（初始）
+## 7) TDD 执行记录（进行中）
 
-> 说明：当前仅完成测试清单细化，尚未进入具体测试代码编写。
+> 说明：当前已完成首批用例（`M3-CB-01~04`、`M3-LA-04~06`）以及 LA 扩展用例（`M3-LA-13~22`），其余用例待继续推进。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
 | M3-UT-01 ~ M3-UT-05 | ⏳ 待执行 | 未开始 | 待人类指定优先级 |
-| M3-CB-01 ~ M3-CB-04 | 🔴 失败 | Red 已执行 | 2026-02-15：已新增 `engine/tests/test_m3_red_cb_la_01_06.py` 并执行 `conda run -n XQB pytest engine/tests/test_m3_red_cb_la_01_06.py -q`；当前失败点为 `engine.combos` 模块/`enumerate_combos` 缺失 |
-| M3-LA-04 ~ M3-LA-06 | 🔴 失败 | Red 已执行 | 2026-02-15：同批次 red 执行，当前失败点为 `engine.core` 模块/`XianqiGameEngine` 缺失 |
+| M3-CB-01 ~ M3-CB-04 | ✅ 通过 | Green 已完成 | Red：2026-02-15 执行 `conda run -n XQB pytest engine/tests/test_m3_red_cb_la_01_06.py -q`（缺失 `engine.combos`）；Green：2026-02-16 新增 `engine/combos.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
+| M3-LA-04 ~ M3-LA-06 | ✅ 通过 | Green 已完成 | Red：2026-02-15 同批次执行（缺失 `engine.core`）；Green：2026-02-16 新增 `engine/core.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-CB-05 ~ M3-CB-12 | ⏳ 待执行 | 未开始 | 组合枚举器后续用例 |
 | M3-LA-01 ~ M3-LA-03, M3-LA-07 ~ M3-LA-12 | ⏳ 待执行 | 未开始 | 合法动作枚举后续用例 |
+| M3-LA-13 ~ M3-LA-22 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_la_play_enumeration_13_22.py`，执行 `pytest engine/tests/test_m3_la_play_enumeration_13_22.py -q`（10 passed）与 `pytest engine/tests -q`（17 passed） |
 | M3-ACT-01 ~ M3-ACT-07 | ⏳ 待执行 | 未开始 | 动作校验与状态推进补充 |

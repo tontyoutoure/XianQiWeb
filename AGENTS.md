@@ -21,4 +21,5 @@ memory-bank 文件夹包含了各类文档，功能如下：
 - memory-bank/interfaces/frontend-backend-interfaces.md：前后端接口协议。
 - memory-bank/interfaces/backend-engine-interface.md：后端与对局引擎接口协议。
 - memory-bank/design/backend_design.md：后端详细设计文档（模块、流程、异常与联调约定）。
-- memory-bank/tests/m1-test.md M1阶段的测试用例设计与结果记录。
+- memory-bank/tests/m*-test.md M*阶段的测试用例设计与结果记录。
+- memory-bank/tests/m*-tests-real-service.md M*阶段的收口测试用例。
