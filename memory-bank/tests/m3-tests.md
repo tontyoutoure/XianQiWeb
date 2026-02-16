@@ -101,7 +101,7 @@
 | M3-LA-03 | 同 LA-01，连续调用 3 次 | actions 顺序完全一致 |
 | M3-LA-04 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=2`，`seat1.hand={"R_SHI":1}` | 仅返回 PLAY（不返回 COVER） |
 | M3-LA-05 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=9`，`seat1.hand={"B_NIU":1}` | 仅返回 1 个 COVER |
-| M3-LA-06 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=999`，`seat1.hand={"R_NIU":1,"B_NIU":1}` | 返回 COVER，且 `required_count=2` |
+| M3-LA-06 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"R_XIANG":1}` | 返回 COVER，且 `required_count=2`（虽然单张牌力高，但因凑不出任何合法对子只能垫牌） |
 | M3-LA-07 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=6`，`seat1.hand={"R_SHI":2,"R_MA":2,"B_NIU":2}` | 返回的 PLAY 全部 `power>6`，且不包含不可压制组合 |
 | M3-LA-08 | 任一可行动状态，但调用 `get_legal_actions(seat!=decision.seat)` | 返回 `{"seat":x,"actions":[]}` |
 | M3-LA-09 | `phase=reveal_decision`，`decision.seat=2` | actions 仅含 `REVEAL` 与 `PASS_REVEAL` |

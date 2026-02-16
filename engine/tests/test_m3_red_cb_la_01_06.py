@@ -209,10 +209,10 @@ def test_m3_la_06_cover_required_count_equals_round_kind() -> None:
     state = _make_in_round_state(
         current_seat=1,
         round_kind=2,
-        last_combo_power=999,
+        last_combo_power=3,
         hand_by_seat={
             0: {"R_SHI": 2},
-            1: {"R_NIU": 1, "B_NIU": 1},
+            1: {"R_SHI": 1, "R_XIANG": 1},
             2: {"B_SHI": 2},
         },
     )
