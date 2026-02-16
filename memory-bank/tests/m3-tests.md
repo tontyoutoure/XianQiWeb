@@ -147,7 +147,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-04~06`、LA 扩展用例（`M3-LA-13~22`）与 `M3-ACT-01~10`；其余用例待继续推进。
+> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22` 与 `M3-ACT-01~10`；当前清单内用例已全部执行完毕。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -156,7 +156,7 @@
 | M3-LA-04 ~ M3-LA-06 | ✅ 通过 | Green 已完成 | Red：2026-02-15 同批次执行（缺失 `engine.core`）；Green：2026-02-16 新增 `engine/core.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-CB-05 ~ M3-CB-12 | ✅ 通过 | Red 已执行（意外全绿） | 2026-02-16：已新增 `engine/tests/test_m3_red_cb_05_12.py` 并执行 `pytest engine/tests/test_m3_red_cb_05_12.py -q`（8 passed）；当前实现已满足用例预期 |
 | M3-CB-13 ~ M3-CB-14 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_cb_13_14_gou_che_power.py` 并执行 `pytest engine/tests/test_m3_cb_13_14_gou_che_power.py -q`（2 passed） |
-| M3-LA-01 ~ M3-LA-03, M3-LA-07 ~ M3-LA-12 | ⏳ 待执行 | 未开始 | 合法动作枚举后续用例 |
+| M3-LA-01 ~ M3-LA-03, M3-LA-07 ~ M3-LA-12 | ✅ 通过 | Red 已执行（意外全绿） | 2026-02-17：已新增 `engine/tests/test_m3_red_la_01_03_07_12.py` 并执行 `pytest engine/tests/test_m3_red_la_01_03_07_12.py -q`（9 passed）；当前实现已满足用例预期 |
 | M3-LA-13 ~ M3-LA-22 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_la_play_enumeration_13_22.py`，执行 `pytest engine/tests/test_m3_la_play_enumeration_13_22.py -q`（10 passed）与 `pytest engine/tests -q`（17 passed） |
 | M3-ACT-01 ~ M3-ACT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-17 已新增 `engine/tests/test_m3_red_act_01_07.py` 并执行（`6 passed, 1 failed`）；Green：2026-02-17 完成 `engine/core.py` 的 `REVEAL/PASS_REVEAL` 状态推进后执行 `pytest engine/tests/test_m3_red_act_01_07.py -q`（7 passed） |
 | M3-ACT-08 ~ M3-ACT-10 | ✅ 通过 | Green 已完成 | Red：2026-02-16 首次执行失败（`apply_action` 未实现）；Green：2026-02-16 完成回合收尾与 `pillar_groups.pillars` 拆柱后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py -q`（3 passed） |
