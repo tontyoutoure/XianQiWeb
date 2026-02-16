@@ -174,7 +174,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22` 与 `M3-ACT-01~10`；CLI 新增需求中 `M3-CLI-01~04` 已拉红，`M3-CLI-05~08` 待执行。
+> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22` 与 `M3-ACT-01~10`；CLI 新增需求中 `M3-CLI-01~04` 已有红测记录，`M3-CLI-05~08` 已拉红待转绿。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -188,4 +188,4 @@
 | M3-ACT-01 ~ M3-ACT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-17 已新增 `engine/tests/test_m3_red_act_01_07.py` 并执行（`6 passed, 1 failed`）；Green：2026-02-17 完成 `engine/core.py` 的 `REVEAL/PASS_REVEAL` 状态推进后执行 `pytest engine/tests/test_m3_red_act_01_07.py -q`（7 passed） |
 | M3-ACT-08 ~ M3-ACT-10 | ✅ 通过 | Green 已完成 | Red：2026-02-16 首次执行失败（`apply_action` 未实现）；Green：2026-02-16 完成回合收尾与 `pillar_groups.pillars` 拆柱后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py -q`（3 passed） |
 | M3-CLI-01 ~ M3-CLI-04 | 🟥 Red 已执行（4 红） | Red 已执行 | 2026-02-17：已新增 `engine/tests/test_m3_red_cli_01_04.py` 并执行 `pytest engine/tests/test_m3_red_cli_01_04.py -q`（4 failed）；失败原因为缺失 `engine.cli` 模块与约定函数（`build_initial_snapshot / resolve_seed / render_turn_prompt / render_state_view`） |
-| M3-CLI-05 ~ M3-CLI-08 | ⏳ 待执行 | 未开始 | 命令行输入链路、错误重试与终局处理的后续红测 |
+| M3-CLI-05 ~ M3-CLI-08 | 🟥 Red 已执行（4 红） | Red 已执行 | 2026-02-17：已新增 `engine/tests/test_m3_red_cli_05_08.py` 并执行 `pytest engine/tests/test_m3_red_cli_05_08.py -q`（4 failed）；失败点为动作列表未显式展示 `action_idx/payload_cards`、COVER 失败后需重新选择 `action_idx`、非法索引未以“错误码前缀”输出、`settlement` 未命中约定提示文案。 |
