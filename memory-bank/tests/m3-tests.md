@@ -158,5 +158,5 @@
 | M3-CB-13 ~ M3-CB-14 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_cb_13_14_gou_che_power.py` 并执行 `pytest engine/tests/test_m3_cb_13_14_gou_che_power.py -q`（2 passed） |
 | M3-LA-01 ~ M3-LA-03, M3-LA-07 ~ M3-LA-12 | ⏳ 待执行 | 未开始 | 合法动作枚举后续用例 |
 | M3-LA-13 ~ M3-LA-22 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_la_play_enumeration_13_22.py`，执行 `pytest engine/tests/test_m3_la_play_enumeration_13_22.py -q`（10 passed）与 `pytest engine/tests -q`（17 passed） |
-| M3-ACT-01 ~ M3-ACT-07 | ⏳ 待执行 | 未开始 | 动作校验与状态推进补充 |
+| M3-ACT-01 ~ M3-ACT-07 | 🟥 Red 已执行（6 绿 1 红） | Red 已执行 | 2026-02-17：已新增 `engine/tests/test_m3_red_act_01_07.py` 并执行 `pytest engine/tests/test_m3_red_act_01_07.py -q`；`M3-ACT-01~06` 通过，`M3-ACT-07` 失败（当前 `REVEAL/PASS_REVEAL` 在 `apply_action` 中返回 `ENGINE_INVALID_PHASE`） |
 | M3-ACT-08 ~ M3-ACT-10 | ✅ 通过 | Green 已完成 | Red：2026-02-16 首次执行失败（`apply_action` 未实现）；Green：2026-02-16 完成回合收尾与 `pillar_groups.pillars` 拆柱后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py -q`（3 passed） |
