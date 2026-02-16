@@ -153,6 +153,19 @@ class XianqiGameEngine:
             "timeout_at_ms": None,
         }
 
+    def _captured_pillar_count(self, seat: int) -> int:
+        state = self._require_state()
+        count = 0
+        for group in state.get("pillar_groups", []):
+            if int(group.get("winner_seat", -1)) != int(seat):
+                continue
+            pillars = group.get("pillars")
+            if isinstance(pillars, list) and pillars:
+                count += len(pillars)
+            else:
+                count += int(group.get("round_kind", 0))
+        return count
+
     def _finish_round(self) -> None:
         state = self._require_state()
         turn = state.get("turn", {})
@@ -407,7 +420,42 @@ class XianqiGameEngine:
             self._advance_decision(pending[0], "reveal_decision")
 
         elif action_type in {"REVEAL", "PASS_REVEAL"}:
-            raise ValueError("ENGINE_INVALID_PHASE")
+            if phase != "reveal_decision":
+                raise ValueError("ENGINE_INVALID_PHASE")
+
+            reveal = state.setdefault("reveal", {})
+            pending_order = list(reveal.get("pending_order", []))
+            if not pending_order or int(pending_order[0]) != decision_seat:
+                raise ValueError("ENGINE_INVALID_PHASE")
+
+            pending_order.pop(0)
+            reveal["pending_order"] = pending_order
+
+            buckler_seat = int(reveal.get("buckler_seat", -1))
+            relations = reveal.setdefault("relations", [])
+            if action_type == "REVEAL":
+                relations.append(
+                    {
+                        "revealer_seat": decision_seat,
+                        "buckler_seat": buckler_seat,
+                        "revealer_enough_at_time": self._captured_pillar_count(decision_seat) >= 3,
+                    }
+                )
+
+            turn = state.get("turn", {})
+            if pending_order:
+                next_seat = int(pending_order[0])
+                turn["current_seat"] = next_seat
+                self._advance_decision(next_seat, "reveal_decision")
+            elif relations:
+                next_seat = int(relations[-1].get("revealer_seat", decision_seat))
+                state["phase"] = "buckle_decision"
+                turn["current_seat"] = next_seat
+                self._advance_decision(next_seat, "buckle_decision")
+            else:
+                state["phase"] = "settlement"
+                turn["current_seat"] = decision_seat
+                self._advance_decision(decision_seat, "settlement")
         else:
             raise ValueError("ENGINE_INVALID_ACTION")
 
