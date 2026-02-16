@@ -88,11 +88,15 @@ def _render_actions(actions: list[dict[str, Any]]) -> str:
         action_type = str(action.get("type", ""))
         if action_type == "PLAY":
             payload = _format_hand({str(card["type"]): int(card["count"]) for card in action.get("payload_cards", [])})
-            lines.append(f"[{idx}] PLAY payload={payload} power={action.get('power')}")
+            lines.append(
+                f"action_idx={idx} type=PLAY payload_cards={payload} power={action.get('power')}"
+            )
         elif action_type == "COVER":
-            lines.append(f"[{idx}] COVER required_count={action.get('required_count')}")
+            lines.append(
+                f"action_idx={idx} type=COVER required_count={action.get('required_count')}"
+            )
         else:
-            lines.append(f"[{idx}] {action_type}")
+            lines.append(f"action_idx={idx} type={action_type}")
     return "\n".join(lines)
 
 
@@ -117,6 +121,14 @@ def _parse_cover_list(raw: str) -> list[dict[str, int]]:
     return [{"type": card_type, "count": count} for card_type, count in sorted(cards.items())]
 
 
+def _emit_error(output_fn: Callable[[str], None], exc: Exception) -> None:
+    message = str(exc)
+    if message.startswith("ENGINE_"):
+        output_fn(f"错误码:{message}")
+        return
+    output_fn(message)
+
+
 def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, output_fn: Callable[[str], None] = print) -> int:
     """Run one local game loop by rotating seats according to decision state."""
 
@@ -138,7 +150,7 @@ def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, out
                     engine.settle()
                     continue
                 except NotImplementedError:
-                    output_fn("已到 settlement，当前版本 settle 未实现，结束演练。")
+                    output_fn("结算阶段已到达，当前版本未实现 settle，结束演练。")
             else:
                 output_fn("对局已结束。")
             return 0
@@ -166,27 +178,48 @@ def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, out
             if action_idx < 0 or action_idx >= len(actions):
                 raise ValueError("ENGINE_INVALID_ACTION_INDEX")
         except ValueError as exc:
-            output_fn(str(exc))
+            _emit_error(output_fn, exc)
             continue
 
         selected = actions[action_idx]
-        cover_list: list[dict[str, int]] | None = None
+        action_applied = False
         if str(selected.get("type")) == "COVER":
-            raw_cover = input_fn("请输入 cover_list (例如 R_SHI:1,B_NIU:1): ")
-            try:
-                cover_list = _parse_cover_list(raw_cover)
-            except Exception as exc:  # pylint: disable=broad-except
-                output_fn(str(exc))
+            while True:
+                raw_cover = input_fn("请输入 cover_list (例如 R_SHI:1,B_NIU:1): ")
+                try:
+                    cover_list = _parse_cover_list(raw_cover)
+                except Exception as exc:  # pylint: disable=broad-except
+                    _emit_error(output_fn, exc)
+                    continue
+
+                try:
+                    engine.apply_action(
+                        action_idx=action_idx,
+                        cover_list=cover_list,
+                        client_version=int(public_state.get("version", 0)),
+                    )
+                    action_applied = True
+                    break
+                except Exception as exc:  # pylint: disable=broad-except
+                    _emit_error(output_fn, exc)
+                    if str(exc) == "ENGINE_INVALID_COVER_LIST":
+                        continue
+                    break
+            if not action_applied:
                 continue
+            continue
 
         try:
             engine.apply_action(
                 action_idx=action_idx,
-                cover_list=cover_list,
+                cover_list=None,
                 client_version=int(public_state.get("version", 0)),
             )
+            action_applied = True
         except Exception as exc:  # pylint: disable=broad-except
-            output_fn(str(exc))
+            _emit_error(output_fn, exc)
+
+        if not action_applied:
             continue
 
 
