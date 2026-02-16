@@ -71,7 +71,7 @@ def _pair_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
         combos.append(
             {
                 "kind": 2,
-                "power": 20,
+                "power": 19,
                 "cards": [
                     {"type": "R_GOU", "count": 1},
                     {"type": "B_GOU", "count": 1},

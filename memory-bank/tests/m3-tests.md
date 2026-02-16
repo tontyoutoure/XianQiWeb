@@ -30,12 +30,14 @@
 | M3-CB-04 | 狗脚对互斥去重 | 狗脚对只产出 1 条，不因枚举顺序产生重复项 |
 | M3-CB-05 | 三牛枚举（红/黑） | 仅当 `R_NIU>=3` 产出红三牛；仅当 `B_NIU>=3` 产出黑三牛 |
 | M3-CB-06 | 非法三张不应产出 | 非牛三张、混色三张都不会进入组合枚举结果 |
-| M3-CB-07 | 对子牌力顺序 | `dog_pair > 红士对 > 黑士对 > 其他对子`，排序稳定 |
+| M3-CB-07 | 对子牌力顺序 | `dog_pair = 红士对 > 黑士对 > 其他对子`，排序稳定 |
 | M3-CB-08 | 三张牌力顺序 | 红三牛 > 黑三牛 |
 | M3-CB-09 | 单张牌力顺序 | 满足接口文档牌力表（`R_SHI` 最高，`B_NIU` 最低） |
 | M3-CB-10 | 组合排序稳定性 | 同一手牌多次调用枚举，输出顺序完全一致 |
 | M3-CB-11 | 按 `round_kind` 过滤 | 指定 `round_kind=1/2/3` 时仅返回对应张数组合 |
 | M3-CB-12 | 严格大于比较 | 压制判定只接受 `power > last_combo.power`，`=` 不可压制 |
+| M3-CB-13 | 红狗与红车单张等价牌力 | `R_GOU` 单张 `power` 必等于 `R_CHE` |
+| M3-CB-14 | 黑狗与黑车单张等价牌力 | `B_GOU` 单张 `power` 必等于 `B_CHE` |
 
 ## 3) 合法动作枚举测试（重点细化）
 
@@ -95,12 +97,14 @@
 | M3-CB-04 | `hand={"R_GOU":1,"B_GOU":1}`，`round_kind=2` | 狗脚对仅出现 1 次（无重复） |
 | M3-CB-05 | 子场景A：`{"R_NIU":3,"B_NIU":2}`；子场景B：`{"R_NIU":2,"B_NIU":3}`，`round_kind=3` | A 仅红三牛；B 仅黑三牛 |
 | M3-CB-06 | `hand={"R_SHI":2,"R_NIU":2,"B_NIU":1}`，`round_kind=3` | 不返回任何三张组合 |
-| M3-CB-07 | `hand={"R_GOU":1,"B_GOU":1,"R_SHI":2,"B_SHI":2,"R_MA":2}`，`round_kind=2` | 排序满足：狗脚对 > 红士对 > 黑士对 > 其他对子（如红马对） |
+| M3-CB-07 | `hand={"R_GOU":1,"B_GOU":1,"R_SHI":2,"B_SHI":2,"R_MA":2}`，`round_kind=2` | 牌力满足：狗脚对 = 红士对 > 黑士对 > 其他对子（如红马对）；排序稳定 |
 | M3-CB-08 | `hand={"R_NIU":3,"B_NIU":3}`，`round_kind=3` | 排序满足：红三牛在黑三牛前 |
 | M3-CB-09 | `hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_XIANG":1,"R_MA":1,"B_MA":1,"R_CHE":1,"B_CHE":1,"R_GOU":1,"B_GOU":1,"R_NIU":1,"B_NIU":1}`，`round_kind=1` | 单张牌力顺序严格符合接口文档（`R_SHI` 最高，`B_NIU` 最低） |
 | M3-CB-10 | 任一固定手牌（建议用 CB-07）重复调用 3 次 | 组合列表顺序与内容完全一致 |
 | M3-CB-11 | `hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}`，分别测试 `round_kind=1/2/3` | kind=1 仅单张；kind=2 仅对子（含狗脚对）；kind=3 仅三牛 |
 | M3-CB-12 | `hand={"R_SHI":1,"B_SHI":1,"R_NIU":1,"B_NIU":1}`，`round_kind=1`，`last_combo.power=8`（可压制过滤） | 仅 `power>8` 的组合可压制（即仅红士）；黑士（=8）不可压制 |
+| M3-CB-13 | `hand={"R_GOU":1,"R_CHE":1}`，`round_kind=1` | `R_GOU` 与 `R_CHE` 单张 `power` 相等 |
+| M3-CB-14 | `hand={"B_GOU":1,"B_CHE":1}`，`round_kind=1` | `B_GOU` 与 `B_CHE` 单张 `power` 相等 |
 
 ### 6.2 合法动作枚举（M3-LA）审查样例
 
@@ -131,14 +135,15 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成首批用例（`M3-CB-01~04`、`M3-LA-04~06`）以及 LA 扩展用例（`M3-LA-13~22`），其余用例待继续推进。
+> 说明：当前已完成 `M3-CB-01~14`、`M3-LA-04~06` 与 LA 扩展用例（`M3-LA-13~22`），其余用例待继续推进。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
 | M3-UT-01 ~ M3-UT-05 | ⏳ 待执行 | 未开始 | 待人类指定优先级 |
 | M3-CB-01 ~ M3-CB-04 | ✅ 通过 | Green 已完成 | Red：2026-02-15 执行 `conda run -n XQB pytest engine/tests/test_m3_red_cb_la_01_06.py -q`（缺失 `engine.combos`）；Green：2026-02-16 新增 `engine/combos.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-LA-04 ~ M3-LA-06 | ✅ 通过 | Green 已完成 | Red：2026-02-15 同批次执行（缺失 `engine.core`）；Green：2026-02-16 新增 `engine/core.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
-| M3-CB-05 ~ M3-CB-12 | ⏳ 待执行 | 未开始 | 组合枚举器后续用例 |
+| M3-CB-05 ~ M3-CB-12 | ✅ 通过 | Red 已执行（意外全绿） | 2026-02-16：已新增 `engine/tests/test_m3_red_cb_05_12.py` 并执行 `pytest engine/tests/test_m3_red_cb_05_12.py -q`（8 passed）；当前实现已满足用例预期 |
+| M3-CB-13 ~ M3-CB-14 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_cb_13_14_gou_che_power.py` 并执行 `pytest engine/tests/test_m3_cb_13_14_gou_che_power.py -q`（2 passed） |
 | M3-LA-01 ~ M3-LA-03, M3-LA-07 ~ M3-LA-12 | ⏳ 待执行 | 未开始 | 合法动作枚举后续用例 |
 | M3-LA-13 ~ M3-LA-22 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_la_play_enumeration_13_22.py`，执行 `pytest engine/tests/test_m3_la_play_enumeration_13_22.py -q`（10 passed）与 `pytest engine/tests -q`（17 passed） |
 | M3-ACT-01 ~ M3-ACT-07 | ⏳ 待执行 | 未开始 | 动作校验与状态推进补充 |
