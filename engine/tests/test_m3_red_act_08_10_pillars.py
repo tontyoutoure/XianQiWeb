@@ -89,19 +89,19 @@ def test_m3_act_08_round_end_pillar_group_owned_by_winner() -> None:
 
     state = _make_state(
         round_kind=1,
-        decision_seat=2,
+        decision_seat=0,
         owner_seat=1,
         last_combo_cards=[{"type": "R_XIANG", "count": 1}],
         last_combo_power=7,
-        hand_by_seat={0: {}, 1: {}, 2: {"B_NIU": 1}},
+        hand_by_seat={0: {"B_NIU": 1}, 1: {}, 2: {}},
         plays=[
             {"seat": 1, "power": 7, "cards": [{"type": "R_XIANG", "count": 1}]},
-            {"seat": 0, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
+            {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
         ],
     )
 
     engine.load_state(state)
-    legal_actions = engine.get_legal_actions(2)
+    legal_actions = engine.get_legal_actions(0)
     cover_idx = _find_action_idx(legal_actions, "COVER")
 
     output = engine.apply_action(
@@ -127,19 +127,19 @@ def test_m3_act_09_pair_round_split_same_pair_into_two_pillars() -> None:
 
     state = _make_state(
         round_kind=2,
-        decision_seat=2,
+        decision_seat=0,
         owner_seat=1,
         last_combo_cards=[{"type": "R_SHI", "count": 2}],
-        last_combo_power=19,
-        hand_by_seat={0: {}, 1: {}, 2: {"B_NIU": 2}},
+        last_combo_power=9,
+        hand_by_seat={0: {"B_NIU": 2}, 1: {}, 2: {}},
         plays=[
-            {"seat": 1, "power": 19, "cards": [{"type": "R_SHI", "count": 2}]},
-            {"seat": 0, "power": -1, "cards": [{"type": "B_CHE", "count": 2}]},
+            {"seat": 1, "power": 9, "cards": [{"type": "R_SHI", "count": 2}]},
+            {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 2}]},
         ],
     )
 
     engine.load_state(state)
-    legal_actions = engine.get_legal_actions(2)
+    legal_actions = engine.get_legal_actions(0)
     cover_idx = _find_action_idx(legal_actions, "COVER")
 
     output = engine.apply_action(

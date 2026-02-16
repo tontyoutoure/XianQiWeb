@@ -47,14 +47,6 @@ def _single_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
     return combos
 
 
-def _pair_power(card_type: str) -> int:
-    if card_type == "R_SHI":
-        return 19
-    if card_type == "B_SHI":
-        return 18
-    return CARD_POWER[card_type]
-
-
 def _pair_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
     combos: list[dict[str, Any]] = []
     for card_type in sorted(hand):
@@ -62,7 +54,7 @@ def _pair_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
             combos.append(
                 {
                     "kind": 2,
-                    "power": _pair_power(card_type),
+                    "power": CARD_POWER[card_type],
                     "cards": [{"type": card_type, "count": 2}],
                 }
             )
@@ -71,7 +63,7 @@ def _pair_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
         combos.append(
             {
                 "kind": 2,
-                "power": 19,
+                "power": CARD_POWER["R_SHI"],
                 "cards": [
                     {"type": "R_GOU", "count": 1},
                     {"type": "B_GOU", "count": 1},

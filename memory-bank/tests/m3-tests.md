@@ -130,7 +130,7 @@
 | M3-LA-14 | 同 LA-13 | PLAY 的 `payload_cards` 集合与 `enumerate_combos(hand)` 输出一致 |
 | M3-LA-15 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_CHE":1}` | PLAY 仅含红士/黑士/红相（全部 `power>3`） |
 | M3-LA-16 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=4`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1,"B_NIU":2}` | PLAY 含狗脚对、红士对、黑士对、红马对；不含黑牛对 |
-| M3-LA-17 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=18`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1}` | PLAY 仅含狗脚对与红士对，不含黑士对（等于边界） |
+| M3-LA-17 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=8`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1}` | PLAY 仅含狗脚对与红士对，不含黑士对（等于边界） |
 | M3-LA-18 | `phase=in_round`，`decision.seat=1`，`round_kind=3`，`last_combo.power=10`，`seat1.hand={"R_NIU":3,"B_NIU":3}` | PLAY 仅含红三牛 |
 | M3-LA-19 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1,"R_NIU":3,"R_MA":2}` | 所有 PLAY 均为 2 张组合，不混入单张/三张 |
 | M3-LA-20 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1}` | `R_SHI` 单张 PLAY 仅出现 1 次 |

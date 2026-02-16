@@ -164,7 +164,7 @@ def test_m3_la_17_in_round_pair_strictly_greater_only() -> None:
         decision_seat=1,
         hand_by_seat={1: {"R_SHI": 2, "B_SHI": 2, "R_MA": 2, "R_GOU": 1, "B_GOU": 1}},
         round_kind=2,
-        last_combo_power=18,
+        last_combo_power=8,
     )
 
     engine.load_state(state)
