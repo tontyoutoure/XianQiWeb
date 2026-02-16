@@ -23,6 +23,7 @@
 ```text
 engine/
   core.py                # XianqiGameEngine 对外接口实现
+  cli.py                 # 本地命令行对局入口（单机三座次轮流操作）
   models.py              # 状态结构（dataclass / TypedDict）
   constants.py           # card_type、phase、action_type 常量
   cards.py               # 牌堆构建、发牌、卡牌顺序与牌力
@@ -250,6 +251,58 @@ engine/
 - `settle`：够/瓷/掀棋惩罚与“已够时掀棋未瓷不收够棋”边界。
 - `dump/load`：序列化后再恢复，三类输出（public/private/legal）一致。
 
-## 9. 变更记录
+## 9. 命令行对局接口（新增设计需求）
+
+### 9.1 目标与边界
+- 目标：提供 `engine` 本地 CLI，让单个人在命令行中按座次（seat0→seat1→seat2）依次扮演三名玩家，完整推进一局对局。
+- 边界：该 CLI 仅用于本地调试与规则验证，不替代后端 REST/WS 协议。
+- 一致性：CLI 只调用引擎公开接口（`init_game / get_public_state / get_private_state / get_legal_actions / apply_action / settle`），不直接改内部状态。
+
+### 9.2 启动方式与随机种子
+- 建议入口：`python -m engine.cli [--seed 123456]`。
+- `--seed` 可选：
+  - 传入：使用给定 seed 初始化，保证可复现。
+  - 不传：使用当前时间戳（建议毫秒或纳秒）作为 seed。
+- 启动后必须打印“本局实际 seed”，便于复盘和复测。
+
+### 9.3 交互主循环（单人扮演三座次）
+1. 初始化引擎并创建新局（`init_game`）。
+2. 每个回合先展示公共态摘要：
+   - `version / phase / decision.seat / round_index / round_kind / last_combo / 当前回合plays`。
+   - 三名玩家的 `hand_count` 与 `captured_pillar_count`（若已提供）。
+3. 根据 `decision.seat` 提示“当前请扮演 seatX 操作”。
+4. 仅展示当前 seat 的私有态：
+   - `hand`（完整）。
+   - `covered`（若已实现）。
+5. 展示该 seat 全部合法动作（包含 `action_idx`）：
+   - PLAY：显示牌型、`payload_cards`、`power`。
+   - COVER：显示 `required_count`，并提示输入 `cover_list`。
+   - BUCKLE / REVEAL / PASS_REVEAL：显示动作名。
+6. 用户输入动作并执行：
+   - 非 COVER：输入 `action_idx` 即可。
+   - COVER：先选 `action_idx`，再输入 `cover_list`（如 `R_SHI:1,B_NIU:1`）。
+7. 调用 `apply_action`，成功后进入下一轮循环；失败则展示错误码并重试。
+8. 当 `phase=settlement`：
+   - 若 `settle` 已实现，提示执行结算（或默认自动 `settle`）。
+   - 若 `settle` 未实现，提示“结算阶段已到达，当前版本未实现 settle”，并结束本次演练。
+9. 当 `phase=finished`，打印结束信息并退出。
+
+### 9.4 显示与隐私口径
+- 默认仅展示当前决策 seat 的私有手牌；其余 seat 只显示公共信息。
+- 对 `power=-1` 的垫牌记录，公共展示用 `covered_count` 或“垫X张”文案，不展示牌面细节。
+- 为便于单人三座次调试，可提供显式调试命令（如 `:peek seat1`）查看指定私有态；默认关闭，防止误把调试模式当正式口径。
+
+### 9.5 输入格式与错误处理
+- 动作输入非法（非数字、越界）：提示并重输，不改状态。
+- `cover_list` 解析失败或张数不匹配：提示并重输，不改状态。
+- 引擎抛错（如 `ENGINE_VERSION_CONFLICT`、`ENGINE_INVALID_COVER_LIST`）：按原错误码输出，便于直接对照接口文档定位问题。
+
+### 9.6 非功能要求
+- 输出顺序稳定：同一状态下动作列表顺序必须与 `get_legal_actions` 返回顺序一致。
+- 可复现：日志首行打印 seed，结束时打印“可复现命令”示例（`python -m engine.cli --seed <seed>`）。
+- 可测试：CLI 主循环应拆分为可单测函数（解析输入、动作渲染、state 渲染），便于用 pytest + monkeypatch 覆盖关键交互路径。
+
+## 10. 变更记录
 - 2026-02-15：创建文档，补充引擎接口实现逻辑、动作校验链路、结算算法口径与后端集成约定。
 - 2026-02-15：补充 `decision` 决策态定义，明确“当前谁在决策/谁的计时在走”的状态字段与阶段切换更新规则。
+- 2026-02-17：新增“命令行对局接口”设计（seed 约定、状态展示口径、交互循环与错误处理）。

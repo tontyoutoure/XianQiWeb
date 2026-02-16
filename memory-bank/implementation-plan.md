@@ -45,10 +45,12 @@
 - 实现：阶段状态机 `init → buckle_decision → in_round → reveal_decision → settlement → finished`。
 - 实现：出棋/压制/垫棋/扣棋/掀棋与回合归属、柱数组统计。
 - 实现：公开态/私有态脱敏输出与 `legal_actions` 生成。
+- 实现：本地调试 CLI（`engine/cli.py`），支持可选 seed（未传则取当前时间），并按决策 seat 轮流扮演三名玩家推进一局。
 - 测试/验证：
   - 牌力比较、狗脚对/三牛、必须压制/只能垫棋等核心用例通过。
   - `action_idx` 顺序稳定，非法动作被拒绝。
   - `client_version` 不一致时返回版本错误。
+  - CLI 可展示公共态 + 当前 seat 私有态 + 合法动作列表，并支持 COVER 输入与错误重试。
 
 ### M4 后端-引擎集成与动作接口
 目标：将引擎能力完整映射到 REST/WS 协议。
