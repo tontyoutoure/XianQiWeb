@@ -105,6 +105,21 @@
 | M3-RF-02 | reducer 成功路径等效 | 典型成功动作（如 `COVER` 收轮）后的 `phase/turn/pillar_groups/version` 与拆分前一致 |
 | M3-RF-03 | reducer 失败路径等效 | 越界 `action_idx`、版本冲突、非法 `cover_list` 仍返回原错误码，失败不改 `version` |
 
+### 4.3 掀扣转换专项测试（buckle_flow）
+
+| 测试ID | 测试描述 | 通过条件 |
+|---|---|---|
+| M3-BF-01 | `buckle_flow` 起始动作集合 | `phase=buckle_flow` 且 `pending_order=[]` 时，当前位仅可 `BUCKLE/PASS_BUCKLE` |
+| M3-BF-02 | `PASS_BUCKLE -> in_round` | 执行后 `phase=in_round`，`turn.current_seat` 保持扣棋位，且首手前态为 `round_kind=0/plays=[]/last_combo=null` |
+| M3-BF-03 | `BUCKLE` 且有活跃掀棋者时的询问顺序 | `active_revealer_seat!=null` 时，`pending_order` 必须从 `active_revealer_seat` 开始 |
+| M3-BF-04 | `BUCKLE` 且无活跃掀棋者时的询问顺序 | `active_revealer_seat=null` 时，`pending_order` 按扣棋者逆时针两位生成 |
+| M3-BF-05 | `PASS_REVEAL` 询问推进 | 消费 `pending_order` 队首并推进 `turn.current_seat` 到下一待询问位（若仍有人） |
+| M3-BF-06 | 首个 `REVEAL` 命中即结束询问 | 追加 `relations`、更新 `active_revealer_seat`、清空 `pending_order`，并立即切回 `buckler_seat` 进入 `in_round` |
+| M3-BF-07 | 活跃掀棋者 `PASS_REVEAL` 清空活跃位 | 当前位等于 `active_revealer_seat` 时 `PASS_REVEAL`，应先清空 `active_revealer_seat` 再继续推进 |
+| M3-BF-08 | 两人均 `PASS_REVEAL` 进入结算 | 询问队列耗尽且无人 `REVEAL` 时，`phase` 切到 `settlement` |
+| M3-BF-09 | 回合收尾后清理掀扣残留 | `in_round` 第三手收轮后进入新 `buckle_flow`，并清空 `reveal.buckler_seat/pending_order` |
+| M3-BF-10 | `REVEAL` 后切回扣棋方首手前态重置 | 命中首个 `REVEAL` 切回 `buckler_seat` 后，`in_round` 必须保持首手前态：`round_kind=0/plays=[]/last_combo=null` |
+
 ## 5) 阶段通过判定（M3）
 
 - 组合枚举与牌力比较规则完整可测，且顺序稳定。
@@ -201,6 +216,21 @@
 |---|---|---|
 | M3-UT-08 | `load_state` 输入 `players` 长度为 3 但顺序错位（如 `players[0].seat=1`, `players[1].seat=0`） | 调用 `load_state` 立即抛出断言异常，不进入后续状态推进 |
 
+### 6.8 掀扣转换专项（M3-BF）审查样例
+
+| 测试ID | Mock 输入（显式） | 预期结果（显式） |
+|---|---|---|
+| M3-BF-01 | `phase=buckle_flow`，`reveal.pending_order=[]`，`turn.current_seat=0` | `get_legal_actions(0)` 仅返回 `BUCKLE/PASS_BUCKLE` |
+| M3-BF-02 | 基于 BF-01 局面执行 `PASS_BUCKLE` | 新状态 `phase=in_round`，`turn.current_seat=0`，且 `round_kind=0`、`plays=[]`、`last_combo=null` |
+| M3-BF-03 | `phase=buckle_flow`，`pending_order=[]`，`turn.current_seat=2`，`reveal.active_revealer_seat=1` | seat2 执行 `BUCKLE` 后 `pending_order[0]=1`（活跃掀棋者优先） |
+| M3-BF-04 | `phase=buckle_flow`，`pending_order=[]`，`turn.current_seat=2`，`reveal.active_revealer_seat=null` | seat2 执行 `BUCKLE` 后 `pending_order=[0,1]`（逆时针询问） |
+| M3-BF-05 | `phase=buckle_flow`，`pending_order=[1,2]`，`turn.current_seat=1` | seat1 执行 `PASS_REVEAL` 后 `pending_order=[2]` 且 `turn.current_seat=2` |
+| M3-BF-06 | `phase=buckle_flow`，`pending_order=[1,2]`，`buckler_seat=0`，`turn.current_seat=1` | seat1 执行 `REVEAL` 后：追加 relation、`active_revealer_seat=1`、`pending_order=[]`、`phase=in_round`、`turn.current_seat=0` |
+| M3-BF-07 | `phase=buckle_flow`，`pending_order=[1,2]`，`active_revealer_seat=1`，`turn.current_seat=1` | seat1 执行 `PASS_REVEAL` 后 `active_revealer_seat=null`，并继续询问 seat2 |
+| M3-BF-08 | `phase=buckle_flow`，`pending_order=[1]`，`relations=[]`，`turn.current_seat=1` | seat1 执行 `PASS_REVEAL` 后 `pending_order=[]` 且 `phase=settlement` |
+| M3-BF-09 | `phase=in_round`，`turn.plays` 已有两手，第三手执行后触发收轮 | 收轮后 `phase=buckle_flow`，`turn.current_seat=winner`，`reveal.buckler_seat=null`，`reveal.pending_order=[]` |
+| M3-BF-10 | 与 BF-06 相同但额外断言 `turn` | `REVEAL` 切回扣棋方进入 `in_round` 后，`round_kind=0`、`plays=[]`、`last_combo=null` |
+
 ## 7) TDD 执行记录（进行中）
 
 > 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08` 与 `M3-RF-01~03`。
@@ -222,3 +252,4 @@
 | M3-CLI-01 ~ M3-CLI-04 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_01_04.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 补齐 `build_initial_snapshot / resolve_seed / render_turn_prompt / render_state_view` 后执行同命令（4 passed）。 |
 | M3-CLI-05 ~ M3-CLI-08 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_05_08.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 修复动作索引展示、COVER 重试、错误码前缀与 settlement 提示后执行同命令（4 passed）。 |
 | M3-RF-01 ~ M3-RF-03 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_refactor_apply_action_reducer.py` 并执行 `pytest engine/tests/test_m3_refactor_apply_action_reducer.py -q`（`1 failed, 2 passed`，缺少 `reduce_apply_action` 委托入口）；Green：2026-02-17 新增 `engine/reducer.py` 并完成 `engine/core.py` 委托改造后执行同命令（`3 passed`）。 |
+| M3-BF-01 ~ M3-BF-10 | ❌ 失败（符合 Red 预期） | Red 已执行 | 2026-02-18：已新增 `engine/tests/test_m3_red_bf_01_10.py` 并执行 `pytest engine/tests/test_m3_red_bf_01_10.py -q`（10 failed）；当前实现仍使用旧 phase（`buckle_decision/reveal_decision`），尚未支持 `buckle_flow` 掀扣转换口径。 |

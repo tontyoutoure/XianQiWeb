@@ -36,6 +36,8 @@
 - M5 第四批红测（2026-02-17）：已新增 `engine/tests/test_m5_red_ut_13_settlement.py` 并复用 `m5_settlement_testkit` 的黑棋 seed 搜索与通用断言；执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，`M5-UT-13` 当前按预期 Red（1 failed，`settle` 仍未实现）。
 - M5 引擎结算首轮转绿（2026-02-17）：已在 `engine/settlements.py` 实现 `settle_state`（phase 门禁、够/瓷/掀棋分解结算、已够掀棋未瓷不收够棋、`finished + version+1`），并在 `engine/core.py` 对齐 `settle` 输出契约（含 `settlement`）；`M5-UT-01~04` 已转绿（`pytest engine/tests/test_m5_red_ut_01_04_settlement.py -q`，`4 passed`），补充回归 `M5-UT-05~13` 通过（`9 passed`），全量引擎测试更新为 `78 passed`（`pytest engine/tests -q`）。
 - M3 行动位字段收敛（2026-02-17）：已删除 `state.decision` 及 `_advance_decision` 相关调用，动作判定/状态推进/CLI 全部统一为 `turn.current_seat` 单一真源，并同步修正相关引擎测试夹具与断言；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
+- M3 掀扣转换专项测试设计（2026-02-18）：已在 `memory-bank/tests/m3-tests.md` 新增 `M3-BF-01~10`（buckle_flow）测试清单与 mock 审查样例，覆盖 `BUCKLE/PASS_BUCKLE/REVEAL/PASS_REVEAL` 的关键状态转换；待人类指定测试ID进入 Red。
+- M3 掀扣转换专项红测（2026-02-18）：已新增 `engine/tests/test_m3_red_bf_01_10.py` 并执行 `pytest engine/tests/test_m3_red_bf_01_10.py -q`，`M3-BF-01~10` 按预期 Red（10 failed）；失败主因是引擎仍采用旧 phase（`buckle_decision/reveal_decision`）且未实现 `buckle_flow` 流转。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
   - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。
