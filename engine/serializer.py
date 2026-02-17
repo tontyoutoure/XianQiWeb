@@ -6,10 +6,25 @@ from copy import deepcopy
 from typing import Any
 
 
+def _assert_players_canonical(players: Any) -> None:
+    if not isinstance(players, list):
+        raise AssertionError("state.players must be list")
+    if len(players) != 3:
+        raise AssertionError("state.players must contain exactly 3 players")
+
+    for seat, player in enumerate(players):
+        if not isinstance(player, dict):
+            raise AssertionError("state.players item must be object")
+        if int(player["seat"]) != seat:
+            raise AssertionError("state.players must be indexed by seat order")
+
+
 def load_state(state: dict[str, Any]) -> dict[str, Any]:
     """Clone and return internal complete state for engine restore."""
 
-    return deepcopy(state)
+    cloned = deepcopy(state)
+    _assert_players_canonical(cloned["players"])
+    return cloned
 
 
 def dump_state(state: dict[str, Any] | None) -> dict[str, Any]:
@@ -26,16 +41,6 @@ def _count_cards(cards: list[dict[str, Any]]) -> int:
 
 def _sum_hand_count(hand: dict[str, Any]) -> int:
     return sum(int(count) for count in hand.values())
-
-
-def _seat_hand(state: dict[str, Any], seat: int) -> dict[str, int]:
-    players = state.get("players", [])
-    for player in players:
-        if int(player.get("seat", -1)) == int(seat):
-            hand = player.get("hand", {})
-            if isinstance(hand, dict):
-                return {str(card_type): int(count) for card_type, count in hand.items()}
-    return {}
 
 
 def _project_public_play(play: dict[str, Any]) -> dict[str, Any]:
@@ -130,9 +135,6 @@ def get_private_state(state: dict[str, Any] | None, seat: int) -> dict[str, Any]
         raise RuntimeError("engine state is not initialized")
 
     target_seat = int(seat)
-    if target_seat not in {0, 1, 2}:
-        raise ValueError("ENGINE_INVALID_SEAT")
-
     covered: dict[str, int] = {}
 
     turn = state.get("turn") or {}
@@ -147,4 +149,4 @@ def get_private_state(state: dict[str, Any] | None, seat: int) -> dict[str, Any]
         if isinstance(group_plays, list):
             _accumulate_covered_cards(covered, group_plays, target_seat)
 
-    return {"hand": _seat_hand(state, target_seat), "covered": covered}
+    return {"hand": state["players"][target_seat]["hand"], "covered": covered}

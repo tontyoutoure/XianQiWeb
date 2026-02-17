@@ -27,13 +27,14 @@
 - M3 私有态补齐（2026-02-17）：已新增并拉绿 `M3-UT-07`（`engine/tests/test_m3_red_ut_07_private_state_covered.py`），在 `engine/core.py` 实现 `get_private_state` 返回 `hand + covered`（按 `turn.plays + pillar_groups[*].plays` 中 `power=-1` 的本人垫牌聚合）；全量引擎测试更新为 `64 passed`（`pytest engine/tests -q`）。
 - M3 序列化模块拆分（2026-02-17）：已新增 `engine/serializer.py` 并将 `load_state/dump_state/get_public_state/get_private_state` 及相关辅助函数从 `engine/core.py` 抽离，`engine/core.py` 改为调用 serializer；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M3 合法动作模块拆分（2026-02-17）：已新增 `engine/actions.py` 并将 `get_legal_actions` 及手牌读取辅助函数从 `engine/core.py` 抽离为函数式实现（state-only）；`engine/core.py` 的同名方法改为转发调用，reducer 依赖链保持兼容；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
+- M3 seat 直索引与快速失败策略（2026-02-17）：`actions/reducer/serializer/core` 中多处 seat 手牌读取改为 `players[seat]` 直索引；`load_state` 增加 players 索引一致性断言（`players[i].seat == i`），并新增 `M3-UT-08`（`engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py`）锁定契约；全量测试更新为 `65 passed`（`pytest engine/tests -q`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
   - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。
   - 待补：`M2-RS-REST-16~17` 因 M3 开局未接入暂时 skip。
 
 ## 当前阶段
-- M3（逻辑引擎核心规则）推进中：`M3-UT-01~07`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 已通过；当前全量测试为 `64 passed`（`pytest engine/tests -q`）。
+- M3（逻辑引擎核心规则）推进中：`M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 已通过；当前全量测试为 `65 passed`（`pytest engine/tests -q`）。
 - M2（房间大厅）收口中：仅剩 `M2-RS-REST-16~17` 待 M3 开局能力接入后回补。
 
 ## 记录位置

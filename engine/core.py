@@ -54,16 +54,6 @@ class XianqiGameEngine:
             raise RuntimeError("engine state is not initialized")
         return self._state
 
-    def _seat_hand_ref(self, seat: int) -> dict[str, int]:
-        state = self._require_state()
-        players = state.get("players", [])
-        for player in players:
-            if int(player.get("seat", -1)) == int(seat):
-                hand = player.get("hand")
-                if isinstance(hand, dict):
-                    return hand
-        raise ValueError(f"missing hand for seat={seat}")
-
     @staticmethod
     def _count_cards(cards: list[dict[str, int]]) -> int:
         return sum(int(card.get("count", 0)) for card in cards)
@@ -105,21 +95,6 @@ class XianqiGameEngine:
             + int(hand.get("B_XIANG", 0))
         )
         return shi_xiang == 0
-
-    def _consume_cards_from_hand(self, seat: int, cards: list[dict[str, int]]) -> None:
-        hand = self._seat_hand_ref(seat)
-        for card in cards:
-            card_type = str(card["type"])
-            count = int(card["count"])
-            if int(hand.get(card_type, 0)) < count:
-                raise ValueError("ENGINE_INVALID_COVER_LIST")
-
-        for card in cards:
-            card_type = str(card["type"])
-            count = int(card["count"])
-            hand[card_type] = int(hand.get(card_type, 0)) - count
-            if hand[card_type] == 0:
-                del hand[card_type]
 
     def _build_pillars(self, plays: list[dict[str, Any]], round_kind: int) -> list[dict[str, Any]]:
         expanded_per_play = [self._cards_to_types(play.get("cards", []), round_kind) for play in plays]

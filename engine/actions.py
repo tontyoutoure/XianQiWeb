@@ -7,16 +7,6 @@ from typing import Any
 from engine.combos import enumerate_combos
 
 
-def _seat_hand(state: dict[str, Any], seat: int) -> dict[str, int]:
-    players = state.get("players", [])
-    for player in players:
-        if int(player.get("seat", -1)) == int(seat):
-            hand = player.get("hand", {})
-            if isinstance(hand, dict):
-                return {str(card_type): int(count) for card_type, count in hand.items()}
-    return {}
-
-
 def get_legal_actions(state: dict[str, Any] | None, seat: int) -> dict[str, Any]:
     """Return legal actions for seat by current phase and decision owner."""
 
@@ -42,7 +32,8 @@ def get_legal_actions(state: dict[str, Any] | None, seat: int) -> dict[str, Any]
             ],
         }
 
-    hand = _seat_hand(state, seat)
+    raw_hand = state["players"][int(seat)]["hand"]
+    hand = {str(card_type): int(count) for card_type, count in raw_hand.items()}
 
     if phase == "buckle_decision":
         actions = [

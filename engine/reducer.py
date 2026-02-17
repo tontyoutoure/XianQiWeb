@@ -46,28 +46,8 @@ def _cards_to_types(cards: list[dict[str, int]], expected_count: int) -> list[st
     return expanded
 
 
-def _seat_hand(state: dict[str, Any], seat: int) -> dict[str, int]:
-    players = state.get("players", [])
-    for player in players:
-        if int(player.get("seat", -1)) == int(seat):
-            hand = player.get("hand", {})
-            if isinstance(hand, dict):
-                return {str(card_type): int(count) for card_type, count in hand.items()}
-    return {}
-
-
-def _seat_hand_ref(state: dict[str, Any], seat: int) -> dict[str, int]:
-    players = state.get("players", [])
-    for player in players:
-        if int(player.get("seat", -1)) == int(seat):
-            hand = player.get("hand")
-            if isinstance(hand, dict):
-                return hand
-    raise ValueError(f"missing hand for seat={seat}")
-
-
 def _consume_cards_from_hand(state: dict[str, Any], seat: int, cards: list[dict[str, int]]) -> None:
-    hand = _seat_hand_ref(state, seat)
+    hand = state["players"][int(seat)]["hand"]
     for card in cards:
         card_type = str(card["type"])
         count = int(card["count"])
@@ -194,7 +174,8 @@ def reduce_apply_action(
         if round_kind == 0:
             raise ValueError("ENGINE_INVALID_ACTION")
 
-        hand_before = _seat_hand(state, decision_seat)
+        hand_before_raw = state["players"][decision_seat]["hand"]
+        hand_before = {str(card_type): int(count) for card_type, count in hand_before_raw.items()}
         power = int(target.get("power", _find_combo_power(deps, hand_before, payload_cards, round_kind)))
         _consume_cards_from_hand(state, decision_seat, payload_cards)
 
@@ -315,4 +296,3 @@ def reduce_apply_action(
 
     state["version"] = int(state.get("version", 0)) + 1
     return state
-
