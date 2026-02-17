@@ -52,12 +52,12 @@ def _make_state(
                 "cards": [{"type": "B_CHE", "count": max(round_kind, 1)}],
                 "owner_seat": (current_seat + 1) % 3,
             }
-            if phase == "in_round"
+            if phase == "in_round" and round_kind > 0
             else None,
             "plays": [],
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
 
@@ -65,7 +65,7 @@ def test_m3_la_13_buckle_play_covers_all_combo_kinds() -> None:
     engine = XianqiGameEngine()
     hand = {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1, "R_NIU": 3}
     state = _make_state(
-        phase="buckle_decision",
+        phase="in_round",
         current_seat=0,
         hand_by_seat={0: hand},
         round_kind=0,
@@ -86,7 +86,7 @@ def test_m3_la_14_buckle_play_matches_enumerate_combos() -> None:
     engine = XianqiGameEngine()
     hand = {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1, "R_NIU": 3}
     state = _make_state(
-        phase="buckle_decision",
+        phase="in_round",
         current_seat=0,
         hand_by_seat={0: hand},
         round_kind=0,
@@ -225,7 +225,7 @@ def test_m3_la_20_in_round_single_no_duplicate_for_same_type() -> None:
 def test_m3_la_21_buckle_play_order_stable() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
-        phase="buckle_decision",
+        phase="in_round",
         current_seat=0,
         hand_by_seat={0: {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1, "R_NIU": 3}},
         round_kind=0,

@@ -102,6 +102,33 @@ def _captured_pillar_count(state: dict[str, Any], seat: int) -> int:
     return count
 
 
+def _ensure_reveal_state(state: dict[str, Any]) -> dict[str, Any]:
+    reveal = state.get("reveal")
+    if not isinstance(reveal, dict):
+        reveal = {}
+
+    pending_raw = reveal.get("pending_order")
+    pending_order = list(pending_raw) if isinstance(pending_raw, list) else []
+
+    relations = reveal.get("relations")
+    reveal["relations"] = relations if isinstance(relations, list) else []
+    reveal["buckler_seat"] = reveal.get("buckler_seat")
+    reveal["active_revealer_seat"] = reveal.get("active_revealer_seat")
+    reveal["pending_order"] = [int(seat) for seat in pending_order]
+    state["reveal"] = reveal
+    return reveal
+
+
+def _reset_turn_for_round_start(state: dict[str, Any], seat: int) -> None:
+    turn = state.get("turn")
+    if not isinstance(turn, dict):
+        raise ValueError("ENGINE_INVALID_PHASE")
+    turn["current_seat"] = int(seat)
+    turn["round_kind"] = 0
+    turn["last_combo"] = None
+    turn["plays"] = []
+
+
 def _finish_round(state: dict[str, Any]) -> None:
     turn = state.get("turn", {})
     plays = deepcopy(turn.get("plays", []))
@@ -123,7 +150,10 @@ def _finish_round(state: dict[str, Any]) -> None:
     turn["last_combo"] = None
     turn["plays"] = []
     turn["current_seat"] = winner_seat
-    state["phase"] = "buckle_decision"
+    state["phase"] = "buckle_flow"
+    reveal = _ensure_reveal_state(state)
+    reveal["buckler_seat"] = None
+    reveal["pending_order"] = []
 
 
 def reduce_apply_action(
@@ -176,7 +206,11 @@ def reduce_apply_action(
 
         play = {"seat": acting_seat, "power": power, "cards": payload_cards}
 
-        if phase == "buckle_decision":
+        if phase != "in_round":
+            raise ValueError("ENGINE_INVALID_PHASE")
+
+        expected_round_kind = int(turn.get("round_kind", 0))
+        if expected_round_kind == 0:
             turn["round_kind"] = round_kind
             turn["plays"] = [play]
             turn["last_combo"] = {
@@ -184,11 +218,8 @@ def reduce_apply_action(
                 "cards": payload_cards,
                 "owner_seat": acting_seat,
             }
-            next_seat = (acting_seat + 1) % 3
-            turn["current_seat"] = next_seat
-            state["phase"] = "in_round"
-        elif phase == "in_round":
-            expected_round_kind = int(turn.get("round_kind", 0))
+            turn["current_seat"] = (acting_seat + 1) % 3
+        else:
             if round_kind != expected_round_kind:
                 raise ValueError("ENGINE_INVALID_ACTION")
 
@@ -208,10 +239,7 @@ def reduce_apply_action(
             if len(plays) >= 3:
                 _finish_round(state)
             else:
-                next_seat = (acting_seat + 1) % 3
-                turn["current_seat"] = next_seat
-        else:
-            raise ValueError("ENGINE_INVALID_PHASE")
+                turn["current_seat"] = (acting_seat + 1) % 3
 
     elif action_type == "COVER":
         if phase != "in_round":
@@ -233,22 +261,44 @@ def reduce_apply_action(
             turn["current_seat"] = next_seat
 
     elif action_type == "BUCKLE":
-        if phase != "buckle_decision":
+        if phase != "buckle_flow":
             raise ValueError("ENGINE_INVALID_PHASE")
-        state["phase"] = "reveal_decision"
-        pending = [((acting_seat + 1) % 3), ((acting_seat + 2) % 3)]
-        state["reveal"] = {
-            "buckler_seat": acting_seat,
-            "pending_order": pending,
-            "relations": [],
-        }
-        turn["current_seat"] = pending[0]
+
+        reveal = _ensure_reveal_state(state)
+        if reveal.get("pending_order"):
+            raise ValueError("ENGINE_INVALID_PHASE")
+
+        default_order = [((acting_seat + 1) % 3), ((acting_seat + 2) % 3)]
+        active_revealer = reveal.get("active_revealer_seat")
+        if active_revealer is None:
+            pending = default_order
+        else:
+            active_revealer_seat = int(active_revealer)
+            pending = [active_revealer_seat]
+            pending.extend(seat for seat in default_order if seat != active_revealer_seat)
+
+        reveal["buckler_seat"] = acting_seat
+        reveal["pending_order"] = pending
+        turn["current_seat"] = int(pending[0])
+
+    elif action_type == "PASS_BUCKLE":
+        if phase != "buckle_flow":
+            raise ValueError("ENGINE_INVALID_PHASE")
+
+        reveal = _ensure_reveal_state(state)
+        if reveal.get("pending_order"):
+            raise ValueError("ENGINE_INVALID_PHASE")
+
+        reveal["buckler_seat"] = None
+        reveal["pending_order"] = []
+        state["phase"] = "in_round"
+        _reset_turn_for_round_start(state, acting_seat)
 
     elif action_type in {"REVEAL", "PASS_REVEAL"}:
-        if phase != "reveal_decision":
+        if phase != "buckle_flow":
             raise ValueError("ENGINE_INVALID_PHASE")
 
-        reveal = state.setdefault("reveal", {})
+        reveal = _ensure_reveal_state(state)
         pending_order = list(reveal.get("pending_order", []))
         if not pending_order or int(pending_order[0]) != acting_seat:
             raise ValueError("ENGINE_INVALID_PHASE")
@@ -256,7 +306,14 @@ def reduce_apply_action(
         pending_order.pop(0)
         reveal["pending_order"] = pending_order
 
-        buckler_seat = int(reveal.get("buckler_seat", -1))
+        active_revealer = reveal.get("active_revealer_seat")
+        if action_type == "PASS_REVEAL" and active_revealer is not None and int(active_revealer) == acting_seat:
+            reveal["active_revealer_seat"] = None
+
+        buckler_raw = reveal.get("buckler_seat")
+        if buckler_raw is None:
+            raise ValueError("ENGINE_INVALID_PHASE")
+        buckler_seat = int(buckler_raw)
         relations = reveal.setdefault("relations", [])
         if action_type == "REVEAL":
             relations.append(
@@ -266,15 +323,16 @@ def reduce_apply_action(
                     "revealer_enough_at_time": _captured_pillar_count(state, acting_seat) >= 3,
                 }
             )
-
-        if pending_order:
-            next_seat = int(pending_order[0])
-            turn["current_seat"] = next_seat
-        elif relations:
-            next_seat = int(relations[-1].get("revealer_seat", acting_seat))
-            state["phase"] = "buckle_decision"
-            turn["current_seat"] = next_seat
+            reveal["active_revealer_seat"] = acting_seat
+            reveal["pending_order"] = []
+            reveal["buckler_seat"] = None
+            state["phase"] = "in_round"
+            _reset_turn_for_round_start(state, buckler_seat)
+        elif pending_order:
+            turn["current_seat"] = int(pending_order[0])
         else:
+            reveal["buckler_seat"] = None
+            reveal["pending_order"] = []
             state["phase"] = "settlement"
             turn["current_seat"] = acting_seat
     else:

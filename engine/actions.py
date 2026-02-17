@@ -23,29 +23,43 @@ def get_legal_actions(state: dict[str, Any] | None, seat: int) -> dict[str, Any]
     if phase in {"settlement", "finished"}:
         return {"seat": seat, "actions": []}
 
-    if phase == "reveal_decision":
+    if phase == "buckle_flow":
+        reveal = state.get("reveal") or {}
+        pending_raw = reveal.get("pending_order") or []
+        pending_order = [int(pending_seat) for pending_seat in pending_raw]
+        if pending_order:
+            if int(pending_order[0]) != int(seat):
+                return {"seat": seat, "actions": []}
+            return {
+                "seat": seat,
+                "actions": [
+                    {"type": "REVEAL"},
+                    {"type": "PASS_REVEAL"},
+                ],
+            }
         return {
             "seat": seat,
             "actions": [
-                {"type": "REVEAL"},
-                {"type": "PASS_REVEAL"},
+                {"type": "BUCKLE"},
+                {"type": "PASS_BUCKLE"},
             ],
         }
 
     raw_hand = state["players"][int(seat)]["hand"]
     hand = {str(card_type): int(count) for card_type, count in raw_hand.items()}
 
-    if phase == "buckle_decision":
-        actions = [
-            {"type": "PLAY", "payload_cards": combo["cards"], "power": int(combo["power"])}
-            for combo in enumerate_combos(hand)
-        ]
-        actions.append({"type": "BUCKLE"})
-        return {"seat": seat, "actions": actions}
-
     if phase == "in_round":
         turn = state.get("turn") or {}
         round_kind = int(turn.get("round_kind", 0))
+        if round_kind == 0:
+            return {
+                "seat": seat,
+                "actions": [
+                    {"type": "PLAY", "payload_cards": combo["cards"], "power": int(combo["power"])}
+                    for combo in enumerate_combos(hand)
+                ],
+            }
+
         last_combo = turn.get("last_combo") or {}
         last_power = int(last_combo.get("power", -1))
 

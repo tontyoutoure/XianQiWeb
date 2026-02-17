@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
     return {
         "version": version,
-        "phase": "buckle_decision",
+        "phase": "buckle_flow",
         "players": [
             {"seat": 0, "hand": {"R_SHI": 1, "B_NIU": 1}},
             {"seat": 1, "hand": {"B_SHI": 1}},
@@ -30,7 +30,7 @@ def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
             "plays": [],
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
 
@@ -68,7 +68,7 @@ def _make_in_round_cover_state(
             "plays": plays,
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
 
@@ -141,7 +141,7 @@ def test_m3_rf_02_cover_round_finish_stays_equivalent() -> None:
     )
     next_state = output.get("new_state", {})
 
-    assert next_state.get("phase") == "buckle_decision"
+    assert next_state.get("phase") == "buckle_flow"
     assert (next_state.get("turn") or {}).get("current_seat") == 1
     assert int(next_state.get("version", 0)) == 51
     assert len(next_state.get("pillar_groups", [])) == 1

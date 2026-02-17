@@ -97,7 +97,7 @@ class XianqiGameEngine:
 
         first_seat = int(rng.randint(0, 2))
         black_chess = any(self._is_black_hand(player["hand"]) for player in players)
-        phase = "settlement" if black_chess else "buckle_decision"
+        phase = "settlement" if black_chess else "buckle_flow"
 
         self._state = {
             "version": 1,
@@ -111,7 +111,12 @@ class XianqiGameEngine:
                 "plays": [],
             },
             "pillar_groups": [],
-            "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+            "reveal": {
+                "buckler_seat": None,
+                "active_revealer_seat": None,
+                "pending_order": [],
+                "relations": [],
+            },
         }
         return {"new_state": self.dump_state()}
 

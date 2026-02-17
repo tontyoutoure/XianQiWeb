@@ -113,7 +113,7 @@ def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
     class FakeEngine:
         def __init__(self) -> None:
             self.version = 11
-            self.phase = "buckle_decision"
+            self.phase = "buckle_flow"
 
         def init_game(self, _config, rng_seed=None) -> None:  # noqa: ANN001, ANN002
             _ = rng_seed

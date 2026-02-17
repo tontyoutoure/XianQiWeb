@@ -46,27 +46,27 @@
 
 | 测试ID | 测试描述 | 通过条件 |
 |---|---|---|
-| M3-LA-01 | `buckle_decision` 动作集合 | 仅包含 `PLAY` 与最多 1 个 `BUCKLE` |
-| M3-LA-02 | `buckle_decision` 的 PLAY 完整性 | 所有可出的单张/对子/三牛均被覆盖，无遗漏 |
-| M3-LA-03 | `buckle_decision` 排序稳定 | 多次调用 `get_legal_actions`，`actions` 顺序一致 |
+| M3-LA-01 | `buckle_flow` 起始动作集合 | `pending_order=[]` 时仅包含 `BUCKLE` 与 `PASS_BUCKLE` |
+| M3-LA-02 | `buckle_flow` 起始动作完整性 | `BUCKLE/PASS_BUCKLE` 两个动作均存在且无其他动作 |
+| M3-LA-03 | `buckle_flow` 起始动作排序稳定 | 多次调用 `get_legal_actions`，`actions` 顺序一致 |
 | M3-LA-04 | `in_round` 可压制时互斥规则 | 若存在可压制组合，仅返回 `PLAY`，不返回 `COVER` |
 | M3-LA-05 | `in_round` 不可压制时互斥规则 | 若无可压制组合，仅返回 1 个 `COVER(required_count=round_kind)` |
 | M3-LA-06 | `COVER.required_count` 正确 | `required_count` 必等于当前 `round_kind` |
 | M3-LA-07 | `in_round` 压制集合正确性 | 返回的 PLAY 全部可压制且不包含不可压制组合 |
 | M3-LA-08 | 非当前行动 seat 的动作 | `seat != turn.current_seat` 时返回空 `actions` |
-| M3-LA-09 | `reveal_decision` 动作集合 | 仅包含 `REVEAL` 与 `PASS_REVEAL` |
+| M3-LA-09 | `buckle_flow` 询问态动作集合 | `pending_order` 非空时仅包含 `REVEAL` 与 `PASS_REVEAL` |
 | M3-LA-10 | `settlement/finished` 无动作 | `get_legal_actions` 返回空 `actions` |
 | M3-LA-11 | `action_idx` 稳定性 | 同一状态多次获取 `actions`，索引含义不漂移 |
 | M3-LA-12 | phase 切换后动作刷新 | `apply_action` 后下一状态的 `actions` 与新 `turn.current_seat` 一致 |
-| M3-LA-13 | `buckle_decision` 下 PLAY 组合全集覆盖 | PLAY 必须覆盖单张/对子/狗脚对/三牛全部可出组合 |
-| M3-LA-14 | `buckle_decision` PLAY 与组合枚举一致性 | PLAY 的 `payload_cards` 与 `enumerate_combos` 结果一一对应 |
+| M3-LA-13 | `in_round` 首手前态 PLAY 组合全集覆盖 | `round_kind=0` 时 PLAY 必须覆盖单张/对子/狗脚对/三牛全部可出组合 |
+| M3-LA-14 | `in_round` 首手前态 PLAY 与组合枚举一致性 | `round_kind=0` 时 PLAY 的 `payload_cards` 与 `enumerate_combos` 结果一一对应 |
 | M3-LA-15 | `in_round` 单张可压制全集 | 仅返回所有 `power > last_combo.power` 的单张 PLAY |
 | M3-LA-16 | `in_round` 对子可压制全集（含狗脚对） | 返回所有可压制对子 PLAY，且包含狗脚对压制场景 |
 | M3-LA-17 | `in_round` 对子严格大于边界 | `power == last_combo.power` 的对子不得出现在 PLAY 列表 |
 | M3-LA-18 | `in_round` 三牛可压制全集 | 仅返回可压制三牛 PLAY，黑三牛不可压制红三牛 |
 | M3-LA-19 | `in_round` PLAY 张数与 `round_kind` 一致 | 所有 PLAY 的牌张总数都必须等于 `round_kind` |
 | M3-LA-20 | `in_round` 单张去重 | 同一 `card_type` 即使 `count>1`，PLAY 单张也只出现一次 |
-| M3-LA-21 | `buckle_decision` PLAY 顺序稳定性（扩展） | 连续多次获取动作，PLAY 组合顺序完全一致 |
+| M3-LA-21 | `in_round` 首手前态 PLAY 顺序稳定性（扩展） | `round_kind=0` 时连续多次获取动作，PLAY 组合顺序完全一致 |
 | M3-LA-22 | `in_round` PLAY 顺序稳定性（扩展） | 连续多次获取动作，PLAY 组合顺序完全一致 |
 
 ## 4) 动作执行与校验补充测试
@@ -154,19 +154,19 @@
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-LA-01 | `phase=buckle_decision`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1}` | actions 仅含 PLAY 与最多 1 个 BUCKLE |
-| M3-LA-02 | 同 LA-01 | PLAY 覆盖单张/对子（含狗脚对）全部可出组合，无遗漏 |
+| M3-LA-01 | `phase=buckle_flow`，`reveal.pending_order=[]`，`turn.current_seat=0` | actions 仅含 `BUCKLE/PASS_BUCKLE` |
+| M3-LA-02 | 同 LA-01 | actions 恰好为 `BUCKLE/PASS_BUCKLE`，无其他动作 |
 | M3-LA-03 | 同 LA-01，连续调用 3 次 | actions 顺序完全一致 |
 | M3-LA-04 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=2`，`seat1.hand={"R_SHI":1}` | 仅返回 PLAY（不返回 COVER） |
 | M3-LA-05 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=9`，`seat1.hand={"B_NIU":1}` | 仅返回 1 个 COVER |
 | M3-LA-06 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"R_XIANG":1}` | 返回 COVER，且 `required_count=2`（虽然单张牌力高，但因凑不出任何合法对子只能垫牌） |
 | M3-LA-07 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=6`，`seat1.hand={"R_SHI":2,"R_MA":2,"B_NIU":2}` | 返回的 PLAY 全部 `power>6`，且不包含不可压制组合 |
 | M3-LA-08 | 任一可行动状态，但调用 `get_legal_actions(seat!=turn.current_seat)` | 返回 `{"seat":x,"actions":[]}` |
-| M3-LA-09 | `phase=reveal_decision`，`turn.current_seat=2` | actions 仅含 `REVEAL` 与 `PASS_REVEAL` |
+| M3-LA-09 | `phase=buckle_flow`，`reveal.pending_order=[2,1]`，`turn.current_seat=2` | actions 仅含 `REVEAL` 与 `PASS_REVEAL` |
 | M3-LA-10 | `phase=settlement` 或 `phase=finished` | actions 为空 |
 | M3-LA-11 | 固定同一状态（建议 LA-04）连续取 `actions` | 每个 `action_idx` 语义不漂移 |
 | M3-LA-12 | 对同一局面先执行一次 `apply_action` 再取 `actions` | 新状态 actions 与新的 `turn.current_seat` 一致 |
-| M3-LA-13 | `phase=buckle_decision`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
+| M3-LA-13 | `phase=in_round`，`round_kind=0`，`last_combo=null`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
 | M3-LA-14 | 同 LA-13 | PLAY 的 `payload_cards` 集合与 `enumerate_combos(hand)` 输出一致 |
 | M3-LA-15 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_CHE":1}` | PLAY 仅含红士/黑士/红相（全部 `power>3`） |
 | M3-LA-16 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=4`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1,"B_NIU":2}` | PLAY 含狗脚对、红士对、黑士对、红马对；不含黑牛对 |
@@ -233,7 +233,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08` 与 `M3-RF-01~03`。
+> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 与 `M3-BF-01~10`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -252,4 +252,4 @@
 | M3-CLI-01 ~ M3-CLI-04 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_01_04.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 补齐 `build_initial_snapshot / resolve_seed / render_turn_prompt / render_state_view` 后执行同命令（4 passed）。 |
 | M3-CLI-05 ~ M3-CLI-08 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_05_08.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 修复动作索引展示、COVER 重试、错误码前缀与 settlement 提示后执行同命令（4 passed）。 |
 | M3-RF-01 ~ M3-RF-03 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_refactor_apply_action_reducer.py` 并执行 `pytest engine/tests/test_m3_refactor_apply_action_reducer.py -q`（`1 failed, 2 passed`，缺少 `reduce_apply_action` 委托入口）；Green：2026-02-17 新增 `engine/reducer.py` 并完成 `engine/core.py` 委托改造后执行同命令（`3 passed`）。 |
-| M3-BF-01 ~ M3-BF-10 | ❌ 失败（符合 Red 预期） | Red 已执行 | 2026-02-18：已新增 `engine/tests/test_m3_red_bf_01_10.py` 并执行 `pytest engine/tests/test_m3_red_bf_01_10.py -q`（10 failed）；当前实现仍使用旧 phase（`buckle_decision/reveal_decision`），尚未支持 `buckle_flow` 掀扣转换口径。 |
+| M3-BF-01 ~ M3-BF-10 | ✅ 通过 | Green 已完成 | Red：2026-02-18 执行 `pytest engine/tests/test_m3_red_bf_01_10.py -q`（10 failed）；Green：2026-02-18 完成 `buckle_flow` 流程重构并移除旧 phase 后复测同命令（10 passed），并回归 `pytest engine/tests -q`（88 passed）。 |

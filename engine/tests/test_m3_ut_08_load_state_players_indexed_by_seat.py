@@ -26,7 +26,7 @@ def test_m3_ut_08_load_state_asserts_players_index_matches_seat() -> None:
 
     broken_state = {
         "version": 1,
-        "phase": "buckle_decision",
+        "phase": "buckle_flow",
         "players": [
             {"seat": 1, "hand": {"R_SHI": 1}},
             {"seat": 0, "hand": {"B_SHI": 1}},
@@ -40,7 +40,7 @@ def test_m3_ut_08_load_state_asserts_players_index_matches_seat() -> None:
             "plays": [],
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
     with pytest.raises(AssertionError):

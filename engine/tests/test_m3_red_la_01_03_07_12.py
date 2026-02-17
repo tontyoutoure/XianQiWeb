@@ -62,19 +62,19 @@ def _make_state(
                 "cards": [{"type": "B_CHE", "count": max(round_kind, 1)}],
                 "owner_seat": (current_seat + 1) % 3,
             }
-            if phase == "in_round"
+            if phase == "in_round" and round_kind > 0
             else None,
             "plays": [],
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": 0, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": 0, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
 
 def test_m3_la_01_buckle_actions_only_play_plus_single_buckle() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
-        phase="buckle_decision",
+        phase="buckle_flow",
         current_seat=0,
         hand_by_seat={0: {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1}},
         round_kind=0,
@@ -86,34 +86,28 @@ def test_m3_la_01_buckle_actions_only_play_plus_single_buckle() -> None:
     actions = legal_actions.get("actions", [])
     types = [action.get("type") for action in actions]
 
-    assert actions
-    assert set(types).issubset({"PLAY", "BUCKLE"})
-    assert types.count("BUCKLE") <= 1
+    assert types == ["BUCKLE", "PASS_BUCKLE"]
 
 
 def test_m3_la_02_buckle_play_completeness_matches_combos() -> None:
     engine = XianqiGameEngine()
-    hand = {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1}
     state = _make_state(
-        phase="buckle_decision",
+        phase="buckle_flow",
         current_seat=0,
-        hand_by_seat={0: hand},
+        hand_by_seat={0: {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1}},
         round_kind=0,
         last_combo_power=-1,
     )
 
     engine.load_state(state)
     legal_actions = engine.get_legal_actions(0)
-
-    actual = sorted(_play_signatures(legal_actions))
-    expected = sorted(_cards_signature(combo["cards"]) for combo in enumerate_combos(hand))
-    assert actual == expected
+    assert [action.get("type") for action in legal_actions.get("actions", [])] == ["BUCKLE", "PASS_BUCKLE"]
 
 
 def test_m3_la_03_buckle_action_order_stable() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
-        phase="buckle_decision",
+        phase="buckle_flow",
         current_seat=0,
         hand_by_seat={0: {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1}},
         round_kind=0,
@@ -169,10 +163,10 @@ def test_m3_la_08_non_current_seat_has_empty_actions() -> None:
     assert legal_actions == {"seat": 0, "actions": []}
 
 
-def test_m3_la_09_reveal_decision_only_reveal_and_pass() -> None:
+def test_m3_la_09_buckle_flow_reveal_query_only_reveal_and_pass() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
-        phase="reveal_decision",
+        phase="buckle_flow",
         current_seat=2,
         hand_by_seat={2: {"R_SHI": 1}},
         round_kind=0,
@@ -185,7 +179,7 @@ def test_m3_la_09_reveal_decision_only_reveal_and_pass() -> None:
         "last_combo": None,
         "plays": [],
     }
-    state["reveal"] = {"buckler_seat": 0, "pending_order": [2, 1], "relations": []}
+    state["reveal"] = {"buckler_seat": 0, "active_revealer_seat": None, "pending_order": [2, 1], "relations": []}
 
     engine.load_state(state)
     legal_actions = engine.get_legal_actions(2)
@@ -255,7 +249,7 @@ def test_m3_la_11_action_index_meaning_is_stable_on_same_state() -> None:
 def test_m3_la_12_actions_refresh_after_phase_switch() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
-        phase="buckle_decision",
+        phase="buckle_flow",
         current_seat=0,
         hand_by_seat={0: {"R_SHI": 1}, 1: {"B_NIU": 1}, 2: {"R_NIU": 1}},
         round_kind=0,
@@ -263,12 +257,14 @@ def test_m3_la_12_actions_refresh_after_phase_switch() -> None:
     )
 
     engine.load_state(state)
-    out = engine.apply_action(action_idx=0, client_version=1)
+    actions = engine.get_legal_actions(0).get("actions", [])
+    pass_idx = next(idx for idx, action in enumerate(actions) if action.get("type") == "PASS_BUCKLE")
+    out = engine.apply_action(action_idx=pass_idx, client_version=1)
     next_state = out["new_state"]
     next_seat = int((next_state.get("turn") or {}).get("current_seat", -1))
 
     assert next_state.get("phase") == "in_round"
-    assert next_seat == 1
-    assert engine.get_legal_actions(1).get("actions")
-    assert engine.get_legal_actions(0) == {"seat": 0, "actions": []}
+    assert next_seat == 0
+    assert engine.get_legal_actions(0).get("actions")
+    assert engine.get_legal_actions(1) == {"seat": 1, "actions": []}
     assert engine.get_legal_actions(2) == {"seat": 2, "actions": []}

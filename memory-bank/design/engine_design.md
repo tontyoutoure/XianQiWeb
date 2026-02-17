@@ -11,7 +11,7 @@
   - `memory-bank/product-requirements.md`
   - `memory-bank/interfaces/backend-engine-interface.md`
   - `XianQi_rules.md`
-- 兼容策略（本轮变更）：立即切换不兼容。`load_state` 仅接受新 schema，不再兼容 `buckle_decision / reveal_decision / decision` 旧字段。
+- 兼容策略（本轮变更）：立即切换不兼容。`load_state` 仅接受新 schema，不再兼容旧版“双决策 phase + decision 字段”结构。
 
 ## 1. 设计目标与原则
 - **纯规则内核**：不依赖 FastAPI/数据库，便于单测与复用。
@@ -301,4 +301,4 @@ engine/
 ## 10. 变更记录
 - 2026-02-15：创建文档，补充引擎接口实现逻辑、动作校验链路、结算算法口径与后端集成约定。
 - 2026-02-17：新增“命令行对局接口”设计（seed 约定、状态展示口径、交互循环与错误处理）。
-- 2026-02-17：根据规则澄清完成状态机重构：`buckle_decision/reveal_decision` 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。
+- 2026-02-17：根据规则澄清完成状态机重构：旧双决策 phase 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。

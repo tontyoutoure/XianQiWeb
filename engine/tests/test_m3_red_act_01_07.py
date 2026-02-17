@@ -43,7 +43,7 @@ def _find_action_idx(legal_actions: dict[str, Any], action_type: str) -> int:
 def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
     return {
         "version": version,
-        "phase": "buckle_decision",
+        "phase": "buckle_flow",
         "players": [
             {"seat": 0, "hand": {"R_SHI": 1, "B_NIU": 1}},
             {"seat": 1, "hand": {"B_SHI": 1}},
@@ -57,7 +57,7 @@ def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
             "plays": [],
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
 
@@ -95,14 +95,14 @@ def _make_in_round_cover_state(
             "plays": plays,
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
     }
 
 
 def _make_reveal_state(*, version: int = 31) -> dict[str, Any]:
     return {
         "version": version,
-        "phase": "reveal_decision",
+        "phase": "buckle_flow",
         "players": [
             {"seat": 0, "hand": {"R_SHI": 1}},
             {"seat": 1, "hand": {"B_SHI": 1}},
@@ -118,6 +118,7 @@ def _make_reveal_state(*, version: int = 31) -> dict[str, Any]:
         "pillar_groups": [],
         "reveal": {
             "buckler_seat": 0,
+            "active_revealer_seat": None,
             "pending_order": [1, 2],
             "relations": [],
         },
@@ -154,11 +155,11 @@ def test_m3_act_03_non_cover_action_must_not_accept_cover_list() -> None:
     engine.load_state(_make_buckle_state(version=13))
 
     legal_actions = engine.get_legal_actions(0)
-    play_idx = _find_action_idx(legal_actions, "PLAY")
+    buckle_idx = _find_action_idx(legal_actions, "BUCKLE")
 
     with pytest.raises(ValueError, match="ENGINE_INVALID_COVER_LIST"):
         engine.apply_action(
-            action_idx=play_idx,
+            action_idx=buckle_idx,
             cover_list=[{"type": "B_NIU", "count": 1}],
             client_version=13,
         )
@@ -244,7 +245,7 @@ def test_m3_act_06_round_end_advances_current_seat_to_winner() -> None:
     next_state = _extract_state(engine, output)
 
     turn = next_state.get("turn") or {}
-    assert next_state.get("phase") == "buckle_decision"
+    assert next_state.get("phase") == "buckle_flow"
     assert turn.get("current_seat") == 1
 
 
@@ -264,7 +265,7 @@ def test_m3_act_07_reveal_pending_order_and_current_seat_progress() -> None:
     reveal = next_state.get("reveal") or {}
     turn = next_state.get("turn") or {}
 
-    assert next_state.get("phase") == "reveal_decision"
+    assert next_state.get("phase") == "buckle_flow"
     assert reveal.get("pending_order") == [2]
     assert turn.get("current_seat") == 2
     assert int(next_state.get("version", 0)) == 32
