@@ -25,6 +25,7 @@
 - M3 引擎重构里程碑（2026-02-17）：已完成 `apply_action` 等效拆分（`engine/core.py` -> `engine/reducer.py`），并新增 `M3-RF-01~03`（`engine/tests/test_m3_refactor_apply_action_reducer.py`）完成红绿闭环；全量引擎测试更新为 `62 passed`（`pytest engine/tests -q`）。
 - M3 公共态脱敏补齐（2026-02-17）：已新增并拉绿 `M3-UT-06`（`engine/tests/test_m3_red_ut_06_public_state_masking.py`），在 `engine/core.py` 实现 `get_public_state` 脱敏投影（`hand -> hand_count`、`power=-1 cards -> covered_count`、隐藏 `decision`）；全量引擎测试更新为 `63 passed`（`pytest engine/tests -q`）。
 - M3 私有态补齐（2026-02-17）：已新增并拉绿 `M3-UT-07`（`engine/tests/test_m3_red_ut_07_private_state_covered.py`），在 `engine/core.py` 实现 `get_private_state` 返回 `hand + covered`（按 `turn.plays + pillar_groups[*].plays` 中 `power=-1` 的本人垫牌聚合）；全量引擎测试更新为 `64 passed`（`pytest engine/tests -q`）。
+- M3 序列化模块拆分（2026-02-17）：已新增 `engine/serializer.py` 并将 `load_state/dump_state/get_public_state/get_private_state` 及相关辅助函数从 `engine/core.py` 抽离，`engine/core.py` 改为调用 serializer；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
   - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。

@@ -9,6 +9,12 @@ from typing import Any
 
 from engine.combos import enumerate_combos
 from engine.reducer import ReducerDeps, reduce_apply_action
+from engine.serializer import (
+    dump_state as serializer_dump_state,
+    get_private_state as serializer_get_private_state,
+    get_public_state as serializer_get_public_state,
+    load_state as serializer_load_state,
+)
 
 
 class XianqiGameEngine:
@@ -37,12 +43,10 @@ class XianqiGameEngine:
         self._state: dict[str, Any] | None = None
 
     def load_state(self, state: dict[str, Any]) -> None:
-        self._state = deepcopy(state)
+        self._state = serializer_load_state(state)
 
     def dump_state(self) -> dict[str, Any]:
-        if self._state is None:
-            return {}
-        return deepcopy(self._state)
+        return serializer_dump_state(self._state)
 
     def _require_state(self) -> dict[str, Any]:
         if self._state is None:
@@ -136,27 +140,6 @@ class XianqiGameEngine:
             pillar_cards = [{"type": card_type, "count": count} for card_type, count in sorted(counter.items())]
             pillars.append({"index": idx, "cards": pillar_cards})
         return pillars
-
-    @staticmethod
-    def _accumulate_covered_cards(
-        covered: dict[str, int],
-        plays: list[dict[str, Any]],
-        seat: int,
-    ) -> None:
-        for play in plays:
-            if int(play.get("seat", -1)) != int(seat):
-                continue
-            if int(play.get("power", 0)) != -1:
-                continue
-            cards = play.get("cards") or []
-            if not isinstance(cards, list):
-                continue
-            for card in cards:
-                card_type = str(card.get("type", ""))
-                count = int(card.get("count", 0))
-                if not card_type or count <= 0:
-                    continue
-                covered[card_type] = int(covered.get(card_type, 0)) + count
 
     def _find_combo_power(self, hand: dict[str, int], cards: list[dict[str, int]], round_kind: int) -> int:
         signature = self._cards_signature(cards)
@@ -350,98 +333,8 @@ class XianqiGameEngine:
     def settle(self) -> dict[str, Any]:
         raise NotImplementedError("settle is not implemented in this stage")
 
-    @staticmethod
-    def _sum_hand_count(hand: dict[str, Any]) -> int:
-        return sum(int(count) for count in hand.values())
-
-    @classmethod
-    def _project_public_play(cls, play: dict[str, Any]) -> dict[str, Any]:
-        projected = deepcopy(play)
-        if int(projected.get("power", 0)) != -1:
-            return projected
-
-        cards = projected.pop("cards", None)
-        if isinstance(cards, list):
-            covered_count = cls._count_cards(cards)
-        else:
-            covered_count = int(projected.get("covered_count", 0))
-        projected["covered_count"] = int(covered_count)
-        return projected
-
     def get_public_state(self) -> dict[str, Any]:
-        if self._state is None:
-            return {}
-        state = self._state
-
-        public_state: dict[str, Any] = {
-            "version": int(state.get("version", 0)),
-            "phase": state.get("phase"),
-        }
-
-        players = state.get("players", [])
-        public_players: list[dict[str, Any]] = []
-        for player in players:
-            if not isinstance(player, dict):
-                continue
-            hand = player.get("hand")
-            hand_count = self._sum_hand_count(hand if isinstance(hand, dict) else {})
-            public_players.append({"seat": int(player.get("seat", -1)), "hand_count": hand_count})
-        public_state["players"] = public_players
-
-        turn = state.get("turn")
-        if isinstance(turn, dict):
-            public_turn: dict[str, Any] = {
-                "current_seat": turn.get("current_seat"),
-                "round_index": turn.get("round_index"),
-                "round_kind": turn.get("round_kind"),
-                "last_combo": deepcopy(turn.get("last_combo")),
-                "plays": [],
-            }
-            plays = turn.get("plays") or []
-            if isinstance(plays, list):
-                public_turn["plays"] = [
-                    self._project_public_play(play) for play in plays if isinstance(play, dict)
-                ]
-            public_state["turn"] = public_turn
-
-        pillar_groups = state.get("pillar_groups") or []
-        public_pillar_groups: list[dict[str, Any]] = []
-        for group in pillar_groups:
-            if not isinstance(group, dict):
-                continue
-            projected_group = deepcopy(group)
-            plays = projected_group.get("plays") or []
-            if isinstance(plays, list):
-                projected_group["plays"] = [
-                    self._project_public_play(play) for play in plays if isinstance(play, dict)
-                ]
-            public_pillar_groups.append(projected_group)
-        public_state["pillar_groups"] = public_pillar_groups
-
-        reveal = state.get("reveal")
-        if isinstance(reveal, dict):
-            public_state["reveal"] = deepcopy(reveal)
-
-        return public_state
+        return serializer_get_public_state(self._state)
 
     def get_private_state(self, seat: int) -> dict[str, Any]:
-        target_seat = int(seat)
-        if target_seat not in {0, 1, 2}:
-            raise ValueError("ENGINE_INVALID_SEAT")
-
-        state = self._require_state()
-        covered: dict[str, int] = {}
-
-        turn = state.get("turn") or {}
-        turn_plays = turn.get("plays") or []
-        if isinstance(turn_plays, list):
-            self._accumulate_covered_cards(covered, turn_plays, target_seat)
-
-        for group in state.get("pillar_groups", []):
-            if not isinstance(group, dict):
-                continue
-            group_plays = group.get("plays") or []
-            if isinstance(group_plays, list):
-                self._accumulate_covered_cards(covered, group_plays, target_seat)
-
-        return {"hand": self._seat_hand(target_seat), "covered": covered}
+        return serializer_get_private_state(self._state, seat)
