@@ -29,6 +29,7 @@
 - M3 合法动作模块拆分（2026-02-17）：已新增 `engine/actions.py` 并将 `get_legal_actions` 及手牌读取辅助函数从 `engine/core.py` 抽离为函数式实现（state-only）；`engine/core.py` 的同名方法改为转发调用，reducer 依赖链保持兼容；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M3 seat 直索引与快速失败策略（2026-02-17）：`actions/reducer/serializer/core` 中多处 seat 手牌读取改为 `players[seat]` 直索引；`load_state` 增加 players 索引一致性断言（`players[i].seat == i`），并新增 `M3-UT-08`（`engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py`）锁定契约；全量测试更新为 `65 passed`（`pytest engine/tests -q`）。
 - M3 结算入口模块拆分（2026-02-17）：已新增 `engine/settlements.py` 并将 `engine/core.py` 的 `settle` 改为委托 `settlements` 入口，当前结算逻辑仍保持未实现占位；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
+- M5 结算测试清单初始化（2026-02-17）：已新增 `memory-bank/tests/m5-tests.md`，先落地“仅引擎结算”`M5-UT-01~13` 设计（含掀时已够未瓷特殊规则、黑棋零增量与全样例守恒断言），待人类指定测试ID后进入 Red/Green。
 - M3 行动位字段收敛（2026-02-17）：已删除 `state.decision` 及 `_advance_decision` 相关调用，动作判定/状态推进/CLI 全部统一为 `turn.current_seat` 单一真源，并同步修正相关引擎测试夹具与断言；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。

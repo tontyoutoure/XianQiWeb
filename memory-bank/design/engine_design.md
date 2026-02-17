@@ -31,7 +31,7 @@ engine/
   ✅ combos.py           # 组合枚举、组合牌力计算、比较器
   ✅ actions.py          # 各 phase 合法动作生成
   ✅ reducer.py          # apply_action 的状态推进
-  ✅ settlements.py      # 结算入口（当前仅占位，具体结算逻辑未实现）
+  🚧 settlements.py      # 结算入口（当前仅占位，具体结算逻辑未实现）
   ✅ serializer.py       # state/public/private 输出与 dump/load
   ❌ errors.py           # 引擎错误码与异常定义
 ```
