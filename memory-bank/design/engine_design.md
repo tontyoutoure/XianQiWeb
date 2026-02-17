@@ -4,13 +4,14 @@
 
 ## 0. 范围与基线
 - 文档范围：三人 MVP 掀棋规则；不包含额外规则（掀瓷包瓷、抱头等）。
-- 状态机基线：`init -> buckle_decision -> in_round -> reveal_decision -> settlement -> finished`。
+- 状态机基线：`init -> buckle_flow -> in_round -> settlement -> finished`。
 - 接口基线：`init_game / apply_action / settle / get_public_state / get_private_state / get_legal_actions / dump_state / load_state`。
 - 一致性文档：
   - `memory-bank/architecture.md`
-  - `memory-bank/game-design-document.md`
+  - `memory-bank/product-requirements.md`
   - `memory-bank/interfaces/backend-engine-interface.md`
   - `XianQi_rules.md`
+- 兼容策略（本轮变更）：立即切换不兼容。`load_state` 仅接受新 schema，不再兼容 `buckle_decision / reveal_decision / decision` 旧字段。
 
 ## 1. 设计目标与原则
 - **纯规则内核**：不依赖 FastAPI/数据库，便于单测与复用。
@@ -37,127 +38,118 @@ engine/
 
 ## 3. 核心状态与不变量
 
-### 3.1 关键状态
-- `state.version`：动作成功后单调递增。
-- `state.phase`：当前阶段。
-- `state.players[seat].hand`：手牌计数表。
-- `state.turn`：当前回合（`current_seat/round_index/round_kind/last_combo/plays`）。
-- `state.decision`：当前“烧时间”的决策位（`seat/context/started_at_ms/timeout_at_ms`）。
-- `state.pillar_groups`：已结算回合记录（用于柱数统计与公开回放）。
-- `state.reveal`：扣棋方、待决策顺序、掀扣关系。
+### 3.1 状态定义来源（单一真源）
+- 完整 `state` 结构、字段注释与示例以 `memory-bank/interfaces/backend-engine-interface.md` 第 `1.3` 节为准（唯一真源）。
+- 本文仅描述实现推进逻辑与不变量，不再重复维护一份完整状态 schema。
+- 本文会引用以下关键字段：`state.version`、`state.phase`、`state.turn`、`state.reveal`、`state.pillar_groups`、`state.players[*].hand`。
 
 ### 3.2 全局不变量
 - 三名玩家手牌总和 + `pillar_groups` 中卡牌总和 = 24。
 - 同一回合内所有 `plays` 的总张数一致（都等于 `round_kind`）。
-- `round_kind=0` 仅允许出现在 `buckle_decision`。
 - `last_combo` 只记录本轮最大非垫牌组合（`power >= 0`）。
 - `captured_pillar_count` 必须可由 `pillar_groups` 推导，且每次输出一致。
-- `phase in {buckle_decision,in_round,reveal_decision}` 时，`decision.seat` 必须等于当前应决策座次。
-- 为兼容既有协议，`turn.current_seat` 与 `decision.seat` 保持一致；前者可视为后者别名。
-- `phase in {settlement,finished}` 时，`decision` 允许为空（或 `timeout_at_ms=null` 的非激活态）。
+- “当前谁在决策”统一由 `turn.current_seat` 表达；引擎内不再维护 `decision` 字段。
+- `round_kind = 0` 仅允许在“本轮首手尚未打出”时出现（`buckle_flow`，或 `in_round` 且 `turn.plays` 为空）。
+- `phase != buckle_flow` 时，`reveal.pending_order` 必须为空列表。
+- `reveal.pending_order` 非空时，`turn.current_seat` 必须等于 `pending_order[0]`。
+- `state.turn` 一致性检查（建议）：
+  - `round_kind = 0` 时，`last_combo` 应为 `null`，且 `plays` 应为空数组。
+  - `round_kind > 0` 时，`plays` 每条记录的总张数必须等于 `round_kind`。
+  - `last_combo != null` 时，`last_combo.owner_seat` 必须出现在当前回合 `plays` 中。
 
-### 3.3 决策态字段定义（新增强调）
-```jsonc
-{
-  "decision": {
-    "seat": 1,                   // 当前正在决策（正在消耗操作时间）的玩家
-    "context": "IN_ROUND",       // BUCKLE_DECISION | IN_ROUND | REVEAL_DECISION
-    "started_at_ms": 1739600000, // 引擎切到该决策位的时间戳（毫秒）
-    "timeout_at_ms": null        // MVP 可为空；若后续接入超时机制则写截止时间
-  }
-}
-```
-- 若后端未启用超时托管，可仅用 `seat/context` 指示“轮到谁”。  
-- 前端倒计时应以 `decision.timeout_at_ms` 为准；为空则展示“轮到某玩家决策”但不显示倒计时。
+### 3.3 `buckle_flow` 子流程定义（新增）
+`buckle_flow` 统一承载两类决策：
+1. **回合起始决策**：`pending_order=[]`，当前位仅可 `BUCKLE / PASS_BUCKLE`。
+2. **扣后询问掀棋**：`pending_order!=[]`，当前位仅可 `REVEAL / PASS_REVEAL`。
 
 ## 4. 对外接口实现逻辑
 
 ### 4.1 `init_game(config, rng_seed?) -> output`
-### 输入与校验
+#### 4.1.1 输入与校验
 - 校验 `config.player_count == 3`。
 - 校验初始筹码、规则开关等参数满足 MVP 约束。
 - `rng_seed` 有值则固定随机源，无值则系统随机。
 
-### 执行步骤
+#### 4.1.2 执行步骤
 1. 构建 24 张牌堆并洗牌。
 2. 逆时针发牌（每人 8 张），生成 `players[].hand`。
 3. 判定黑棋：任一玩家若 `SHI+XIANG` 为 0，直接进入 `settlement`。
-4. 若非黑棋，随机先手 seat，进入 `buckle_decision`。
+4. 若非黑棋，随机先手 seat，进入 `buckle_flow`。
 5. 初始化 `turn`：`round_index=0`，`round_kind=0`，`plays=[]`，`last_combo=null`，`current_seat=先手`。
-6. 初始化 `decision`：`seat=先手`，`context=BUCKLE_DECISION`，`started_at_ms=now`，`timeout_at_ms=null`。
-7. 初始化 `reveal.relations=[]`。
-8. 输出统一 `output`（含 public/private/legal_actions）。
+6. 初始化 `reveal`：`buckler_seat=null`，`active_revealer_seat=null`，`pending_order=[]`，`relations=[]`。
+7. 输出统一 `output`（含 public/private/legal_actions）。
 
-### 状态变化
+#### 4.1.3 状态变化
 - 新建状态后 `version=1`。
 - 黑棋场景可在首次 `settle()` 后进入 `finished`。
 
 ### 4.2 `apply_action(action_idx, cover_list=None, client_version=None) -> output`
 
-### 公共校验链路（所有 phase 通用）
+#### 4.2.1 公共校验链路（所有 phase 通用）
 1. `phase` 必须允许动作（`finished/settlement` 禁止）。
 2. 若传 `client_version`，必须等于 `state.version`。
-3. 由当前 `state` 计算 `legal_actions`。
+3. 由当前 `state` 计算 `legal_actions(turn.current_seat)`。
 4. 校验 `action_idx` 在范围内，取出目标动作 `target_action`。
 5. 校验 `cover_list`：
    - `target_action.type != COVER` 时必须为空/`null`。
    - `target_action.type == COVER` 时必须存在且总张数等于 `required_count`。
    - 所选牌必须在当前行动玩家手牌中可扣减。
 
-### 分阶段执行
+#### 4.2.2 分阶段执行
 
-#### A. `phase=buckle_decision`
-- `PLAY`：
-  1. 扣减出牌手牌。
-  2. 初始化回合：`round_kind = 张数(1/2/3)`；`plays=[当前出牌]`；`last_combo=当前出牌`。
-  3. `current_seat` 切到下一位，`phase -> in_round`。
-  4. 刷新 `decision`：`seat=下一位`，`context=IN_ROUND`，`started_at_ms=now`。
+##### 4.2.2.1 A. `phase=buckle_flow` 且 `pending_order=[]`（回合起始决策）
+- `PASS_BUCKLE`：
+  1. `phase -> in_round`。
+  2. 保持 `turn.current_seat` 为回合起始玩家，等待该玩家打出首手。
+  3. `turn.round_kind=0`、`turn.plays=[]`、`turn.last_combo=null`。
 - `BUCKLE`：
-  1. 记录 `reveal.buckler_seat = current_seat`。
-  2. 计算 `pending_order`：若已有历史掀棋者，顺序以“最后掀棋者”为起点按逆时针轮转（跳过 buckler 自身）；否则按逆时针从扣棋者下一位开始。
-  3. `phase -> reveal_decision`，`current_seat = pending_order[0]`。
-  4. 刷新 `decision`：`seat=pending_order[0]`，`context=REVEAL_DECISION`，`started_at_ms=now`。
+  1. 记录 `reveal.buckler_seat = turn.current_seat`。
+  2. 计算 `pending_order`：
+     - 若 `active_revealer_seat != null`，则从该 seat 开始询问；
+     - 否则从扣棋者下一位（逆时针）开始。
+  3. `turn.current_seat = pending_order[0]`，保持 `phase=buckle_flow` 进入扣后询问子流程。
 
-#### B. `phase=in_round`
-- `PLAY`（压制）：
-  1. 组合张数必须等于 `round_kind`。
-  2. 组合牌力必须严格大于 `last_combo.power`。
-  3. 扣减手牌，写入 `turn.plays`，并更新 `last_combo`。
+##### 4.2.2.2 B. `phase=buckle_flow` 且 `pending_order!=[]`（扣后询问掀棋）
+- `REVEAL`：
+  1. 新增关系 `{revealer_seat, buckler_seat, revealer_enough_at_time}`。
+  2. `revealer_enough_at_time` 由该玩家当前柱数（>=3）计算。
+  3. `active_revealer_seat = revealer_seat`。
+  4. 命中首个 `REVEAL` 后立即结束本次询问：`pending_order=[]`。
+  5. `phase -> in_round`，`turn.current_seat = buckler_seat`，并初始化本轮首手前态（`round_kind=0, plays=[], last_combo=null`）。
+- `PASS_REVEAL`：
+  1. 若当前 seat 等于 `active_revealer_seat`，先将 `active_revealer_seat = null`。
+  2. 从 `pending_order` 弹出当前 seat。
+  3. 若仍有待询问玩家：`turn.current_seat = pending_order[0]`，保持 `phase=buckle_flow`。
+  4. 若已无人可询问：`pending_order=[]`，`phase -> settlement`。
+
+##### 4.2.2.3 C. `phase=in_round`
+- `PLAY`（出首手或压制）：
+  1. 若 `round_kind=0`，这是本轮首手：设置 `round_kind = 张数(1/2/3)`。
+  2. 若 `round_kind>0`，组合张数必须等于 `round_kind`，且 `power > last_combo.power`。
+  3. 扣减手牌，写入 `turn.plays`，更新 `turn.last_combo`。
 - `COVER`（垫牌）：
-  1. 从 `cover_list` 扣减手牌。
-  2. 写入 `turn.plays`，`power=-1`。
-  3. 不改写 `last_combo`。
+  1. 仅允许在 `round_kind>0` 且“无可压制组合”时出现于合法动作。
+  2. 从 `cover_list` 扣减手牌。
+  3. 写入 `turn.plays`，`power=-1`。
+  4. 不改写 `last_combo`。
 - 当 `turn.plays` 达到 3 人后触发回合结算：
   1. `last_combo.owner_seat` 获得本回合 `plays`，写入 `pillar_groups`。
-  2. 下一回合由 winner 决策：`phase -> buckle_decision`。
+  2. 下一回合由 winner 决策：`phase -> buckle_flow`。
   3. `round_index + 1`，并清空 `round_kind/plays/last_combo`（置初始态）。
-  4. `current_seat = winner_seat`。
-  5. 刷新 `decision`：`seat=winner_seat`，`context=BUCKLE_DECISION`，`started_at_ms=now`。
+  4. `turn.current_seat = winner_seat`。
+  5. 清空本次扣后询问残留：`reveal.buckler_seat=null`，`reveal.pending_order=[]`。
 
-#### C. `phase=reveal_decision`
-- `REVEAL`：
-  1. 新增一条关系 `{revealer_seat, buckler_seat, revealer_enough_at_time}`。
-  2. `revealer_enough_at_time` 由该玩家当前柱数（>=3）计算。
-  3. 当前掀棋者成为“最后掀棋者”，供下次扣棋决定顺序使用。
-- `PASS_REVEAL`：仅记录该 seat 本次放弃。
-- 推进 `pending_order`：
-  - 若仍有待决策玩家：`current_seat = 下一位`，保持 `reveal_decision`，并同步刷新 `decision` 到该 seat（`context=REVEAL_DECISION`）。
-  - 若已清空：
-    - 本轮有人 `REVEAL`：回到 `buckle_decision`，并由“最后掀棋者”先决策出棋/扣棋。
-    - 无人 `REVEAL`：`phase -> settlement`。
-    - 两个分支都要刷新 `decision`：前者设置到“最后掀棋者”，后者置空（或标记为非激活）。
-
-### 成功收尾（统一）
+#### 4.2.3 成功收尾（统一）
 - 动作成功后 `state.version += 1`。
 - 重新计算 `public_state/private_state_by_seat/legal_actions`。
 - 若新 `phase` 为 `settlement`，可在 output 附带预结算快照（不改变 `phase`）。
 
 ### 4.3 `settle() -> output`
 
-### 调用前置
+#### 4.3.1 调用前置
 - 必须 `phase == settlement`，否则拒绝。
 
-### 结算步骤
+#### 4.3.2 结算步骤
 1. 统计每位玩家 `captured_pillar_count`。
 2. 标记身份：
    - `enough`: `3 <= pillar < 6`
@@ -170,14 +162,13 @@ engine/
 5. `delta = delta_enough + delta_reveal + delta_ceramic`（`delta_ceramic` 可单列或并入 enough 规则实现，但输出需独立字段）。
 6. 生成 `settlement.final_state` 与 `chip_delta_by_seat`。
 7. `phase -> finished`，`version += 1`。
-8. `decision` 置空（`finished` 不再有行动玩家）。
 
 ### 4.4 `get_public_state() -> public_state`
 - 从内部状态投影公共字段，隐藏他人手牌与垫牌牌面。
 - `players[*].hand_count` 来自手牌计数和。
 - `players[*].captured_pillar_count` 必须由 `pillar_groups` 即时计算，不缓存脏数据。
 - `plays`/`pillar_groups` 中 `power=-1` 的记录改为 `covered_count`。
-- 输出包含 `decision`（至少 `seat/context/timeout_at_ms`），用于前端明确“当前谁在决策/谁的时钟在走”。
+- 当前决策位统一由 `turn.current_seat` 表示，不输出 `decision`。
 
 ### 4.5 `get_private_state(seat) -> private_state`
 - 校验 `seat` 在 `0..2`。
@@ -187,20 +178,23 @@ engine/
 - 不返回其他 seat 私有信息。
 
 ### 4.6 `get_legal_actions(seat) -> legal_actions`
-- 若 `seat != decision.seat`，固定返回 `{\"seat\": seat, \"actions\": []}`（不抛错）。
-- `buckle_decision`：枚举当前玩家所有可出组合（PLAY）+ `BUCKLE`。
-- `in_round`：
-  - 若存在可压制组合，仅输出 `PLAY`（不允许 `COVER`）。
-  - 若不存在可压制组合，仅输出 `COVER(required_count=round_kind)`。
-- `reveal_decision`：仅输出 `REVEAL` 与 `PASS_REVEAL`。
+- 若 `seat != turn.current_seat`，固定返回 `{"seat": seat, "actions": []}`（不抛错）。
+- `phase in {settlement,finished}`：返回空动作。
+- `phase=buckle_flow`：
+  - `pending_order=[]`：仅 `BUCKLE` 与 `PASS_BUCKLE`。
+  - `pending_order!=[]`：仅 `REVEAL` 与 `PASS_REVEAL`。
+- `phase=in_round`：
+  - `round_kind=0`：仅输出所有合法首手 `PLAY`。
+  - `round_kind>0` 且存在可压制组合：仅输出 `PLAY`。
+  - `round_kind>0` 且不存在可压制组合：仅输出 `COVER(required_count=round_kind)`。
 - 顺序稳定性要求：
-  - 先按动作类型固定顺序（示例：PLAY -> COVER -> BUCKLE -> REVEAL -> PASS_REVEAL）。
+  - 动作类型按引擎固定顺序输出；
   - PLAY 内部按“牌力降序 + 牌型字典序”排序。
 
 ### 4.7 `dump_state() / load_state(state)`
 - `dump_state`：返回可 JSON 序列化的完整内部状态（含 reveal 关系、垫牌明细、version）。
 - `load_state`：
-  1. 校验 schema 完整性与字段取值范围。
+  1. 校验 schema 完整性与字段取值范围（新 schema）。
   2. 校验全局不变量（卡牌总数、phase 与 turn 一致性）。
   3. 覆盖当前状态并重建必要索引/缓存。
 - 成功后 `get_public_state/get_private_state/get_legal_actions` 结果应与 dump 前一致。
@@ -246,8 +240,10 @@ engine/
 - `apply_action`：
   - `action_idx` 稳定性与越界错误。
   - `client_version` 冲突返回。
-  - 必须压制/只能垫棋分支。
-  - `BUCKLE -> reveal_decision` 顺序正确。
+  - `PASS_BUCKLE -> in_round` 后，`round_kind=0` 且首手仅可 PLAY。
+  - `BUCKLE` 后询问顺序正确（活跃掀棋者优先，否则逆时针）。
+  - `PASS_REVEAL` 才继续推进 `pending_order`；首个 `REVEAL` 命中后立即结束询问并切回扣棋方。
+  - 当活跃掀棋者选择 `PASS_REVEAL` 时，`active_revealer_seat` 被清空。
 - `settle`：够/瓷/掀棋惩罚与“已够时掀棋未瓷不收够棋”边界。
 - `dump/load`：序列化后再恢复，三类输出（public/private/legal）一致。
 
@@ -268,16 +264,16 @@ engine/
 ### 9.3 交互主循环（单人扮演三座次）
 1. 初始化引擎并创建新局（`init_game`）。
 2. 每个回合先展示公共态摘要：
-   - `version / phase / decision.seat / round_index / round_kind / last_combo / 当前回合plays`。
+   - `version / phase / turn.current_seat / round_index / round_kind / last_combo / 当前回合plays`。
    - 三名玩家的 `hand_count` 与 `captured_pillar_count`（若已提供）。
-3. 根据 `decision.seat` 提示“当前请扮演 seatX 操作”。
+3. 根据 `turn.current_seat` 提示“当前请扮演 seatX 操作”。
 4. 仅展示当前 seat 的私有态：
    - `hand`（完整）。
    - `covered`（若已实现）。
 5. 展示该 seat 全部合法动作（包含 `action_idx`）：
    - PLAY：显示牌型、`payload_cards`、`power`。
    - COVER：显示 `required_count`，并提示输入 `cover_list`。
-   - BUCKLE / REVEAL / PASS_REVEAL：显示动作名。
+   - BUCKLE / PASS_BUCKLE / REVEAL / PASS_REVEAL：显示动作名。
 6. 用户输入动作并执行：
    - 非 COVER：输入 `action_idx` 即可。
    - COVER：先选 `action_idx`，再输入 `cover_list`（如 `R_SHI:1,B_NIU:1`）。
@@ -304,5 +300,5 @@ engine/
 
 ## 10. 变更记录
 - 2026-02-15：创建文档，补充引擎接口实现逻辑、动作校验链路、结算算法口径与后端集成约定。
-- 2026-02-15：补充 `decision` 决策态定义，明确“当前谁在决策/谁的计时在走”的状态字段与阶段切换更新规则。
 - 2026-02-17：新增“命令行对局接口”设计（seed 约定、状态展示口径、交互循环与错误处理）。
+- 2026-02-17：根据规则澄清完成状态机重构：`buckle_decision/reveal_decision` 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。
