@@ -30,7 +30,7 @@ def _play_signatures(legal_actions: dict[str, Any]) -> list[tuple[tuple[str, int
 def _make_state(
     *,
     phase: str,
-    decision_seat: int,
+    current_seat: int,
     hand_by_seat: dict[int, dict[str, int]],
     round_kind: int,
     last_combo_power: int,
@@ -44,23 +44,17 @@ def _make_state(
             {"seat": 2, "hand": hand_by_seat.get(2, {})},
         ],
         "turn": {
-            "current_seat": decision_seat,
+            "current_seat": current_seat,
             "round_index": 0,
             "round_kind": round_kind,
             "last_combo": {
                 "power": last_combo_power,
                 "cards": [{"type": "B_CHE", "count": max(round_kind, 1)}],
-                "owner_seat": (decision_seat + 1) % 3,
+                "owner_seat": (current_seat + 1) % 3,
             }
             if phase == "in_round"
             else None,
             "plays": [],
-        },
-        "decision": {
-            "seat": decision_seat,
-            "context": phase,
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
         },
         "pillar_groups": [],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
@@ -72,7 +66,7 @@ def test_m3_la_13_buckle_play_covers_all_combo_kinds() -> None:
     hand = {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1, "R_NIU": 3}
     state = _make_state(
         phase="buckle_decision",
-        decision_seat=0,
+        current_seat=0,
         hand_by_seat={0: hand},
         round_kind=0,
         last_combo_power=-1,
@@ -93,7 +87,7 @@ def test_m3_la_14_buckle_play_matches_enumerate_combos() -> None:
     hand = {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1, "R_NIU": 3}
     state = _make_state(
         phase="buckle_decision",
-        decision_seat=0,
+        current_seat=0,
         hand_by_seat={0: hand},
         round_kind=0,
         last_combo_power=-1,
@@ -111,7 +105,7 @@ def test_m3_la_15_in_round_single_beatable_full_set() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={1: {"R_SHI": 1, "B_SHI": 1, "R_XIANG": 1, "B_CHE": 1}},
         round_kind=1,
         last_combo_power=3,
@@ -131,7 +125,7 @@ def test_m3_la_16_in_round_pair_beatable_includes_dog_pair() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={
             1: {
                 "R_SHI": 2,
@@ -161,7 +155,7 @@ def test_m3_la_17_in_round_pair_strictly_greater_only() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={1: {"R_SHI": 2, "B_SHI": 2, "R_MA": 2, "R_GOU": 1, "B_GOU": 1}},
         round_kind=2,
         last_combo_power=8,
@@ -182,7 +176,7 @@ def test_m3_la_18_in_round_triple_beatable_full_set() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={1: {"R_NIU": 3, "B_NIU": 3}},
         round_kind=3,
         last_combo_power=10,
@@ -198,7 +192,7 @@ def test_m3_la_19_in_round_play_count_matches_round_kind() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={1: {"R_SHI": 2, "B_SHI": 1, "R_NIU": 3, "R_MA": 2}},
         round_kind=2,
         last_combo_power=0,
@@ -215,7 +209,7 @@ def test_m3_la_20_in_round_single_no_duplicate_for_same_type() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={1: {"R_SHI": 2, "B_SHI": 1}},
         round_kind=1,
         last_combo_power=0,
@@ -232,7 +226,7 @@ def test_m3_la_21_buckle_play_order_stable() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="buckle_decision",
-        decision_seat=0,
+        current_seat=0,
         hand_by_seat={0: {"R_SHI": 2, "R_GOU": 1, "B_GOU": 1, "R_NIU": 3}},
         round_kind=0,
         last_combo_power=-1,
@@ -250,7 +244,7 @@ def test_m3_la_22_in_round_play_order_stable() -> None:
     engine = XianqiGameEngine()
     state = _make_state(
         phase="in_round",
-        decision_seat=1,
+        current_seat=1,
         hand_by_seat={
             1: {
                 "R_SHI": 2,

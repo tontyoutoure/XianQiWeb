@@ -43,7 +43,7 @@ def _find_action_idx(legal_actions: dict[str, Any], action_type: str) -> int:
 def _make_state(
     *,
     round_kind: int,
-    decision_seat: int,
+    current_seat: int,
     owner_seat: int,
     last_combo_cards: list[dict[str, int]],
     last_combo_power: int,
@@ -60,7 +60,7 @@ def _make_state(
             {"seat": 2, "hand": hand_by_seat.get(2, {})},
         ],
         "turn": {
-            "current_seat": decision_seat,
+            "current_seat": current_seat,
             "round_index": 3,
             "round_kind": round_kind,
             "last_combo": {
@@ -69,12 +69,6 @@ def _make_state(
                 "owner_seat": owner_seat,
             },
             "plays": plays,
-        },
-        "decision": {
-            "seat": decision_seat,
-            "context": "in_round",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
         },
         "pillar_groups": [],
         "reveal": {"buckler_seat": 0, "pending_order": [], "relations": []},
@@ -89,7 +83,7 @@ def test_m3_act_08_round_end_pillar_group_owned_by_winner() -> None:
 
     state = _make_state(
         round_kind=1,
-        decision_seat=0,
+        current_seat=0,
         owner_seat=1,
         last_combo_cards=[{"type": "R_XIANG", "count": 1}],
         last_combo_power=7,
@@ -127,7 +121,7 @@ def test_m3_act_09_pair_round_split_same_pair_into_two_pillars() -> None:
 
     state = _make_state(
         round_kind=2,
-        decision_seat=0,
+        current_seat=0,
         owner_seat=1,
         last_combo_cards=[{"type": "R_SHI", "count": 2}],
         last_combo_power=9,
@@ -176,7 +170,7 @@ def test_m3_act_10_triple_round_split_same_triple_into_three_pillars() -> None:
 
     state = _make_state(
         round_kind=3,
-        decision_seat=1,
+        current_seat=1,
         owner_seat=2,
         last_combo_cards=[{"type": "R_NIU", "count": 3}],
         last_combo_power=11,

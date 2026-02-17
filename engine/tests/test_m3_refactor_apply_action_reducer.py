@@ -29,12 +29,6 @@ def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
             "last_combo": None,
             "plays": [],
         },
-        "decision": {
-            "seat": 0,
-            "context": "buckle_decision",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
-        },
         "pillar_groups": [],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
     }
@@ -42,7 +36,7 @@ def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
 
 def _make_in_round_cover_state(
     *,
-    decision_seat: int,
+    current_seat: int,
     round_kind: int,
     required_cover_hand: dict[str, int],
     winner_seat: int = 1,
@@ -58,12 +52,12 @@ def _make_in_round_cover_state(
         "version": version,
         "phase": "in_round",
         "players": [
-            {"seat": 0, "hand": required_cover_hand if decision_seat == 0 else {}},
-            {"seat": 1, "hand": required_cover_hand if decision_seat == 1 else {}},
-            {"seat": 2, "hand": required_cover_hand if decision_seat == 2 else {}},
+            {"seat": 0, "hand": required_cover_hand if current_seat == 0 else {}},
+            {"seat": 1, "hand": required_cover_hand if current_seat == 1 else {}},
+            {"seat": 2, "hand": required_cover_hand if current_seat == 2 else {}},
         ],
         "turn": {
-            "current_seat": decision_seat,
+            "current_seat": current_seat,
             "round_index": 2,
             "round_kind": round_kind,
             "last_combo": {
@@ -72,12 +66,6 @@ def _make_in_round_cover_state(
                 "owner_seat": winner_seat,
             },
             "plays": plays,
-        },
-        "decision": {
-            "seat": decision_seat,
-            "context": "in_round",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
         },
         "pillar_groups": [],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
@@ -131,7 +119,7 @@ def test_m3_rf_02_cover_round_finish_stays_equivalent() -> None:
 
     engine = XianqiGameEngine()
     state = _make_in_round_cover_state(
-        decision_seat=0,
+        current_seat=0,
         round_kind=1,
         required_cover_hand={"B_NIU": 1},
         winner_seat=1,
@@ -154,7 +142,7 @@ def test_m3_rf_02_cover_round_finish_stays_equivalent() -> None:
     next_state = output.get("new_state", {})
 
     assert next_state.get("phase") == "buckle_decision"
-    assert (next_state.get("decision") or {}).get("seat") == 1
+    assert (next_state.get("turn") or {}).get("current_seat") == 1
     assert int(next_state.get("version", 0)) == 51
     assert len(next_state.get("pillar_groups", [])) == 1
 
@@ -175,4 +163,3 @@ def test_m3_rf_03_errors_and_version_guard_stay_equivalent() -> None:
     with pytest.raises(ValueError, match="ENGINE_INVALID_ACTION_INDEX"):
         engine.apply_action(action_idx=999, cover_list=None, client_version=60)
     assert int(engine.dump_state().get("version", 0)) == int(before.get("version", 0))
-

@@ -18,7 +18,7 @@ def _load_engine_class():
 
 
 def test_m3_ut_06_get_public_state_masks_private_fields() -> None:
-    """M3-UT-06: public state should hide hand/cards/decision-private details."""
+    """M3-UT-06: public state should hide hand/cards and decision-only details."""
 
     Engine = _load_engine_class()
     engine = Engine()
@@ -58,7 +58,6 @@ def test_m3_ut_06_get_public_state_masks_private_fields() -> None:
             }
         ],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
-        "decision": {"seat": 1, "started_at_ms": 111, "timeout_at_ms": 222},
     }
 
     engine.load_state(internal_state)

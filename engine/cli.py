@@ -10,10 +10,6 @@ from engine.core import XianqiGameEngine
 
 
 def _resolve_acting_seat(public_state: dict[str, Any]) -> int | None:
-    decision = public_state.get("decision")
-    if isinstance(decision, dict) and decision.get("seat") is not None:
-        return int(decision["seat"])
-
     turn = public_state.get("turn")
     if isinstance(turn, dict) and turn.get("current_seat") is not None:
         return int(turn["current_seat"])
@@ -45,7 +41,7 @@ def build_initial_snapshot(seed: int | None = None) -> dict[str, Any]:
 
 
 def render_turn_prompt(public_state: dict[str, Any]) -> str:
-    """Render the seat prompt for the current decision maker."""
+    """Render the seat prompt for the current acting seat."""
 
     seat = _resolve_acting_seat(public_state)
     if seat is None:
@@ -75,7 +71,7 @@ def render_state_view(
     lines.append("=== Public State ===")
     lines.append(f"version: {public_state.get('version')}")
     lines.append(f"phase: {public_state.get('phase')}")
-    lines.append(f"decision_seat: {acting_hint}")
+    lines.append(f"current_seat: {acting_hint}")
     for player in players:
         seat = player.get("seat")
         hand_count = player.get("hand_count", "-")
@@ -140,7 +136,7 @@ def _emit_error(output_fn: Callable[[str], None], exc: Exception) -> None:
 
 
 def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, output_fn: Callable[[str], None] = print) -> int:
-    """Run one local game loop by rotating seats according to decision state."""
+    """Run one local game loop by rotating seats according to turn.current_seat."""
 
     actual_seed = resolve_seed(seed)
     output_fn(f"seed={actual_seed}")

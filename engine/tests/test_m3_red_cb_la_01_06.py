@@ -90,12 +90,6 @@ def _make_in_round_state(
                 }
             ],
         },
-        "decision": {
-            "seat": current_seat,
-            "context": "in_round",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
-        },
         "pillar_groups": [],
         "reveal": {"buckler_seat": 0, "pending_order": [], "relations": []},
     }

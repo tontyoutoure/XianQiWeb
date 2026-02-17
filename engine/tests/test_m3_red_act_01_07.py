@@ -1,4 +1,4 @@
-"""M3 Red tests: M3-ACT-01~07 action validation and decision advancement."""
+"""M3 Red tests: M3-ACT-01~07 action validation and acting-seat advancement."""
 
 from __future__ import annotations
 
@@ -56,12 +56,6 @@ def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
             "last_combo": None,
             "plays": [],
         },
-        "decision": {
-            "seat": 0,
-            "context": "buckle_decision",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
-        },
         "pillar_groups": [],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
     }
@@ -69,7 +63,7 @@ def _make_buckle_state(*, version: int = 12) -> dict[str, Any]:
 
 def _make_in_round_cover_state(
     *,
-    decision_seat: int,
+    current_seat: int,
     round_kind: int,
     required_cover_hand: dict[str, int],
     winner_seat: int = 1,
@@ -85,12 +79,12 @@ def _make_in_round_cover_state(
         "version": version,
         "phase": "in_round",
         "players": [
-            {"seat": 0, "hand": required_cover_hand if decision_seat == 0 else {}},
-            {"seat": 1, "hand": required_cover_hand if decision_seat == 1 else {}},
-            {"seat": 2, "hand": required_cover_hand if decision_seat == 2 else {}},
+            {"seat": 0, "hand": required_cover_hand if current_seat == 0 else {}},
+            {"seat": 1, "hand": required_cover_hand if current_seat == 1 else {}},
+            {"seat": 2, "hand": required_cover_hand if current_seat == 2 else {}},
         ],
         "turn": {
-            "current_seat": decision_seat,
+            "current_seat": current_seat,
             "round_index": 2,
             "round_kind": round_kind,
             "last_combo": {
@@ -99,12 +93,6 @@ def _make_in_round_cover_state(
                 "owner_seat": winner_seat,
             },
             "plays": plays,
-        },
-        "decision": {
-            "seat": decision_seat,
-            "context": "in_round",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
         },
         "pillar_groups": [],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
@@ -126,12 +114,6 @@ def _make_reveal_state(*, version: int = 31) -> dict[str, Any]:
             "round_kind": 0,
             "last_combo": None,
             "plays": [],
-        },
-        "decision": {
-            "seat": 1,
-            "context": "reveal_decision",
-            "started_at_ms": 0,
-            "timeout_at_ms": None,
         },
         "pillar_groups": [],
         "reveal": {
@@ -188,7 +170,7 @@ def test_m3_act_04_cover_wrong_count_rejected() -> None:
     Engine = _load_engine_class()
     engine = Engine()
     state = _make_in_round_cover_state(
-        decision_seat=0,
+        current_seat=0,
         round_kind=2,
         required_cover_hand={"B_NIU": 2},
         winner_seat=1,
@@ -213,7 +195,7 @@ def test_m3_act_05_cover_with_unowned_cards_rejected() -> None:
     Engine = _load_engine_class()
     engine = Engine()
     state = _make_in_round_cover_state(
-        decision_seat=0,
+        current_seat=0,
         round_kind=1,
         required_cover_hand={"B_NIU": 1},
         winner_seat=1,
@@ -232,14 +214,14 @@ def test_m3_act_05_cover_with_unowned_cards_rejected() -> None:
         )
 
 
-def test_m3_act_06_round_end_advances_decision_to_winner() -> None:
-    """M3-ACT-06: after third play, decision seat should advance to round winner."""
+def test_m3_act_06_round_end_advances_current_seat_to_winner() -> None:
+    """M3-ACT-06: after third play, current seat should advance to round winner."""
 
     Engine = _load_engine_class()
     engine = Engine()
 
     state = _make_in_round_cover_state(
-        decision_seat=0,
+        current_seat=0,
         round_kind=1,
         required_cover_hand={"B_NIU": 1},
         winner_seat=1,
@@ -261,15 +243,13 @@ def test_m3_act_06_round_end_advances_decision_to_winner() -> None:
     )
     next_state = _extract_state(engine, output)
 
-    decision = next_state.get("decision") or {}
     turn = next_state.get("turn") or {}
     assert next_state.get("phase") == "buckle_decision"
-    assert decision.get("seat") == 1
     assert turn.get("current_seat") == 1
 
 
-def test_m3_act_07_reveal_pending_order_and_decision_progress() -> None:
-    """M3-ACT-07: reveal action should consume pending_order and move decision seat."""
+def test_m3_act_07_reveal_pending_order_and_current_seat_progress() -> None:
+    """M3-ACT-07: reveal action should consume pending_order and move current seat."""
 
     Engine = _load_engine_class()
     engine = Engine()
@@ -282,9 +262,9 @@ def test_m3_act_07_reveal_pending_order_and_decision_progress() -> None:
     next_state = _extract_state(engine, output)
 
     reveal = next_state.get("reveal") or {}
-    decision = next_state.get("decision") or {}
+    turn = next_state.get("turn") or {}
 
     assert next_state.get("phase") == "reveal_decision"
     assert reveal.get("pending_order") == [2]
-    assert decision.get("seat") == 2
+    assert turn.get("current_seat") == 2
     assert int(next_state.get("version", 0)) == 32

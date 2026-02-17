@@ -58,7 +58,7 @@ def test_m3_ut_01_init_game_deal_counts() -> None:
 
 
 def test_m3_ut_02_seed_is_reproducible() -> None:
-    """M3-UT-02: same seed should reproduce deal and first decision seat."""
+    """M3-UT-02: same seed should reproduce deal and first acting seat."""
 
     Engine = _load_engine_class()
     seed = 314159
@@ -76,8 +76,8 @@ def test_m3_ut_02_seed_is_reproducible() -> None:
     hands_b = [player.get("hand", {}) for player in state_b.get("players", [])]
     assert hands_a == hands_b
 
-    seat_a = (state_a.get("decision") or {}).get("seat")
-    seat_b = (state_b.get("decision") or {}).get("seat")
+    seat_a = (state_a.get("turn") or {}).get("current_seat")
+    seat_b = (state_b.get("turn") or {}).get("current_seat")
     assert seat_a == seat_b
 
 
@@ -109,12 +109,11 @@ def test_m3_ut_04_version_increment_and_invalid_action_no_change() -> None:
     state = _extract_state_after_init(engine, output)
 
     version_before = int(state.get("version", 0))
-    decision = state.get("decision") or {}
-    decision_seat = int(decision.get("seat", 0))
+    current_seat = int((state.get("turn") or {}).get("current_seat", 0))
 
-    legal_actions = engine.get_legal_actions(decision_seat)
+    legal_actions = engine.get_legal_actions(current_seat)
     actions = legal_actions.get("actions", [])
-    assert actions, "current decision seat should have legal actions"
+    assert actions, "current acting seat should have legal actions"
 
     engine.apply_action(action_idx=0, cover_list=None, client_version=version_before)
     version_after_valid = int(engine.dump_state().get("version", 0))
@@ -136,16 +135,16 @@ def test_m3_ut_05_dump_load_consistency() -> None:
     output = engine.init_game({"player_count": 3}, rng_seed=99)
     state = _extract_state_after_init(engine, output)
 
-    decision_seat = int((state.get("decision") or {}).get("seat", 0))
+    acting_seat = int((state.get("turn") or {}).get("current_seat", 0))
 
     public_before = engine.get_public_state()
-    private_before = engine.get_private_state(decision_seat)
-    legal_before = engine.get_legal_actions(decision_seat)
+    private_before = engine.get_private_state(acting_seat)
+    legal_before = engine.get_legal_actions(acting_seat)
     dumped = engine.dump_state()
 
     restored = Engine()
     restored.load_state(dumped)
 
     assert restored.get_public_state() == public_before
-    assert restored.get_private_state(decision_seat) == private_before
-    assert restored.get_legal_actions(decision_seat) == legal_before
+    assert restored.get_private_state(acting_seat) == private_before
+    assert restored.get_legal_actions(acting_seat) == legal_before

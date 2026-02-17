@@ -16,19 +16,20 @@
 - M3 棋柱规则红测推进（2026-02-16）：已新增 `engine/tests/test_m3_red_act_08_10_pillars.py` 并执行，`M3-ACT-08~10` 当前按预期 Red（`apply_action` 未实现）。
 - M3 引擎核心推进（2026-02-16）：已在 `engine/core.py` 实现 `init_game` 与最小可用 `apply_action`（含回合收尾与 `pillar_groups.pillars` 拆柱），`M3-UT-01~05` 与 `M3-ACT-08~10` 已转绿。
 - M3 牌力编码重构（2026-02-16）：对子牌力改为对齐单张口径（`R_SHI` 对=9、`B_SHI` 对=8、狗脚对=9），移除 `19/18` 特殊编码并回归测试通过。
-- M3 动作校验补齐（2026-02-17）：已新增并拉绿 `M3-ACT-01~07`（`engine/tests/test_m3_red_act_01_07.py`），在 `engine/core.py` 实现 `reveal_decision` 下 `REVEAL/PASS_REVEAL` 的 `pending_order` 消费、`decision.seat` 推进与阶段收尾。
+- M3 动作校验补齐（2026-02-17）：已新增并拉绿 `M3-ACT-01~07`（`engine/tests/test_m3_red_act_01_07.py`），在 `engine/core.py` 实现 `reveal_decision` 下 `REVEAL/PASS_REVEAL` 的 `pending_order` 消费、行动位推进与阶段收尾。
 - M3 合法动作枚举补齐（2026-02-17）：已新增 `engine/tests/test_m3_red_la_01_03_07_12.py` 覆盖 `M3-LA-01~03/07~12`，执行 Red 阶段命令后意外全绿（9/9 通过）。
 - M3 CLI 设计需求新增（2026-02-17）：已在 `memory-bank/design/engine_design.md` 增补命令行对局接口设计（可选 seed、单人三座次轮流、公共/私有状态展示与合法动作选择）；并在 `memory-bank/tests/m3-tests.md` 新增 `M3-CLI-01~08` 测试清单（待红测）。
 - M3 CLI 首批红测（2026-02-17）：已新增 `engine/tests/test_m3_red_cli_01_04.py` 并执行，`M3-CLI-01~04` 当前按预期 Red（缺失 `engine.cli` 模块与核心交互函数）。
 - M3 CLI 剩余红测（2026-02-17）：已新增 `engine/tests/test_m3_red_cli_05_08.py` 并执行，`M3-CLI-05~08` 当前按预期 Red（4 failed），覆盖动作列表索引展示、COVER 重试路径、非法索引错误输出与 settlement 终局提示文案。
 - M3 CLI 红转绿（2026-02-17）：已在 `engine/cli.py` 完成动作列表 `action_idx/payload_cards` 展示、COVER 失败重试、错误码前缀输出和 settlement 文案修复；`pytest engine/tests/test_m3_red_cli_01_04.py -q` 与 `pytest engine/tests/test_m3_red_cli_05_08.py -q` 均为 `4 passed`。
 - M3 引擎重构里程碑（2026-02-17）：已完成 `apply_action` 等效拆分（`engine/core.py` -> `engine/reducer.py`），并新增 `M3-RF-01~03`（`engine/tests/test_m3_refactor_apply_action_reducer.py`）完成红绿闭环；全量引擎测试更新为 `62 passed`（`pytest engine/tests -q`）。
-- M3 公共态脱敏补齐（2026-02-17）：已新增并拉绿 `M3-UT-06`（`engine/tests/test_m3_red_ut_06_public_state_masking.py`），在 `engine/core.py` 实现 `get_public_state` 脱敏投影（`hand -> hand_count`、`power=-1 cards -> covered_count`、隐藏 `decision`）；全量引擎测试更新为 `63 passed`（`pytest engine/tests -q`）。
+- M3 公共态脱敏补齐（2026-02-17）：已新增并拉绿 `M3-UT-06`（`engine/tests/test_m3_red_ut_06_public_state_masking.py`），在 `engine/core.py` 实现 `get_public_state` 脱敏投影（`hand -> hand_count`、`power=-1 cards -> covered_count`、隐藏仅内部使用字段）；全量引擎测试更新为 `63 passed`（`pytest engine/tests -q`）。
 - M3 私有态补齐（2026-02-17）：已新增并拉绿 `M3-UT-07`（`engine/tests/test_m3_red_ut_07_private_state_covered.py`），在 `engine/core.py` 实现 `get_private_state` 返回 `hand + covered`（按 `turn.plays + pillar_groups[*].plays` 中 `power=-1` 的本人垫牌聚合）；全量引擎测试更新为 `64 passed`（`pytest engine/tests -q`）。
 - M3 序列化模块拆分（2026-02-17）：已新增 `engine/serializer.py` 并将 `load_state/dump_state/get_public_state/get_private_state` 及相关辅助函数从 `engine/core.py` 抽离，`engine/core.py` 改为调用 serializer；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M3 合法动作模块拆分（2026-02-17）：已新增 `engine/actions.py` 并将 `get_legal_actions` 及手牌读取辅助函数从 `engine/core.py` 抽离为函数式实现（state-only）；`engine/core.py` 的同名方法改为转发调用，reducer 依赖链保持兼容；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M3 seat 直索引与快速失败策略（2026-02-17）：`actions/reducer/serializer/core` 中多处 seat 手牌读取改为 `players[seat]` 直索引；`load_state` 增加 players 索引一致性断言（`players[i].seat == i`），并新增 `M3-UT-08`（`engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py`）锁定契约；全量测试更新为 `65 passed`（`pytest engine/tests -q`）。
 - M3 结算入口模块拆分（2026-02-17）：已新增 `engine/settlements.py` 并将 `engine/core.py` 的 `settle` 改为委托 `settlements` 入口，当前结算逻辑仍保持未实现占位；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
+- M3 行动位字段收敛（2026-02-17）：已删除 `state.decision` 及 `_advance_decision` 相关调用，动作判定/状态推进/CLI 全部统一为 `turn.current_seat` 单一真源，并同步修正相关引擎测试夹具与断言；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
   - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。

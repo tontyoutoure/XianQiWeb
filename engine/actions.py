@@ -8,16 +8,16 @@ from engine.combos import enumerate_combos
 
 
 def get_legal_actions(state: dict[str, Any] | None, seat: int) -> dict[str, Any]:
-    """Return legal actions for seat by current phase and decision owner."""
+    """Return legal actions for seat by current phase and turn.current_seat."""
 
     if state is None:
         return {"seat": seat, "actions": []}
 
     phase = state.get("phase")
 
-    decision = state.get("decision") or {}
-    decision_seat = decision.get("seat")
-    if decision_seat is None or int(decision_seat) != int(seat):
+    turn = state.get("turn") or {}
+    current_seat = turn.get("current_seat")
+    if current_seat is None or int(current_seat) != int(seat):
         return {"seat": seat, "actions": []}
 
     if phase in {"settlement", "finished"}:

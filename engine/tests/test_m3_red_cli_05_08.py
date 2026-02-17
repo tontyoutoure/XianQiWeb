@@ -62,7 +62,7 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
             return {
                 "version": self.version,
                 "phase": self.phase,
-                "decision": {"seat": 0},
+                "turn": {"current_seat": 0},
                 "players": [
                     {"seat": 0, "hand_count": 2},
                     {"seat": 1, "hand_count": 2},
@@ -122,7 +122,7 @@ def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
             return {
                 "version": self.version,
                 "phase": self.phase,
-                "decision": {"seat": 0},
+                "turn": {"current_seat": 0},
                 "players": [
                     {"seat": 0, "hand_count": 2},
                     {"seat": 1, "hand_count": 2},
@@ -173,7 +173,7 @@ def test_m3_cli_08_settlement_without_settle_prints_contract_message() -> None:
             return {
                 "version": 15,
                 "phase": "settlement",
-                "decision": {"seat": None},
+                "turn": {"current_seat": None},
                 "players": [
                     {"seat": 0, "hand_count": 0},
                     {"seat": 1, "hand_count": 0},

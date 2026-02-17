@@ -45,12 +45,12 @@ def test_m3_cli_02_missing_seed_uses_time_provider() -> None:
     assert seed == 1739769600123456789
 
 
-def test_m3_cli_03_turn_prompt_matches_decision_seat() -> None:
-    """M3-CLI-03: turn prompt should instruct user to act as current decision seat."""
+def test_m3_cli_03_turn_prompt_matches_current_seat() -> None:
+    """M3-CLI-03: turn prompt should instruct user to act as current acting seat."""
 
     cli = _load_cli_module()
 
-    prompt = cli.render_turn_prompt({"decision": {"seat": 2}})
+    prompt = cli.render_turn_prompt({"turn": {"current_seat": 2}})
 
     assert "seat2" in prompt or "seat 2" in prompt
 
@@ -63,7 +63,7 @@ def test_m3_cli_04_state_view_shows_public_and_current_private_only() -> None:
     public_state: dict[str, Any] = {
         "version": 7,
         "phase": "in_round",
-        "decision": {"seat": 1},
+        "turn": {"current_seat": 1},
         "players": [
             {"seat": 0, "hand_count": 4},
             {"seat": 1, "hand_count": 5},

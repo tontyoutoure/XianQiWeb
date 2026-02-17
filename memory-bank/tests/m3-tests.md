@@ -53,11 +53,11 @@
 | M3-LA-05 | `in_round` 不可压制时互斥规则 | 若无可压制组合，仅返回 1 个 `COVER(required_count=round_kind)` |
 | M3-LA-06 | `COVER.required_count` 正确 | `required_count` 必等于当前 `round_kind` |
 | M3-LA-07 | `in_round` 压制集合正确性 | 返回的 PLAY 全部可压制且不包含不可压制组合 |
-| M3-LA-08 | 非当前决策 seat 的动作 | `seat != decision.seat` 时返回空 `actions` |
+| M3-LA-08 | 非当前行动 seat 的动作 | `seat != turn.current_seat` 时返回空 `actions` |
 | M3-LA-09 | `reveal_decision` 动作集合 | 仅包含 `REVEAL` 与 `PASS_REVEAL` |
 | M3-LA-10 | `settlement/finished` 无动作 | `get_legal_actions` 返回空 `actions` |
 | M3-LA-11 | `action_idx` 稳定性 | 同一状态多次获取 `actions`，索引含义不漂移 |
-| M3-LA-12 | phase 切换后动作刷新 | `apply_action` 后下一状态的 `actions` 与新 `decision.seat` 一致 |
+| M3-LA-12 | phase 切换后动作刷新 | `apply_action` 后下一状态的 `actions` 与新 `turn.current_seat` 一致 |
 | M3-LA-13 | `buckle_decision` 下 PLAY 组合全集覆盖 | PLAY 必须覆盖单张/对子/狗脚对/三牛全部可出组合 |
 | M3-LA-14 | `buckle_decision` PLAY 与组合枚举一致性 | PLAY 的 `payload_cards` 与 `enumerate_combos` 结果一一对应 |
 | M3-LA-15 | `in_round` 单张可压制全集 | 仅返回所有 `power > last_combo.power` 的单张 PLAY |
@@ -78,8 +78,8 @@
 | M3-ACT-03 | 非 COVER 传 `cover_list` | 引擎拒绝并返回 `ENGINE_INVALID_COVER_LIST` |
 | M3-ACT-04 | COVER 传错张数 | `cover_list` 总张数不等于 `required_count` 时拒绝 |
 | M3-ACT-05 | COVER 传不存在手牌 | `cover_list` 超出持牌时拒绝 |
-| M3-ACT-06 | 回合结束后决策位推进 | 3 人出完后 `decision.seat` 切到 round winner |
-| M3-ACT-07 | 掀棋顺序推进 | `reveal.pending_order` 消费与 `decision.seat` 推进一致 |
+| M3-ACT-06 | 回合结束后行动位推进 | 3 人出完后 `turn.current_seat` 切到 round winner |
+| M3-ACT-07 | 掀棋顺序推进 | `reveal.pending_order` 消费与 `turn.current_seat` 推进一致 |
 | M3-ACT-08 | 一轮结束后棋柱归属 | `pillar_groups` 新增记录且 `winner_seat` 等于本轮最大组合玩家 |
 | M3-ACT-09 | 对子回合分柱拆分 | `round_kind=2` 时新增 2 柱，且同一对（如 `R_SHI` 对）拆到不同柱 |
 | M3-ACT-10 | 三牛回合分柱拆分 | `round_kind=3` 时新增 3 柱，且三张同型牛分散到 3 根柱 |
@@ -90,7 +90,7 @@
 |---|---|---|
 | M3-CLI-01 | 显式 seed 启动可复现 | 相同 `--seed` 启动两次，首帧公共态（含先手/手牌分布）一致 |
 | M3-CLI-02 | 未传 seed 时自动取时间 | 不传 `--seed` 启动，CLI 输出实际 seed 且可用于复现 |
-| M3-CLI-03 | 轮转扮演三座次 | 每一步提示当前 `decision.seat`，并按 seat0/1/2 轮转推进 |
+| M3-CLI-03 | 轮转扮演三座次 | 每一步提示当前 `turn.current_seat`，并按 seat0/1/2 轮转推进 |
 | M3-CLI-04 | 状态展示口径 | 每步展示公共态摘要 + 当前 seat 私有态；不默认泄露其他 seat 私有态 |
 | M3-CLI-05 | 合法动作列表与索引 | CLI 按 `get_legal_actions` 顺序展示全部动作，`action_idx` 可直接提交 |
 | M3-CLI-06 | COVER 输入链路 | 选择 COVER 后可输入 `cover_list`，张数/持牌非法时提示并重试 |
@@ -110,9 +110,9 @@
 - 组合枚举与牌力比较规则完整可测，且顺序稳定。
 - 合法动作生成满足 phase 约束与互斥规则（PLAY/COVER、REVEAL/PASS_REVEAL）。
 - `action_idx + cover_list + client_version` 三条核心校验链路均有红绿覆盖。
-- 决策位（`decision.seat`）在每次状态推进后与 `turn.current_seat` 一致。
+- 当前行动位统一由 `turn.current_seat` 表达，并在每次状态推进后保持一致。
 - 回合结算入柱后，棋柱归属与分柱规则（对子/三牛拆柱）可验证且稳定。
-- CLI 可在命令行中按决策座次推进一局，并稳定展示公共态/私有态与合法动作。
+- CLI 可在命令行中按当前行动座次推进一局，并稳定展示公共态/私有态与合法动作。
 
 ## 6) Mock 数据与预期（审查版）
 
@@ -139,26 +139,26 @@
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-LA-01 | `phase=buckle_decision`，`decision.seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1}` | actions 仅含 PLAY 与最多 1 个 BUCKLE |
+| M3-LA-01 | `phase=buckle_decision`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1}` | actions 仅含 PLAY 与最多 1 个 BUCKLE |
 | M3-LA-02 | 同 LA-01 | PLAY 覆盖单张/对子（含狗脚对）全部可出组合，无遗漏 |
 | M3-LA-03 | 同 LA-01，连续调用 3 次 | actions 顺序完全一致 |
-| M3-LA-04 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=2`，`seat1.hand={"R_SHI":1}` | 仅返回 PLAY（不返回 COVER） |
-| M3-LA-05 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=9`，`seat1.hand={"B_NIU":1}` | 仅返回 1 个 COVER |
-| M3-LA-06 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"R_XIANG":1}` | 返回 COVER，且 `required_count=2`（虽然单张牌力高，但因凑不出任何合法对子只能垫牌） |
-| M3-LA-07 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=6`，`seat1.hand={"R_SHI":2,"R_MA":2,"B_NIU":2}` | 返回的 PLAY 全部 `power>6`，且不包含不可压制组合 |
-| M3-LA-08 | 任一可行动状态，但调用 `get_legal_actions(seat!=decision.seat)` | 返回 `{"seat":x,"actions":[]}` |
-| M3-LA-09 | `phase=reveal_decision`，`decision.seat=2` | actions 仅含 `REVEAL` 与 `PASS_REVEAL` |
+| M3-LA-04 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=2`，`seat1.hand={"R_SHI":1}` | 仅返回 PLAY（不返回 COVER） |
+| M3-LA-05 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=9`，`seat1.hand={"B_NIU":1}` | 仅返回 1 个 COVER |
+| M3-LA-06 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"R_XIANG":1}` | 返回 COVER，且 `required_count=2`（虽然单张牌力高，但因凑不出任何合法对子只能垫牌） |
+| M3-LA-07 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=6`，`seat1.hand={"R_SHI":2,"R_MA":2,"B_NIU":2}` | 返回的 PLAY 全部 `power>6`，且不包含不可压制组合 |
+| M3-LA-08 | 任一可行动状态，但调用 `get_legal_actions(seat!=turn.current_seat)` | 返回 `{"seat":x,"actions":[]}` |
+| M3-LA-09 | `phase=reveal_decision`，`turn.current_seat=2` | actions 仅含 `REVEAL` 与 `PASS_REVEAL` |
 | M3-LA-10 | `phase=settlement` 或 `phase=finished` | actions 为空 |
 | M3-LA-11 | 固定同一状态（建议 LA-04）连续取 `actions` | 每个 `action_idx` 语义不漂移 |
-| M3-LA-12 | 对同一局面先执行一次 `apply_action` 再取 `actions` | 新状态 actions 与新的 `decision.seat` 一致 |
-| M3-LA-13 | `phase=buckle_decision`，`decision.seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
+| M3-LA-12 | 对同一局面先执行一次 `apply_action` 再取 `actions` | 新状态 actions 与新的 `turn.current_seat` 一致 |
+| M3-LA-13 | `phase=buckle_decision`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
 | M3-LA-14 | 同 LA-13 | PLAY 的 `payload_cards` 集合与 `enumerate_combos(hand)` 输出一致 |
-| M3-LA-15 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_CHE":1}` | PLAY 仅含红士/黑士/红相（全部 `power>3`） |
-| M3-LA-16 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=4`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1,"B_NIU":2}` | PLAY 含狗脚对、红士对、黑士对、红马对；不含黑牛对 |
-| M3-LA-17 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=8`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1}` | PLAY 仅含狗脚对与红士对，不含黑士对（等于边界） |
-| M3-LA-18 | `phase=in_round`，`decision.seat=1`，`round_kind=3`，`last_combo.power=10`，`seat1.hand={"R_NIU":3,"B_NIU":3}` | PLAY 仅含红三牛 |
-| M3-LA-19 | `phase=in_round`，`decision.seat=1`，`round_kind=2`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1,"R_NIU":3,"R_MA":2}` | 所有 PLAY 均为 2 张组合，不混入单张/三张 |
-| M3-LA-20 | `phase=in_round`，`decision.seat=1`，`round_kind=1`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1}` | `R_SHI` 单张 PLAY 仅出现 1 次 |
+| M3-LA-15 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_CHE":1}` | PLAY 仅含红士/黑士/红相（全部 `power>3`） |
+| M3-LA-16 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=4`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1,"B_NIU":2}` | PLAY 含狗脚对、红士对、黑士对、红马对；不含黑牛对 |
+| M3-LA-17 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=8`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1}` | PLAY 仅含狗脚对与红士对，不含黑士对（等于边界） |
+| M3-LA-18 | `phase=in_round`，`turn.current_seat=1`，`round_kind=3`，`last_combo.power=10`，`seat1.hand={"R_NIU":3,"B_NIU":3}` | PLAY 仅含红三牛 |
+| M3-LA-19 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1,"R_NIU":3,"R_MA":2}` | 所有 PLAY 均为 2 张组合，不混入单张/三张 |
+| M3-LA-20 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=0`，`seat1.hand={"R_SHI":2,"B_SHI":1}` | `R_SHI` 单张 PLAY 仅出现 1 次 |
 | M3-LA-21 | 固定 LA-13 状态，连续调用 3 次 `get_legal_actions` | PLAY 序列（签名）完全一致 |
 | M3-LA-22 | 固定 LA-16 状态，连续调用 3 次 `get_legal_actions` | PLAY 序列（签名）完全一致 |
 
@@ -174,9 +174,9 @@
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-CLI-01 | `python -m engine.cli --seed 20260217` 连续启动两次 | 两次都打印相同 seed，且首轮 `decision.seat` 与 3 名玩家起手分布一致 |
+| M3-CLI-01 | `python -m engine.cli --seed 20260217` 连续启动两次 | 两次都打印相同 seed，且首轮 `turn.current_seat` 与 3 名玩家起手分布一致 |
 | M3-CLI-02 | `python -m engine.cli`（无 seed） | 输出“实际 seed=xxxxxx”；复制该 seed 再次启动可复现 |
-| M3-CLI-03 | 固定局面，依次提交 3 次合法动作 | 每次提示“当前操作 seat=X”，并与状态中的 `decision.seat` 一致 |
+| M3-CLI-03 | 固定局面，依次提交 3 次合法动作 | 每次提示“当前操作 seat=X”，并与状态中的 `turn.current_seat` 一致 |
 | M3-CLI-04 | 固定局面进入交互一轮 | 展示公共态（phase/version/turn）+ 当前 seat `hand`；其他 seat 不展示完整 `hand` |
 | M3-CLI-05 | 固定局面，获取 legal actions | CLI 列表顺序与 `get_legal_actions` 一致，索引从 0 连续递增 |
 | M3-CLI-06 | 选择 COVER，先输入错误张数，再输入正确 `cover_list` | 首次提示错误并重输；第二次成功推进状态 |

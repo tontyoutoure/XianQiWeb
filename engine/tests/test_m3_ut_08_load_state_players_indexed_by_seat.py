@@ -39,7 +39,6 @@ def test_m3_ut_08_load_state_asserts_players_index_matches_seat() -> None:
             "last_combo": None,
             "plays": [],
         },
-        "decision": {"seat": 0, "context": "buckle_decision", "started_at_ms": 0, "timeout_at_ms": None},
         "pillar_groups": [],
         "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
     }

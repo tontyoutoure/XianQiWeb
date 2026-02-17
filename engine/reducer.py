@@ -89,15 +89,6 @@ def _find_combo_power(
     raise ValueError("ENGINE_INVALID_ACTION")
 
 
-def _advance_decision(state: dict[str, Any], seat: int, context: str) -> None:
-    state["decision"] = {
-        "seat": int(seat),
-        "context": context,
-        "started_at_ms": 0,
-        "timeout_at_ms": None,
-    }
-
-
 def _captured_pillar_count(state: dict[str, Any], seat: int) -> int:
     count = 0
     for group in state.get("pillar_groups", []):
@@ -133,7 +124,6 @@ def _finish_round(state: dict[str, Any]) -> None:
     turn["plays"] = []
     turn["current_seat"] = winner_seat
     state["phase"] = "buckle_decision"
-    _advance_decision(state, winner_seat, "buckle_decision")
 
 
 def reduce_apply_action(
@@ -153,10 +143,15 @@ def reduce_apply_action(
     if client_version is not None and int(client_version) != int(state.get("version", 0)):
         raise ValueError("ENGINE_VERSION_CONFLICT")
 
-    decision = state.get("decision") or {}
-    decision_seat = int(decision.get("seat", -1))
+    turn = state.get("turn") or {}
+    if not isinstance(turn, dict):
+        raise ValueError("ENGINE_INVALID_PHASE")
+    acting_seat_raw = turn.get("current_seat")
+    if acting_seat_raw is None:
+        raise ValueError("ENGINE_INVALID_PHASE")
+    acting_seat = int(acting_seat_raw)
 
-    legal_actions = deps["get_legal_actions"](decision_seat)
+    legal_actions = deps["get_legal_actions"](acting_seat)
     actions = legal_actions.get("actions", [])
     if action_idx < 0 or action_idx >= len(actions):
         raise ValueError("ENGINE_INVALID_ACTION_INDEX")
@@ -174,13 +169,12 @@ def reduce_apply_action(
         if round_kind == 0:
             raise ValueError("ENGINE_INVALID_ACTION")
 
-        hand_before_raw = state["players"][decision_seat]["hand"]
+        hand_before_raw = state["players"][acting_seat]["hand"]
         hand_before = {str(card_type): int(count) for card_type, count in hand_before_raw.items()}
         power = int(target.get("power", _find_combo_power(deps, hand_before, payload_cards, round_kind)))
-        _consume_cards_from_hand(state, decision_seat, payload_cards)
+        _consume_cards_from_hand(state, acting_seat, payload_cards)
 
-        play = {"seat": decision_seat, "power": power, "cards": payload_cards}
-        turn = state.get("turn", {})
+        play = {"seat": acting_seat, "power": power, "cards": payload_cards}
 
         if phase == "buckle_decision":
             turn["round_kind"] = round_kind
@@ -188,12 +182,11 @@ def reduce_apply_action(
             turn["last_combo"] = {
                 "power": power,
                 "cards": payload_cards,
-                "owner_seat": decision_seat,
+                "owner_seat": acting_seat,
             }
-            next_seat = (decision_seat + 1) % 3
+            next_seat = (acting_seat + 1) % 3
             turn["current_seat"] = next_seat
             state["phase"] = "in_round"
-            _advance_decision(state, next_seat, "in_round")
         elif phase == "in_round":
             expected_round_kind = int(turn.get("round_kind", 0))
             if round_kind != expected_round_kind:
@@ -209,15 +202,14 @@ def reduce_apply_action(
             turn["last_combo"] = {
                 "power": power,
                 "cards": payload_cards,
-                "owner_seat": decision_seat,
+                "owner_seat": acting_seat,
             }
 
             if len(plays) >= 3:
                 _finish_round(state)
             else:
-                next_seat = (decision_seat + 1) % 3
+                next_seat = (acting_seat + 1) % 3
                 turn["current_seat"] = next_seat
-                _advance_decision(state, next_seat, "in_round")
         else:
             raise ValueError("ENGINE_INVALID_PHASE")
 
@@ -229,30 +221,28 @@ def reduce_apply_action(
         if _count_cards(normalized_cover) != required_count:
             raise ValueError("ENGINE_INVALID_COVER_LIST")
 
-        _consume_cards_from_hand(state, decision_seat, normalized_cover)
+        _consume_cards_from_hand(state, acting_seat, normalized_cover)
 
-        turn = state.get("turn", {})
         plays = turn.setdefault("plays", [])
-        plays.append({"seat": decision_seat, "power": -1, "cards": normalized_cover})
+        plays.append({"seat": acting_seat, "power": -1, "cards": normalized_cover})
 
         if len(plays) >= 3:
             _finish_round(state)
         else:
-            next_seat = (decision_seat + 1) % 3
+            next_seat = (acting_seat + 1) % 3
             turn["current_seat"] = next_seat
-            _advance_decision(state, next_seat, "in_round")
 
     elif action_type == "BUCKLE":
         if phase != "buckle_decision":
             raise ValueError("ENGINE_INVALID_PHASE")
         state["phase"] = "reveal_decision"
-        pending = [((decision_seat + 1) % 3), ((decision_seat + 2) % 3)]
+        pending = [((acting_seat + 1) % 3), ((acting_seat + 2) % 3)]
         state["reveal"] = {
-            "buckler_seat": decision_seat,
+            "buckler_seat": acting_seat,
             "pending_order": pending,
             "relations": [],
         }
-        _advance_decision(state, pending[0], "reveal_decision")
+        turn["current_seat"] = pending[0]
 
     elif action_type in {"REVEAL", "PASS_REVEAL"}:
         if phase != "reveal_decision":
@@ -260,7 +250,7 @@ def reduce_apply_action(
 
         reveal = state.setdefault("reveal", {})
         pending_order = list(reveal.get("pending_order", []))
-        if not pending_order or int(pending_order[0]) != decision_seat:
+        if not pending_order or int(pending_order[0]) != acting_seat:
             raise ValueError("ENGINE_INVALID_PHASE")
 
         pending_order.pop(0)
@@ -271,26 +261,22 @@ def reduce_apply_action(
         if action_type == "REVEAL":
             relations.append(
                 {
-                    "revealer_seat": decision_seat,
+                    "revealer_seat": acting_seat,
                     "buckler_seat": buckler_seat,
-                    "revealer_enough_at_time": _captured_pillar_count(state, decision_seat) >= 3,
+                    "revealer_enough_at_time": _captured_pillar_count(state, acting_seat) >= 3,
                 }
             )
 
-        turn = state.get("turn", {})
         if pending_order:
             next_seat = int(pending_order[0])
             turn["current_seat"] = next_seat
-            _advance_decision(state, next_seat, "reveal_decision")
         elif relations:
-            next_seat = int(relations[-1].get("revealer_seat", decision_seat))
+            next_seat = int(relations[-1].get("revealer_seat", acting_seat))
             state["phase"] = "buckle_decision"
             turn["current_seat"] = next_seat
-            _advance_decision(state, next_seat, "buckle_decision")
         else:
             state["phase"] = "settlement"
-            turn["current_seat"] = decision_seat
-            _advance_decision(state, decision_seat, "settlement")
+            turn["current_seat"] = acting_seat
     else:
         raise ValueError("ENGINE_INVALID_ACTION")
 
