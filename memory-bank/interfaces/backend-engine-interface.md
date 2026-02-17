@@ -149,9 +149,9 @@
   "version": 12,
   "phase": "in_round",
   "players": [
-    {"seat": 0, "hand_count": 6, "captured_pillar_count": 2},
-    {"seat": 1, "hand_count": 6, "captured_pillar_count": 3},
-    {"seat": 2, "hand_count": 6, "captured_pillar_count": 3}
+    {"seat": 0, "hand_count": 6},
+    {"seat": 1, "hand_count": 6},
+    {"seat": 2, "hand_count": 6}
   ],
   "turn": {
     "current_seat": 0,
@@ -187,7 +187,7 @@
   }
 }
 ```
-- `hand_count`、`captured_pillar_count` 为公开信息；`captured_pillar_count` 可由 `pillar_groups` 推导，但为前端便利提供且必须由引擎计算输出。
+- `hand_count` 为公开信息；若前端需要柱数，应由 `pillar_groups` 推导。
 - 垫棋在公共视图中不暴露牌面，使用 `covered_count` 代替 `cards`。
 - 当前决策座次统一由 `turn.current_seat` 表示；引擎不输出计时/超时字段。
 - `reveal.pending_order` 仅在 `phase = buckle_flow` 且扣棋后的掀棋询问子流程中用于“按顺序询问掀棋”。
@@ -206,7 +206,7 @@
 - `covered` 为该玩家已垫棋子的计数表（card_type -> count），仅本人可见。
 
 #### 1.5.3 legal_actions（仅当前行动玩家）
-同一状态下 `actions` 只包含当前阶段合法动作：`buckle_flow` 起始玩家仅可 BUCKLE / PASS_BUCKLE；`buckle_flow` 被询问掀棋玩家仅可 REVEAL / PASS_REVEAL；`in_round` 阶段 PLAY 与 COVER 互斥，且当 `turn.round_kind = 0` 时仅可 PLAY。`actions` 的顺序按引擎输出顺序，后端与前端不做额外排序；`action_idx` 以该顺序为准。
+同一状态下 `actions` 只包含当前阶段合法动作：`buckle_flow` 起始玩家仅可 BUCKLE / PASS_BUCKLE；`buckle_flow` 被询问掀棋玩家仅可 REVEAL / PASS_REVEAL；`in_round` 阶段 PLAY 与 COVER 互斥，且当 `turn.round_kind = 0` 时仅可 PLAY；当 `turn.round_kind > 0` 且存在可压制组合时，仅返回所有可压制 PLAY（`power > last_combo.power`）；当不存在可压制组合时，仅返回 `COVER(required_count=round_kind)`。`actions` 的顺序按引擎输出顺序，后端与前端不做额外排序；`action_idx` 以该顺序为准。
 所有动作都需要引擎校验；若校验失败，引擎应返回错误，后端需向客户端返回非 204 的错误码（MVP 阶段即可）。
 
 buckle_flow 阶段示例（回合起始玩家决策）：

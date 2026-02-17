@@ -47,7 +47,6 @@ engine/
 - 三名玩家手牌总和 + `pillar_groups` 中卡牌总和 = 24。
 - 同一回合内所有 `plays` 的总张数一致（都等于 `round_kind`）。
 - `last_combo` 只记录本轮最大非垫牌组合（`power >= 0`）。
-- `captured_pillar_count` 必须可由 `pillar_groups` 推导，且每次输出一致。
 - “当前谁在决策”统一由 `turn.current_seat` 表达；引擎内不再维护 `decision` 字段。
 - `round_kind = 0` 仅允许在“本轮首手尚未打出”时出现（`buckle_flow`，或 `in_round` 且 `turn.plays` 为空）。
 - `phase != buckle_flow` 时，`reveal.pending_order` 必须为空列表。
@@ -134,7 +133,7 @@ engine/
   4. 不改写 `last_combo`。
 - 当 `turn.plays` 达到 3 人后触发回合结算：
   1. `last_combo.owner_seat` 获得本回合 `plays`，写入 `pillar_groups`。
-  2. 下一回合由 winner 决策：`phase -> buckle_flow`。
+  2. 定义 `winner_seat = last_combo.owner_seat`，下一回合由 `winner_seat` 决策：`phase -> buckle_flow`。
   3. `round_index + 1`，并清空 `round_kind/plays/last_combo`（置初始态）。
   4. `turn.current_seat = winner_seat`。
   5. 清空本次扣后询问残留：`reveal.buckler_seat=null`，`reveal.pending_order=[]`。
@@ -150,7 +149,7 @@ engine/
 - 必须 `phase == settlement`，否则拒绝。
 
 #### 4.3.2 结算步骤
-1. 统计每位玩家 `captured_pillar_count`。
+1. 基于 `pillar_groups` 统计每位玩家当前柱数（`pillar_count`）。
 2. 标记身份：
    - `enough`: `3 <= pillar < 6`
    - `ceramic`: `pillar >= 6`
@@ -166,7 +165,6 @@ engine/
 ### 4.4 `get_public_state() -> public_state`
 - 从内部状态投影公共字段，隐藏他人手牌与垫牌牌面。
 - `players[*].hand_count` 来自手牌计数和。
-- `players[*].captured_pillar_count` 必须由 `pillar_groups` 即时计算，不缓存脏数据。
 - `plays`/`pillar_groups` 中 `power=-1` 的记录改为 `covered_count`。
 - 当前决策位统一由 `turn.current_seat` 表示，不输出 `decision`。
 
@@ -185,11 +183,11 @@ engine/
   - `pending_order!=[]`：仅 `REVEAL` 与 `PASS_REVEAL`。
 - `phase=in_round`：
   - `round_kind=0`：仅输出所有合法首手 `PLAY`。
-  - `round_kind>0` 且存在可压制组合：仅输出 `PLAY`。
+  - `round_kind>0` 且存在可压制组合：仅输出所有可压制 `PLAY`（即 `power > last_combo.power`）。
   - `round_kind>0` 且不存在可压制组合：仅输出 `COVER(required_count=round_kind)`。
 - 顺序稳定性要求：
   - 动作类型按引擎固定顺序输出；
-  - PLAY 内部按“牌力降序 + 牌型字典序”排序。
+  - PLAY 内部排序规则：先按单/双/三（`round_kind`）分组，再按牌力降序；同级下 `R_GOU` 在 `R_CHE` 前、`B_GOU` 在 `B_CHE` 前、`dog_pair` 在 `R_SHI` 对前（用于保证 `action_idx` 稳定）。
 
 ### 4.7 `dump_state() / load_state(state)`
 - `dump_state`：返回可 JSON 序列化的完整内部状态（含 reveal 关系、垫牌明细、version）。
@@ -221,7 +219,7 @@ engine/
   - `ENGINE_INVALID_ACTION_INDEX` -> HTTP 400
   - `ENGINE_INVALID_COVER_LIST` -> HTTP 400
   - `ENGINE_INVALID_PHASE` -> HTTP 409
-  - `ENGINE_INVALID_STATE` -> HTTP 500/409（按触发场景）
+    - 示例 1：`phase in {settlement, finished}` 时调用 `apply_action`。
 - 所有拒绝动作都不得改变状态，也不得增加 `version`。
 
 ## 7. 与后端集成约定（M4 前置）
@@ -265,7 +263,7 @@ engine/
 1. 初始化引擎并创建新局（`init_game`）。
 2. 每个回合先展示公共态摘要：
    - `version / phase / turn.current_seat / round_index / round_kind / last_combo / 当前回合plays`。
-   - 三名玩家的 `hand_count` 与 `captured_pillar_count`（若已提供）。
+   - 三名玩家的 `hand_count`；如需柱数，基于 `pillar_groups` 现场推导并展示。
 3. 根据 `turn.current_seat` 提示“当前请扮演 seatX 操作”。
 4. 仅展示当前 seat 的私有态：
    - `hand`（完整）。
