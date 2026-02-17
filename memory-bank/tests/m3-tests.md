@@ -19,6 +19,8 @@
 | M3-UT-03 | 黑棋判定 | 任一玩家起手无士/相时，`phase` 直接进入 `settlement` |
 | M3-UT-04 | 状态版本号递增规则 | 动作成功后 `version +1`；非法动作不改变 `version` |
 | M3-UT-05 | `dump_state/load_state` 一致性 | dump 后 load，`public/private/legal_actions` 与 dump 前一致 |
+| M3-UT-06 | `get_public_state` 脱敏投影 | 仅返回公共字段：`players[*].hand_count`（不含 `hand`），`power=-1` 的记录改为 `covered_count`，且不输出 `decision` |
+| M3-UT-07 | `get_private_state` 私有态投影 | 仅返回目标 seat 的 `hand/covered`，其中 `covered` 为该 seat 历史垫牌计数聚合 |
 
 ## 2) 组合枚举器测试（重点细化）
 
@@ -180,13 +182,27 @@
 | M3-CLI-07 | 输入越界 `action_idx`（如 99） | 打印 `ENGINE_INVALID_ACTION_INDEX`，状态版本不变，可继续选择 |
 | M3-CLI-08 | 推进到 `settlement` 或 `finished` | CLI 给出终局提示并退出；若 `settle` 可用则可执行结算后退出 |
 
+### 6.5 `get_public_state` 脱敏投影（新增需求）
+
+| 测试ID | Mock 输入（显式） | 预期结果（显式） |
+|---|---|---|
+| M3-UT-06 | `load_state` 一个“内部完整态”：`players` 含完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 至少各含 1 条 `power=-1` 且带 `cards` 的垫牌记录；`turn.current_seat` 为有效 seat | 调用 `get_public_state()` 后：1) `players[*]` 仅含 `seat/hand_count`，不含 `hand`；2) 所有 `power=-1` 记录均使用 `covered_count`，不暴露 `cards`；3) 顶层不包含 `decision` 与计时字段；4) `turn.current_seat` 保持可见用于行动位展示 |
+
+### 6.6 `get_private_state` 私有态投影（新增需求）
+
+| 测试ID | Mock 输入（显式） | 预期结果（显式） |
+|---|---|---|
+| M3-UT-07 | `load_state` 一个“内部完整态”：`players` 含三名玩家完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 含多个 `power=-1` 且带 `cards` 的垫牌记录（跨多个 seat）；调用 `get_private_state(1)` | 返回值仅包含 `hand/covered` 两个字段；`hand` 精确等于 seat1 手牌；`covered` 为 seat1 在 `turn.plays + pillar_groups[*].plays` 中所有垫牌 `cards` 的按类型聚合计数；不泄露其他 seat 的 `hand/covered` |
+
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08` 与 `M3-RF-01~03`；CLI 与 reducer 重构用例均已完成红绿闭环。
+> 说明：当前已完成 `M3-UT-01~07`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08` 与 `M3-RF-01~03`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
 | M3-UT-01 ~ M3-UT-05 | ✅ 通过 | Green 已完成 | Red：2026-02-16 首次执行失败（`init_game` 未实现）；Green：2026-02-16 完成 `engine/core.py` 的 `init_game/apply_action` 后执行 `pytest engine/tests/test_m3_red_ut_01_05.py -q`（5 passed） |
+| M3-UT-06 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_red_ut_06_public_state_masking.py` 并执行 `pytest engine/tests/test_m3_red_ut_06_public_state_masking.py -q`（1 failed）；Green：2026-02-17 在 `engine/core.py` 实现 `get_public_state` 脱敏投影后复测同命令（1 passed） |
+| M3-UT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_red_ut_07_private_state_covered.py` 并执行 `pytest engine/tests/test_m3_red_ut_07_private_state_covered.py -q`（1 failed）；Green：2026-02-17 在 `engine/core.py` 实现 `get_private_state` 的 `covered` 聚合后复测同命令（1 passed） |
 | M3-CB-01 ~ M3-CB-04 | ✅ 通过 | Green 已完成 | Red：2026-02-15 执行 `conda run -n XQB pytest engine/tests/test_m3_red_cb_la_01_06.py -q`（缺失 `engine.combos`）；Green：2026-02-16 新增 `engine/combos.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-LA-04 ~ M3-LA-06 | ✅ 通过 | Green 已完成 | Red：2026-02-15 同批次执行（缺失 `engine.core`）；Green：2026-02-16 新增 `engine/core.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-CB-05 ~ M3-CB-12 | ✅ 通过 | Red 已执行（意外全绿） | 2026-02-16：已新增 `engine/tests/test_m3_red_cb_05_12.py` 并执行 `pytest engine/tests/test_m3_red_cb_05_12.py -q`（8 passed）；当前实现已满足用例预期 |

@@ -9,6 +9,17 @@ from typing import Any, Callable
 from engine.core import XianqiGameEngine
 
 
+def _resolve_acting_seat(public_state: dict[str, Any]) -> int | None:
+    decision = public_state.get("decision")
+    if isinstance(decision, dict) and decision.get("seat") is not None:
+        return int(decision["seat"])
+
+    turn = public_state.get("turn")
+    if isinstance(turn, dict) and turn.get("current_seat") is not None:
+        return int(turn["current_seat"])
+    return None
+
+
 def resolve_seed(seed: int | None, now_provider: Callable[[], int] | None = None) -> int:
     """Return an explicit seed or derive one from current time."""
 
@@ -36,8 +47,7 @@ def build_initial_snapshot(seed: int | None = None) -> dict[str, Any]:
 def render_turn_prompt(public_state: dict[str, Any]) -> str:
     """Render the seat prompt for the current decision maker."""
 
-    decision = public_state.get("decision") or {}
-    seat = decision.get("seat")
+    seat = _resolve_acting_seat(public_state)
     if seat is None:
         return "当前无可操作座次。"
     return f"当前请扮演 seat{int(seat)} 操作。"
@@ -58,14 +68,14 @@ def render_state_view(
 ) -> str:
     """Render public summary and only the acting seat's private state."""
 
-    decision = public_state.get("decision") or {}
+    acting_hint = _resolve_acting_seat(public_state)
     players = public_state.get("players") or []
 
     lines: list[str] = []
     lines.append("=== Public State ===")
     lines.append(f"version: {public_state.get('version')}")
     lines.append(f"phase: {public_state.get('phase')}")
-    lines.append(f"decision_seat: {decision.get('seat')}")
+    lines.append(f"decision_seat: {acting_hint}")
     for player in players:
         seat = player.get("seat")
         hand_count = player.get("hand_count", "-")
@@ -155,11 +165,10 @@ def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, out
                 output_fn("对局已结束。")
             return 0
 
-        decision = public_state.get("decision") or {}
-        if decision.get("seat") is None:
+        acting_seat = _resolve_acting_seat(public_state)
+        if acting_seat is None:
             output_fn("当前无可操作座次，结束。")
             return 0
-        acting_seat = int(decision["seat"])
 
         private_state_by_seat = {seat: engine.get_private_state(seat) for seat in range(3)}
         output_fn(render_state_view(public_state=public_state, acting_seat=acting_seat, private_state_by_seat=private_state_by_seat))
