@@ -9,6 +9,7 @@
 - 建议命令：`conda run -n XQB pytest engine/tests -q`（按测试ID分批执行）。
 - 本文档用于记录 M5 用例设计与每条用例 Red/Green 结果。
 - 样例构造约束：任意结算样例都必须满足“三人柱数总和 `<= 8`”（24 张牌，每 3 张为 1 柱）。
+- 复用约定：M5-UT 的状态构造、结算提取与通用守恒断言统一复用 `engine/tests/m5_settlement_testkit.py`。
 
 ## 1) 引擎结算测试（仅 settle）
 
@@ -42,10 +43,13 @@
 - 黑棋路径可直接结算且增量全零，避免异常分支漏测。
 - 所有成功结算样例均统一检查“分解一致性 + 全局守恒”。
 
-## 4) TDD 执行记录（初始）
+## 4) TDD 执行记录（进行中）
 
-> 说明：当前仅完成测试清单整理，尚未进入指定用例的 Red/Green 实施。
+> 说明：按“人类指定测试ID -> 编写测试 -> 执行 Red/Green”推进；当前已完成 `M5-UT-01~13` 红测落地与执行。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
-| M5-UT-01 ~ M5-UT-13 | 📝 已设计 | 待执行 | 待人类指定优先测试ID后，按 Red -> Green 逐条推进并回填结果 |
+| M5-UT-01 ~ M5-UT-04 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_01_04_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_01_04_settlement.py -q`，结果 `4 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
+| M5-UT-05 ~ M5-UT-08 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_05_08_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_05_08_settlement.py -q`，结果 `4 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
+| M5-UT-09 ~ M5-UT-12 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_09_12_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，结果 `4 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
+| M5-UT-13 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_13_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，结果 `1 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
