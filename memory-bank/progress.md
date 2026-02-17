@@ -22,13 +22,14 @@
 - M3 CLI 首批红测（2026-02-17）：已新增 `engine/tests/test_m3_red_cli_01_04.py` 并执行，`M3-CLI-01~04` 当前按预期 Red（缺失 `engine.cli` 模块与核心交互函数）。
 - M3 CLI 剩余红测（2026-02-17）：已新增 `engine/tests/test_m3_red_cli_05_08.py` 并执行，`M3-CLI-05~08` 当前按预期 Red（4 failed），覆盖动作列表索引展示、COVER 重试路径、非法索引错误输出与 settlement 终局提示文案。
 - M3 CLI 红转绿（2026-02-17）：已在 `engine/cli.py` 完成动作列表 `action_idx/payload_cards` 展示、COVER 失败重试、错误码前缀输出和 settlement 文案修复；`pytest engine/tests/test_m3_red_cli_01_04.py -q` 与 `pytest engine/tests/test_m3_red_cli_05_08.py -q` 均为 `4 passed`。
+- M3 引擎重构里程碑（2026-02-17）：已完成 `apply_action` 等效拆分（`engine/core.py` -> `engine/reducer.py`），并新增 `M3-RF-01~03`（`engine/tests/test_m3_refactor_apply_action_reducer.py`）完成红绿闭环；全量引擎测试更新为 `62 passed`（`pytest engine/tests -q`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
   - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。
   - 待补：`M2-RS-REST-16~17` 因 M3 开局未接入暂时 skip。
 
 ## 当前阶段
-- M3（逻辑引擎核心规则）推进中：`M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08` 已通过；当前全量测试为 `59 passed`（`pytest engine/tests -q`）。
+- M3（逻辑引擎核心规则）推进中：`M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 已通过；当前全量测试为 `62 passed`（`pytest engine/tests -q`）。
 - M2（房间大厅）收口中：仅剩 `M2-RS-REST-16~17` 待 M3 开局能力接入后回补。
 
 ## 记录位置

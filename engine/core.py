@@ -8,6 +8,7 @@ import random
 from typing import Any
 
 from engine.combos import enumerate_combos
+from engine.reducer import ReducerDeps, reduce_apply_action
 
 
 class XianqiGameEngine:
@@ -312,154 +313,17 @@ class XianqiGameEngine:
         client_version: int | None = None,
     ) -> dict[str, Any]:
         state = self._require_state()
-        phase = state.get("phase")
-        if phase in {"settlement", "finished"}:
-            raise ValueError("ENGINE_INVALID_PHASE")
-
-        if client_version is not None and int(client_version) != int(state.get("version", 0)):
-            raise ValueError("ENGINE_VERSION_CONFLICT")
-
-        decision = state.get("decision") or {}
-        decision_seat = int(decision.get("seat", -1))
-
-        legal_actions = self.get_legal_actions(decision_seat)
-        actions = legal_actions.get("actions", [])
-        if action_idx < 0 or action_idx >= len(actions):
-            raise ValueError("ENGINE_INVALID_ACTION_INDEX")
-
-        target = actions[action_idx]
-        action_type = str(target.get("type"))
-
-        normalized_cover = self._normalize_cards(cover_list)
-        if action_type != "COVER" and normalized_cover:
-            raise ValueError("ENGINE_INVALID_COVER_LIST")
-
-        if action_type == "PLAY":
-            payload_cards = self._normalize_cards(target.get("payload_cards", []))
-            round_kind = self._count_cards(payload_cards)
-            if round_kind == 0:
-                raise ValueError("ENGINE_INVALID_ACTION")
-
-            hand_before = self._seat_hand(decision_seat)
-            power = int(target.get("power", self._find_combo_power(hand_before, payload_cards, round_kind)))
-            self._consume_cards_from_hand(decision_seat, payload_cards)
-
-            play = {"seat": decision_seat, "power": power, "cards": payload_cards}
-            turn = state.get("turn", {})
-
-            if phase == "buckle_decision":
-                turn["round_kind"] = round_kind
-                turn["plays"] = [play]
-                turn["last_combo"] = {
-                    "power": power,
-                    "cards": payload_cards,
-                    "owner_seat": decision_seat,
-                }
-                next_seat = (decision_seat + 1) % 3
-                turn["current_seat"] = next_seat
-                state["phase"] = "in_round"
-                self._advance_decision(next_seat, "in_round")
-            elif phase == "in_round":
-                expected_round_kind = int(turn.get("round_kind", 0))
-                if round_kind != expected_round_kind:
-                    raise ValueError("ENGINE_INVALID_ACTION")
-
-                last_combo = turn.get("last_combo") or {}
-                last_power = int(last_combo.get("power", -1))
-                if power <= last_power:
-                    raise ValueError("ENGINE_INVALID_ACTION")
-
-                plays = turn.setdefault("plays", [])
-                plays.append(play)
-                turn["last_combo"] = {
-                    "power": power,
-                    "cards": payload_cards,
-                    "owner_seat": decision_seat,
-                }
-
-                if len(plays) >= 3:
-                    self._finish_round()
-                else:
-                    next_seat = (decision_seat + 1) % 3
-                    turn["current_seat"] = next_seat
-                    self._advance_decision(next_seat, "in_round")
-            else:
-                raise ValueError("ENGINE_INVALID_PHASE")
-
-        elif action_type == "COVER":
-            if phase != "in_round":
-                raise ValueError("ENGINE_INVALID_PHASE")
-
-            required_count = int(target.get("required_count", 0))
-            if self._count_cards(normalized_cover) != required_count:
-                raise ValueError("ENGINE_INVALID_COVER_LIST")
-
-            self._consume_cards_from_hand(decision_seat, normalized_cover)
-
-            turn = state.get("turn", {})
-            plays = turn.setdefault("plays", [])
-            plays.append({"seat": decision_seat, "power": -1, "cards": normalized_cover})
-
-            if len(plays) >= 3:
-                self._finish_round()
-            else:
-                next_seat = (decision_seat + 1) % 3
-                turn["current_seat"] = next_seat
-                self._advance_decision(next_seat, "in_round")
-
-        elif action_type == "BUCKLE":
-            if phase != "buckle_decision":
-                raise ValueError("ENGINE_INVALID_PHASE")
-            state["phase"] = "reveal_decision"
-            pending = [((decision_seat + 1) % 3), ((decision_seat + 2) % 3)]
-            state["reveal"] = {
-                "buckler_seat": decision_seat,
-                "pending_order": pending,
-                "relations": [],
-            }
-            self._advance_decision(pending[0], "reveal_decision")
-
-        elif action_type in {"REVEAL", "PASS_REVEAL"}:
-            if phase != "reveal_decision":
-                raise ValueError("ENGINE_INVALID_PHASE")
-
-            reveal = state.setdefault("reveal", {})
-            pending_order = list(reveal.get("pending_order", []))
-            if not pending_order or int(pending_order[0]) != decision_seat:
-                raise ValueError("ENGINE_INVALID_PHASE")
-
-            pending_order.pop(0)
-            reveal["pending_order"] = pending_order
-
-            buckler_seat = int(reveal.get("buckler_seat", -1))
-            relations = reveal.setdefault("relations", [])
-            if action_type == "REVEAL":
-                relations.append(
-                    {
-                        "revealer_seat": decision_seat,
-                        "buckler_seat": buckler_seat,
-                        "revealer_enough_at_time": self._captured_pillar_count(decision_seat) >= 3,
-                    }
-                )
-
-            turn = state.get("turn", {})
-            if pending_order:
-                next_seat = int(pending_order[0])
-                turn["current_seat"] = next_seat
-                self._advance_decision(next_seat, "reveal_decision")
-            elif relations:
-                next_seat = int(relations[-1].get("revealer_seat", decision_seat))
-                state["phase"] = "buckle_decision"
-                turn["current_seat"] = next_seat
-                self._advance_decision(next_seat, "buckle_decision")
-            else:
-                state["phase"] = "settlement"
-                turn["current_seat"] = decision_seat
-                self._advance_decision(decision_seat, "settlement")
-        else:
-            raise ValueError("ENGINE_INVALID_ACTION")
-
-        state["version"] = int(state.get("version", 0)) + 1
+        deps: ReducerDeps = {
+            "get_legal_actions": self.get_legal_actions,
+            "enumerate_combos": enumerate_combos,
+        }
+        self._state = reduce_apply_action(
+            state=state,
+            action_idx=action_idx,
+            cover_list=cover_list,
+            client_version=client_version,
+            deps=deps,
+        )
         return {"new_state": self.dump_state()}
 
     def settle(self) -> dict[str, Any]:

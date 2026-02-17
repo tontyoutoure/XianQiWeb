@@ -94,6 +94,14 @@
 | M3-CLI-07 | 动作执行失败重试 | 非法输入或引擎错误（如 `ENGINE_INVALID_ACTION_INDEX`）不改状态并可重选 |
 | M3-CLI-08 | 对局结束行为 | 到 `settlement/finished` 时能给出明确提示并结束（或触发 `settle` 流程） |
 
+### 4.2 `apply_action` 重构等效性测试（reducer 拆分）
+
+| 测试ID | 测试描述 | 通过条件 |
+|---|---|---|
+| M3-RF-01 | `core.apply_action` 委托 reducer | `engine.core` 的 `apply_action` 通过 `engine.reducer.reduce_apply_action` 推进状态，且返回结构保持 `{"new_state": ...}` |
+| M3-RF-02 | reducer 成功路径等效 | 典型成功动作（如 `COVER` 收轮）后的 `phase/turn/pillar_groups/version` 与拆分前一致 |
+| M3-RF-03 | reducer 失败路径等效 | 越界 `action_idx`、版本冲突、非法 `cover_list` 仍返回原错误码，失败不改 `version` |
+
 ## 5) 阶段通过判定（M3）
 
 - 组合枚举与牌力比较规则完整可测，且顺序稳定。
@@ -174,7 +182,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10` 与 `M3-CLI-01~08`；CLI 用例已完成红绿闭环。
+> 说明：当前已完成 `M3-UT-01~05`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08` 与 `M3-RF-01~03`；CLI 与 reducer 重构用例均已完成红绿闭环。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -189,3 +197,4 @@
 | M3-ACT-08 ~ M3-ACT-10 | ✅ 通过 | Green 已完成 | Red：2026-02-16 首次执行失败（`apply_action` 未实现）；Green：2026-02-16 完成回合收尾与 `pillar_groups.pillars` 拆柱后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py -q`（3 passed） |
 | M3-CLI-01 ~ M3-CLI-04 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_01_04.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 补齐 `build_initial_snapshot / resolve_seed / render_turn_prompt / render_state_view` 后执行同命令（4 passed）。 |
 | M3-CLI-05 ~ M3-CLI-08 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_05_08.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 修复动作索引展示、COVER 重试、错误码前缀与 settlement 提示后执行同命令（4 passed）。 |
+| M3-RF-01 ~ M3-RF-03 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_refactor_apply_action_reducer.py` 并执行 `pytest engine/tests/test_m3_refactor_apply_action_reducer.py -q`（`1 failed, 2 passed`，缺少 `reduce_apply_action` 委托入口）；Green：2026-02-17 新增 `engine/reducer.py` 并完成 `engine/core.py` 委托改造后执行同命令（`3 passed`）。 |
