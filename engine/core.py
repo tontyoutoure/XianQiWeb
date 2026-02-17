@@ -10,6 +10,7 @@ from typing import Any
 from engine.actions import get_legal_actions as actions_get_legal_actions
 from engine.combos import enumerate_combos
 from engine.reducer import ReducerDeps, reduce_apply_action
+from engine.settlements import settle_state
 from engine.serializer import (
     dump_state as serializer_dump_state,
     get_private_state as serializer_get_private_state,
@@ -240,7 +241,9 @@ class XianqiGameEngine:
         return {"new_state": self.dump_state()}
 
     def settle(self) -> dict[str, Any]:
-        raise NotImplementedError("settle is not implemented in this stage")
+        next_state = settle_state(self._state)
+        self._state = next_state
+        return {"new_state": self.dump_state()}
 
     def get_public_state(self) -> dict[str, Any]:
         return serializer_get_public_state(self._state)

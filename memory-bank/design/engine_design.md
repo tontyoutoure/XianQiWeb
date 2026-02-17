@@ -20,21 +20,23 @@
 - **先校验后落地**：动作全部校验通过后再写入状态并 `version + 1`。
 - **可恢复**：`dump_state/load_state` 可无损恢复（含 reveal 关系与垫牌明细）。
 
-## 2. 模块划分（建议）
+## 2. 模块划分（建议，按当前实现状态标记）
 ```text
 engine/
-  core.py                # XianqiGameEngine 对外接口实现
-  cli.py                 # 本地命令行对局入口（单机三座次轮流操作）
-  models.py              # 状态结构（dataclass / TypedDict）
-  constants.py           # card_type、phase、action_type 常量
-  cards.py               # 牌堆构建、发牌、卡牌顺序与牌力
-  combos.py              # 组合枚举、组合牌力计算、比较器
-  actions.py             # 各 phase 合法动作生成
-  reducer.py             # apply_action 的状态推进
-  settlement.py          # 够/瓷/掀棋结算
-  serializer.py          # state/public/private 输出与 dump/load
-  errors.py              # 引擎错误码与异常定义
+  🚧 core.py             # XianqiGameEngine 对外接口实现（settle 已拆分到 settlements.py）
+  ✅ cli.py              # 本地命令行对局入口（单机三座次轮流操作）
+  ❌ models.py           # 状态结构（dataclass / TypedDict）
+  ❌ constants.py        # card_type、phase、action_type 常量
+  ❌ cards.py            # 牌堆构建、发牌、卡牌顺序与牌力
+  ✅ combos.py           # 组合枚举、组合牌力计算、比较器
+  ✅ actions.py          # 各 phase 合法动作生成
+  ✅ reducer.py          # apply_action 的状态推进
+  ✅ settlements.py      # 结算入口（当前仅占位，具体结算逻辑未实现）
+  ✅ serializer.py       # state/public/private 输出与 dump/load
+  ❌ errors.py           # 引擎错误码与异常定义
 ```
+- 状态图例：`✅` 已实现（文件已存在）；`🚧` 部分实现（文件已存在但核心能力未完成）；`❌` 未实现（文件不存在）。
+- 判定口径：以当前仓库代码为准，按模块文件是否落地进行标记。
 
 ## 3. 核心状态与不变量
 

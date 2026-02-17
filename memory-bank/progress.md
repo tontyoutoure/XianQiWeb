@@ -28,6 +28,7 @@
 - M3 序列化模块拆分（2026-02-17）：已新增 `engine/serializer.py` 并将 `load_state/dump_state/get_public_state/get_private_state` 及相关辅助函数从 `engine/core.py` 抽离，`engine/core.py` 改为调用 serializer；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M3 合法动作模块拆分（2026-02-17）：已新增 `engine/actions.py` 并将 `get_legal_actions` 及手牌读取辅助函数从 `engine/core.py` 抽离为函数式实现（state-only）；`engine/core.py` 的同名方法改为转发调用，reducer 依赖链保持兼容；回归测试通过（`pytest engine/tests -q`，`64 passed`）。
 - M3 seat 直索引与快速失败策略（2026-02-17）：`actions/reducer/serializer/core` 中多处 seat 手牌读取改为 `players[seat]` 直索引；`load_state` 增加 players 索引一致性断言（`players[i].seat == i`），并新增 `M3-UT-08`（`engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py`）锁定契约；全量测试更新为 `65 passed`（`pytest engine/tests -q`）。
+- M3 结算入口模块拆分（2026-02-17）：已新增 `engine/settlements.py` 并将 `engine/core.py` 的 `settle` 改为委托 `settlements` 入口，当前结算逻辑仍保持未实现占位；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
   - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。
