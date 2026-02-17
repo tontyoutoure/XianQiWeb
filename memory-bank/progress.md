@@ -34,6 +34,7 @@
 - M5 测试复用与第二批红测（2026-02-17）：已新增 `engine/tests/m5_settlement_testkit.py` 抽离 M5-UT 通用状态构造与结算断言，并新增 `engine/tests/test_m5_red_ut_05_08_settlement.py`；执行 `pytest engine/tests/test_m5_red_ut_05_08_settlement.py -q`，`M5-UT-05~08` 当前按预期 Red（4 failed，`settle` 仍未实现）。
 - M5 第三批红测（2026-02-17）：已新增 `engine/tests/test_m5_red_ut_09_12_settlement.py` 并复用 `m5_settlement_testkit`（含 `extract_new_state`）；执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，`M5-UT-09~12` 当前按预期 Red（4 failed，`settle` 仍未实现）。
 - M5 第四批红测（2026-02-17）：已新增 `engine/tests/test_m5_red_ut_13_settlement.py` 并复用 `m5_settlement_testkit` 的黑棋 seed 搜索与通用断言；执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，`M5-UT-13` 当前按预期 Red（1 failed，`settle` 仍未实现）。
+- M5 引擎结算首轮转绿（2026-02-17）：已在 `engine/settlements.py` 实现 `settle_state`（phase 门禁、够/瓷/掀棋分解结算、已够掀棋未瓷不收够棋、`finished + version+1`），并在 `engine/core.py` 对齐 `settle` 输出契约（含 `settlement`）；`M5-UT-01~04` 已转绿（`pytest engine/tests/test_m5_red_ut_01_04_settlement.py -q`，`4 passed`），补充回归 `M5-UT-05~13` 通过（`9 passed`），全量引擎测试更新为 `78 passed`（`pytest engine/tests -q`）。
 - M3 行动位字段收敛（2026-02-17）：已删除 `state.decision` 及 `_advance_decision` 相关调用，动作判定/状态推进/CLI 全部统一为 `turn.current_seat` 单一真源，并同步修正相关引擎测试夹具与断言；回归测试通过（`pytest engine/tests -q`，`65 passed`）。
 - M2（房间大厅）进展（2026-02-15）：
   - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
@@ -41,7 +42,9 @@
   - 待补：`M2-RS-REST-16~17` 因 M3 开局未接入暂时 skip。
 
 ## 当前阶段
-- M3（逻辑引擎核心规则）推进中：`M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 已通过；当前全量测试为 `65 passed`（`pytest engine/tests -q`）。
+- M3（逻辑引擎核心规则）已基本收口：`M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 已通过。
+- M5（结算与继续下一局）推进中：引擎结算 `M5-UT-01~13` 已通过（接口层 `/settlement`、`/continue` 待后续里程碑接入）。
+- 当前全量引擎测试为 `78 passed`（`pytest engine/tests -q`）。
 - M2（房间大厅）收口中：仅剩 `M2-RS-REST-16~17` 待 M3 开局能力接入后回补。
 
 ## 记录位置

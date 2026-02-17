@@ -136,9 +136,13 @@ class XianqiGameEngine:
         return {"new_state": self.dump_state()}
 
     def settle(self) -> dict[str, Any]:
-        next_state = settle_state(self._state)
-        self._state = next_state
-        return {"new_state": self.dump_state()}
+        state = self._require_state()
+        output = settle_state(state)
+        self._state = output["new_state"]
+        return {
+            "new_state": self.dump_state(),
+            "settlement": output["settlement"],
+        }
 
     def get_public_state(self) -> dict[str, Any]:
         return serializer_get_public_state(self._state)
