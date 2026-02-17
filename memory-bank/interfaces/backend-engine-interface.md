@@ -6,7 +6,7 @@
 - 引擎是一个对象，内部维护当前对局状态（state），对外暴露明确的方法。
 - 所有校验在引擎完成（手牌合法性、轮次、必须压制/垫棋等）。
 - 引擎内部只使用座次（seat）标识玩家；用户 id 与座次映射由后端维护。
-- “当前谁在决策（谁的计时在走）”属于一等状态；最少应可由 `turn.current_seat` 表达，推荐额外显式输出 `decision` 字段。
+- “当前谁在决策”属于一等状态，由 `turn.current_seat` 表达；计时/超时由后端会话层维护，不进入引擎状态。
 
 引擎对象建议提供的方法：
 - `init_game(config, rng_seed?) -> output`：初始化新局并返回一次输出快照（见 1.5）。
@@ -49,11 +49,11 @@
 
 ### 1.3 引擎状态结构（建议）
 说明：引擎状态为内部完整记录，包含垫棋牌面；对外 public_state 由后端脱敏处理。
-补充：`buckle_decision` 阶段视为新一轮开始，`round_kind` 应置为 0（表示尚未出牌确定牌型）。
+补充：新一轮由 `buckle_flow` 开始；进入 `in_round` 且尚未出首手时，`round_kind` 应置为 0（表示尚未出牌确定牌型）。
 ```jsonc
 {
   "version": 12, // 状态版本号，单调递增，用于乐观锁与重连校验（每次动作被接受并更新状态后 +1）
-  "phase": "in_round", // 对局阶段（init / buckle_decision / in_round / reveal_decision / settlement / finished）
+  "phase": "in_round", // 对局阶段（init / buckle_flow / in_round / settlement / finished）
   "players": [
     {
       "seat": 0, // 座次（0/1/2，逆时针）
@@ -63,7 +63,7 @@
     {"seat": 2, "hand": {}}
   ],
   "turn": {
-    "current_seat": 0, // 当前该行动/当前决策（当前烧时间）的座次
+    "current_seat": 0, // 当前该行动/当前决策座次
     "round_index": 2, // 第几回合（从0开始）
     "round_kind": 1, // 本轮牌型/张数（1/2/3）
     "last_combo": {
@@ -83,12 +83,6 @@
         "cards": [{"type": "B_NIU", "count": 1}]
       }
     ]
-  },
-  "decision": {
-    "seat": 0, // 当前决策座次（与 turn.current_seat 一致）
-    "context": "in_round", // buckle_decision / in_round / reveal_decision
-    "started_at_ms": 1739600000, // 进入该决策位时间
-    "timeout_at_ms": null // MVP 可为空；后续支持超时时填截止时间
   },
   "pillar_groups": [
     {
@@ -116,7 +110,8 @@
   ],
   "reveal": {
     "buckler_seat": 0, // 本次扣棋发起人
-    "pending_order": [2], // 待决策掀棋的座次顺序
+    "active_revealer_seat": 1, // 当前活跃掀棋者座次；无活跃掀棋者时为 null
+    "pending_order": [], // 待决策掀棋的座次顺序（仅 phase=buckle_flow 且处于扣后掀棋询问子流程时非空）
     "relations": [
       {
         "revealer_seat": 1,
@@ -172,11 +167,6 @@
       {"seat": 2, "power": -1, "covered_count": 1}
     ]
   },
-  "decision": {
-    "seat": 0,
-    "context": "in_round",
-    "timeout_at_ms": null
-  },
   "pillar_groups": [
     {
       "round_index": 1,
@@ -191,14 +181,18 @@
   ],
   "reveal": {
     "buckler_seat": 0,
-    "pending_order": [2],
+    "active_revealer_seat": 1,
+    "pending_order": [],
     "relations": [{"revealer_seat": 1, "buckler_seat": 0, "revealer_enough_at_time": false}]
   }
 }
 ```
 - `hand_count`、`captured_pillar_count` 为公开信息；`captured_pillar_count` 可由 `pillar_groups` 推导，但为前端便利提供且必须由引擎计算输出。
 - 垫棋在公共视图中不暴露牌面，使用 `covered_count` 代替 `cards`。
-- `decision` 用于明确“当前轮到谁决策/谁的时钟在走”；与 `turn.current_seat` 必须一致。
+- 当前决策座次统一由 `turn.current_seat` 表示；引擎不输出计时/超时字段。
+- `reveal.pending_order` 仅在 `phase = buckle_flow` 且扣棋后的掀棋询问子流程中用于“按顺序询问掀棋”。
+- `reveal.active_revealer_seat` 表示当前活跃掀棋者；首次命中 `REVEAL` 时更新为该玩家。若该活跃掀棋者在后续被询问时选择 `PASS_REVEAL`，则该字段立即置为 `null`。
+- 扣后掀棋询问流程中，命中首个 `REVEAL` 后立即结束询问并切回扣棋方进入 `in_round`，不再继续询问剩余玩家。
 
 #### 1.5.2 private_state_by_seat
 ```jsonc
@@ -212,10 +206,32 @@
 - `covered` 为该玩家已垫棋子的计数表（card_type -> count），仅本人可见。
 
 #### 1.5.3 legal_actions（仅当前行动玩家）
-同一状态下 `actions` 只包含当前阶段合法动作：`in_round` 阶段 PLAY 与 COVER 互斥；`buckle_decision` 阶段仅 PLAY 或 BUCKLE；REVEAL / PASS_REVEAL 仅在 `phase = reveal_decision` 出现。`actions` 的顺序按引擎输出顺序，后端与前端不做额外排序；`action_idx` 以该顺序为准。同一状态下无牌面动作（BUCKLE / REVEAL / PASS_REVEAL）各最多 1 个。
+同一状态下 `actions` 只包含当前阶段合法动作：`buckle_flow` 起始玩家仅可 BUCKLE / PASS_BUCKLE；`buckle_flow` 被询问掀棋玩家仅可 REVEAL / PASS_REVEAL；`in_round` 阶段 PLAY 与 COVER 互斥，且当 `turn.round_kind = 0` 时仅可 PLAY。`actions` 的顺序按引擎输出顺序，后端与前端不做额外排序；`action_idx` 以该顺序为准。
 所有动作都需要引擎校验；若校验失败，引擎应返回错误，后端需向客户端返回非 204 的错误码（MVP 阶段即可）。
 
-buckle_decision 阶段示例（起始玩家可出棋或扣棋）：
+buckle_flow 阶段示例（回合起始玩家决策）：
+```jsonc
+{
+  "seat": 0,
+  "actions": [
+    {"type": "BUCKLE"},
+    {"type": "PASS_BUCKLE"}
+  ]
+}
+```
+
+buckle_flow 阶段示例（扣后被询问掀棋）：
+```jsonc
+{
+  "seat": 2,
+  "actions": [
+    {"type": "REVEAL"},
+    {"type": "PASS_REVEAL"}
+  ]
+}
+```
+
+in_round 阶段示例（`round_kind = 0`，仅可出首手）：
 ```jsonc
 {
   "seat": 0,
@@ -227,8 +243,7 @@ buckle_decision 阶段示例（起始玩家可出棋或扣棋）：
     {
       "type": "PLAY",
       "payload_cards": [{"type": "B_NIU", "count": 1}]
-    },
-    {"type": "BUCKLE"},
+    }
   ]
 }
 ```
@@ -258,18 +273,10 @@ in_round 阶段示例（只能垫牌）：
   ]
 }
 ```
-
-掀棋决策示例：
-```jsonc
-{
-  "seat": 2,
-  "actions": [
-    {"type": "REVEAL"},
-    {"type": "PASS_REVEAL"}
-  ]
-}
-```
 - COVER 仅给出 `required_count`，由前端在手牌中选择任意同张数牌面并通过 `cover_list` 传回，最终由引擎校验合法性。
+- `buckle_flow` 扣后掀棋询问推进规则：`PASS_REVEAL` 才会继续询问 `pending_order` 下一位；`REVEAL` 会立刻结束本次掀棋决策并进入 `in_round`，不再继续询问剩余玩家。
+- 若当前被询问者是 `active_revealer_seat` 且选择 `PASS_REVEAL`，引擎需先将 `active_revealer_seat` 置为 `null`，再推进询问顺序/终局判定。
+- 一致性约束：`legal_actions.seat` 必须等于 `turn.current_seat`。
 
 #### 1.5.4 settlement（结算结果）
 ```jsonc

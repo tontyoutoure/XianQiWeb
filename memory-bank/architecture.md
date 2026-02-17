@@ -74,27 +74,26 @@
 waiting → playing → settlement →（玩家选择继续）waiting 或直接创建新局
 
 状态映射（建议）：
-- engine.phase = init / buckle_decision / in_round / reveal_decision → games.status = in_progress
+- engine.phase = init / buckle_flow / in_round → games.status = in_progress
 - engine.phase = settlement → games.status = settlement
 - engine.phase = finished → games.status = finished
 - rooms.status：当前房间有 `games.status = in_progress` 则为 playing；有 `games.status = settlement` 则为 settlement；否则为 waiting
 
 ### 3.2 对局阶段（game phase）
 - init：房间三人就绪后创建对局（发牌与先手判定在此完成）。
-- buckle_decision：当前玩家选择扣棋或出棋。
-- in_round：回合进行中（出棋/垫棋）。
-- reveal_decision：其他玩家依规则顺序决定是否掀棋。
+- buckle_flow：回合起始玩家仅可选择 BUCKLE / PASS_BUCKLE。若 PASS_BUCKLE，则立即进入 `in_round`，并由该玩家打出本轮首手；若 BUCKLE，则在本阶段内按顺序询问其他玩家是否 REVEAL / PASS_REVEAL，命中首个 REVEAL 后立即结束询问并进入 `in_round`（由扣棋方打出本轮首手），若两人均 PASS_REVEAL 则进入 `settlement`。
+- in_round：回合进行中（出棋/压制/垫棋）。当 `round_kind = 0`（尚未有人打出首手）时，当前行动位仅允许 PLAY，不允许 COVER。
 - settlement：结算。
 - finished：结算完成并记录筹码变化。
 
 注：MVP 阶段不单独设 `dealing` 阶段。
 
 ### 3.3 回合流程（简化）
-1) 当前回合起始玩家决定出棋或扣棋。
-2) 出棋后，其他玩家依次压制（能压必须压）或垫棋。
-3) 回合结束，最大组合玩家获得本轮棋子，更新柱数。
-4) 最大组合玩家成为下一回合起始玩家。
-5) 选择扣棋触发掀棋决策顺序；无人掀棋则结算。
+1) 回合起始玩家进入 `buckle_flow`，仅可选择 BUCKLE / PASS_BUCKLE。
+2) 若选择 PASS_BUCKLE，直接进入 `in_round`，由该玩家打出本轮首手（确定 `round_kind`）。
+3) 若选择 BUCKLE，在 `buckle_flow` 内按规则顺序询问另外两位玩家是否 REVEAL / PASS_REVEAL：若命中首个 REVEAL，则立即进入 `in_round` 且由扣棋玩家打出本轮首手；若两人均 PASS_REVEAL，则直接进入 `settlement`。
+4) 进入 `in_round` 后，其他玩家依次压制（能压必须压）或垫棋，直到本轮结束。
+5) 本轮结束后，最大组合玩家获得本轮棋子并更新柱数，随后作为下一轮起始玩家回到 `buckle_flow`。
 
 ## 4. 接口文档
 接口细节已拆分为独立文档：

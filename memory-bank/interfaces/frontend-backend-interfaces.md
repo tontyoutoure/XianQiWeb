@@ -92,17 +92,52 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 {
   "seat": 1,
   "actions": [
-    {"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}]},
-    {"type": "COVER", "required_count": 1},
-    {"type": "BUCKLE"},
-    {"type": "REVEAL"},
-    {"type": "PASS_REVEAL"}
+    {"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}]}
   ]
 }
 ```
 - PLAY：携带 `payload_cards`（推荐出牌牌面，前端用其决定 `action_idx`）。
 - COVER：只给出 `required_count`，前端自行从手牌选择同张数牌面，通过 `cover_list` 回传。
-- BUCKLE / REVEAL / PASS_REVEAL：无额外载荷，列表中最多各 1 个。
+- BUCKLE / PASS_BUCKLE / REVEAL / PASS_REVEAL：无额外载荷。
+- 前端仅根据 `legal_actions.actions` 渲染可点击操作，不需要自行推断当前决策类型。
+
+buckle_flow（回合起始玩家决策）示例：
+```jsonc
+{
+  "seat": 0,
+  "actions": [
+    {"type": "BUCKLE"},
+    {"type": "PASS_BUCKLE"}
+  ]
+}
+```
+
+buckle_flow（扣后被询问掀棋）示例：
+```jsonc
+{
+  "seat": 2,
+  "actions": [
+    {"type": "REVEAL"},
+    {"type": "PASS_REVEAL"}
+  ]
+}
+```
+
+in_round（`round_kind = 0`，仅可出首手）示例：
+```jsonc
+{
+  "seat": 0,
+  "actions": [
+    {"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}]},
+    {"type": "PLAY", "payload_cards": [{"type": "B_NIU", "count": 1}]}
+  ]
+}
+```
+
+in_round（非首手）动作约束：
+- 可压制时仅返回 PLAY 动作。
+- 无法压制时仅返回 COVER 动作（含 `required_count`）。
+- 掀棋决策顺序由服务端控制：某玩家在 `buckle_flow` 扣后询问中选择 `REVEAL` 时，本次询问立即结束并切回扣棋方出棋，不再给第三名玩家下发掀棋决策。
 
 #### 1.3.2 settlement / continue 调用时机
 - `/settlement`：仅当 `phase = settlement | finished` 时可调用，且仅限房间成员。
