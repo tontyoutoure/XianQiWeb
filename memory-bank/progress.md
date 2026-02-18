@@ -15,7 +15,3 @@
 - 当前全量引擎测试为 `88 passed`（`pytest engine/tests -q`）。
 - M2（房间大厅）收口中：仅剩 `M2-RS-REST-16~17` 待 M3 开局能力接入后回补。
 
-## 记录位置
-- M1 真实服务结果：`memory-bank/tests/m1-tests-real-service.md`。
-- M2 用例与红绿记录：`memory-bank/tests/m2-tests.md`。
-- M2 真实服务收口清单：`memory-bank/tests/m2-tests-real-service.md`。
