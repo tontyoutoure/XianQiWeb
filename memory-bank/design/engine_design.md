@@ -272,11 +272,11 @@ engine/
    - `covered`（若已实现）。
 5. 展示该 seat 全部合法动作（包含 `action_idx`）：
    - PLAY：显示牌型、`payload_cards`、`power`。
-   - COVER：显示 `required_count`，并提示输入 `cover_list`。
+   - COVER：显示 `required_count`。若本步合法动作仅有一个 COVER，则跳过 `action_idx` 选择，直接进入垫牌输入。
    - BUCKLE / PASS_BUCKLE / REVEAL / PASS_REVEAL：显示动作名。
 6. 用户输入动作并执行：
    - 非 COVER：输入 `action_idx` 即可。
-   - COVER：先选 `action_idx`，再输入 `cover_list`（如 `R_SHI:1,B_NIU:1`）。
+   - COVER：先展示手牌索引列表（如 `0. R_NIU`、`1. B_NIU`），再输入索引串（如需垫两张则输入 `01`）。
 7. 调用 `apply_action`，成功后进入下一轮循环；失败则展示错误码并重试。
 8. 当 `phase=settlement`：
    - 若 `settle` 已实现，提示执行结算（或默认自动 `settle`）。
@@ -290,11 +290,16 @@ engine/
 
 ### 9.5 输入格式与错误处理
 - 动作输入非法（非数字、越界）：提示并重输，不改状态。
-- `cover_list` 解析失败或张数不匹配：提示并重输，不改状态。
+- COVER 输入采用“无分隔索引串”：
+  - 输入长度必须等于 `required_count`；
+  - 每一位必须是当前“手牌索引列表”中的合法索引；
+  - 同一索引不可重复选择。
+- COVER 索引串解析失败、长度不匹配、索引越界/重复：提示并重输，不改状态。
 - 引擎抛错（如 `ENGINE_VERSION_CONFLICT`、`ENGINE_INVALID_COVER_LIST`）：按原错误码输出，便于直接对照接口文档定位问题。
 
 ### 9.6 非功能要求
 - 输出顺序稳定：同一状态下动作列表顺序必须与 `get_legal_actions` 返回顺序一致。
+- 手牌索引顺序稳定：同一手牌状态下，CLI 展示的索引列表顺序必须固定，避免误选。
 - 可复现：日志首行打印 seed，结束时打印“可复现命令”示例（`python -m engine.cli --seed <seed>`）。
 - 可测试：CLI 主循环应拆分为可单测函数（解析输入、动作渲染、state 渲染），便于用 pytest + monkeypatch 覆盖关键交互路径。
 
@@ -302,3 +307,4 @@ engine/
 - 2026-02-15：创建文档，补充引擎接口实现逻辑、动作校验链路、结算算法口径与后端集成约定。
 - 2026-02-17：新增“命令行对局接口”设计（seed 约定、状态展示口径、交互循环与错误处理）。
 - 2026-02-17：根据规则澄清完成状态机重构：旧双决策 phase 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。
+- 2026-02-20：CLI COVER 交互改造：当仅有 COVER 动作时跳过 `action_idx`，改为手牌索引选牌输入（如 `01`），不再使用 `TYPE:COUNT` 文本输入。

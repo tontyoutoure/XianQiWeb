@@ -106,25 +106,45 @@ def _render_actions(actions: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _parse_cover_list(raw: str) -> list[dict[str, int]]:
-    text = raw.strip()
-    if not text:
-        return []
-
-    cards: dict[str, int] = {}
-    for chunk in text.split(","):
-        token = chunk.strip()
-        if not token:
+def _expand_hand_cards(hand: dict[str, Any]) -> list[str]:
+    cards: list[str] = []
+    for card_type, count in sorted(hand.items()):
+        card_count = int(count)
+        if card_count <= 0:
             continue
-        if ":" not in token:
-            raise ValueError("cover_list format must be TYPE:COUNT separated by commas")
-        card_type, count_text = token.split(":", 1)
-        card_type = card_type.strip().upper()
-        count = int(count_text.strip())
-        if not card_type or count <= 0:
-            raise ValueError("cover_list contains invalid card or count")
-        cards[card_type] = cards.get(card_type, 0) + count
-    return [{"type": card_type, "count": count} for card_type, count in sorted(cards.items())]
+        cards.extend([str(card_type)] * card_count)
+    return cards
+
+
+def _render_cover_cards(cover_cards: list[str]) -> str:
+    lines = ["=== Cover Cards ==="]
+    for idx, card_type in enumerate(cover_cards):
+        lines.append(f"{idx}. {card_type}")
+    return "\n".join(lines)
+
+
+def _parse_cover_indexes(raw: str, required_count: int, cover_cards: list[str]) -> list[dict[str, int]]:
+    text = raw.strip().replace(" ", "")
+    if not text:
+        raise ValueError("cover 索引不能为空")
+    if len(text) != required_count:
+        raise ValueError(f"cover 索引数量不正确，需选择 {required_count} 张")
+    if not text.isdigit():
+        raise ValueError("cover 索引格式错误，请输入数字索引串，例如 01")
+
+    selected_indexes: set[int] = set()
+    selected_cards: dict[str, int] = {}
+    for digit in text:
+        idx = int(digit)
+        if idx in selected_indexes:
+            raise ValueError("cover 索引不能重复")
+        if idx < 0 or idx >= len(cover_cards):
+            raise ValueError("cover 索引越界")
+        selected_indexes.add(idx)
+        card_type = cover_cards[idx]
+        selected_cards[card_type] = selected_cards.get(card_type, 0) + 1
+
+    return [{"type": card_type, "count": count} for card_type, count in sorted(selected_cards.items())]
 
 
 def _emit_error(output_fn: Callable[[str], None], exc: Exception) -> None:
@@ -212,24 +232,41 @@ def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, out
         if not actions:
             output_fn("当前无合法动作，结束。")
             return 0
-        output_fn(_render_actions(actions))
 
-        try:
-            idx_raw = input_fn("请输入 action_idx: ").strip()
-            action_idx = int(idx_raw)
-            if action_idx < 0 or action_idx >= len(actions):
-                raise ValueError("ENGINE_INVALID_ACTION_INDEX")
-        except ValueError as exc:
-            _emit_error(output_fn, exc)
-            continue
+        is_cover_only = len(actions) == 1 and str(actions[0].get("type")) == "COVER"
+        if is_cover_only:
+            action_idx = 0
+            selected = actions[0]
+            output_fn("当前仅可垫棋，跳过 action_idx，直接输入垫牌索引。")
+        else:
+            output_fn(_render_actions(actions))
+            try:
+                idx_raw = input_fn("请输入 action_idx: ").strip()
+                action_idx = int(idx_raw)
+                if action_idx < 0 or action_idx >= len(actions):
+                    raise ValueError("ENGINE_INVALID_ACTION_INDEX")
+            except ValueError as exc:
+                _emit_error(output_fn, exc)
+                continue
+            selected = actions[action_idx]
 
-        selected = actions[action_idx]
         action_applied = False
         if str(selected.get("type")) == "COVER":
+            required_count = int(selected.get("required_count", 0))
+            private_state = private_state_by_seat.get(acting_seat) or private_state_by_seat.get(str(acting_seat), {})
+            hand = private_state.get("hand") if isinstance(private_state, dict) else {}
+            cover_cards = _expand_hand_cards(hand if isinstance(hand, dict) else {})
+            output_fn(_render_cover_cards(cover_cards))
+
             while True:
-                raw_cover = input_fn("请输入 cover_list (例如 R_SHI:1,B_NIU:1): ")
+                example = "01" if required_count >= 2 else "0"
+                raw_cover = input_fn(f"请输入 cover 索引串 (需选{required_count}张，例如 {example}): ")
                 try:
-                    cover_list = _parse_cover_list(raw_cover)
+                    cover_list = _parse_cover_indexes(
+                        raw=raw_cover,
+                        required_count=required_count,
+                        cover_cards=cover_cards,
+                    )
                 except Exception as exc:  # pylint: disable=broad-except
                     _emit_error(output_fn, exc)
                     continue

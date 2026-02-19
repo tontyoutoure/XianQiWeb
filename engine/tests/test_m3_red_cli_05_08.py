@@ -45,7 +45,7 @@ def test_m3_cli_05_actions_render_with_explicit_action_idx_and_payload_cards() -
 
 
 def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
-    """M3-CLI-06: COVER invalid input should reprompt cover_list directly without re-selecting action_idx."""
+    """M3-CLI-06: cover-only branch should bypass action_idx and reprompt cover index input."""
 
     cli = _load_cli_module()
 
@@ -89,7 +89,7 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
 
     prompts: list[str] = []
     outputs: list[str] = []
-    scripted_inputs = iter(["0", "R_SHI:2", "0", "R_SHI:1"])
+    scripted_inputs = iter(["0", "0"])
 
     def fake_input(prompt: str) -> str:
         prompts.append(prompt)
@@ -102,7 +102,9 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
     cli.run_cli(seed=20260217, input_fn=fake_input, output_fn=fake_output)
 
     assert any("ENGINE_INVALID_COVER_LIST" in line for line in outputs)
-    assert prompts.count("请输入 action_idx: ") == 1
+    assert prompts.count("请输入 action_idx: ") == 0
+    assert sum(1 for prompt in prompts if prompt.startswith("请输入 cover 索引串")) == 2
+    assert any("0. R_SHI" in line for line in outputs)
 
 
 def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
