@@ -243,15 +243,25 @@ def render_settlement_view(settlement_payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, output_fn: Callable[[str], None] = print) -> int:
+def run_cli(
+    seed: int | None = None,
+    input_fn: Callable[[str], str] = input,
+    output_fn: Callable[[str], None] = print,
+    log_path: str | None = None,
+) -> int:
     """Run one local game loop by rotating seats according to turn.current_seat."""
 
     actual_seed = resolve_seed(seed)
     output_fn(f"seed={actual_seed}")
     output_fn(f"replay: python -m engine.cli --seed {actual_seed}")
+    if log_path is not None:
+        output_fn(f"log_path={log_path}")
 
     engine = XianqiGameEngine()
-    engine.init_game({"player_count": 3}, rng_seed=actual_seed)
+    init_config: dict[str, Any] = {"player_count": 3}
+    if log_path is not None:
+        init_config["log_path"] = log_path
+    engine.init_game(init_config, rng_seed=actual_seed)
 
     while True:
         public_state = engine.get_public_state()
@@ -360,8 +370,9 @@ def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, out
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run local Xianqi engine CLI.")
     parser.add_argument("--seed", type=int, default=None, help="Optional random seed for reproducible runs.")
+    parser.add_argument("--log-path", type=str, default=None, help="Optional directory for lightweight log files.")
     args = parser.parse_args(argv)
-    return run_cli(seed=args.seed)
+    return run_cli(seed=args.seed, log_path=args.log_path)
 
 
 if __name__ == "__main__":

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
 import random
 from typing import Any
 
 from engine.actions import get_legal_actions as actions_get_legal_actions
 from engine.combos import enumerate_combos
+from engine.game_logger import GameLogger
 from engine.reducer import ReducerDeps, reduce_apply_action
 from engine.settlements import settle_state
 from engine.serializer import (
@@ -42,6 +44,7 @@ class XianqiGameEngine:
 
     def __init__(self) -> None:
         self._state: dict[str, Any] | None = None
+        self._logger: GameLogger | None = None
 
     def load_state(self, state: dict[str, Any]) -> None:
         self._state = serializer_load_state(state)
@@ -77,10 +80,34 @@ class XianqiGameEngine:
     def _cards_to_hand(cards: list[str]) -> dict[str, int]:
         return dict(Counter(cards))
 
+    @staticmethod
+    def _parse_log_path(config: dict[str, Any]) -> str | None:
+        raw_log_path = config.get("log_path")
+        if raw_log_path is None:
+            return None
+        log_path = str(raw_log_path).strip()
+        if not log_path:
+            raise ValueError("ENGINE_INVALID_CONFIG")
+        return log_path
+
+    def _setup_logger(self, log_path: str | None) -> None:
+        if log_path is None:
+            self._logger = None
+            return
+        logger = GameLogger(log_path)
+        logger.reset()
+        self._logger = logger
+
+    def _log_state_snapshot(self, state: dict[str, Any]) -> None:
+        if self._logger is None:
+            return
+        self._logger.write_state(version=int(state.get("version", 0)), state=state)
+
     def init_game(self, config: dict[str, Any], rng_seed: int | None = None) -> dict[str, Any]:
         player_count = int(config.get("player_count", 0))
         if player_count != 3:
             raise ValueError("ENGINE_INVALID_CONFIG")
+        self._setup_logger(self._parse_log_path(config))
 
         rng = random.Random(rng_seed)
         deck = self._init_deck()
@@ -118,7 +145,9 @@ class XianqiGameEngine:
                 "relations": [],
             },
         }
-        return {"new_state": self.dump_state()}
+        new_state = self.dump_state()
+        self._log_state_snapshot(new_state)
+        return {"new_state": new_state}
 
     def apply_action(
         self,
@@ -127,6 +156,19 @@ class XianqiGameEngine:
         client_version: int | None = None,
     ) -> dict[str, Any]:
         state = self._require_state()
+        old_version = int(state.get("version", 0))
+        current_seat_raw = (state.get("turn") or {}).get("current_seat")
+        current_seat = int(current_seat_raw) if current_seat_raw is not None else -1
+        legal_actions = self.get_legal_actions(current_seat) if current_seat >= 0 else {"seat": -1, "actions": []}
+        action_list = legal_actions.get("actions", []) if isinstance(legal_actions, dict) else []
+        selected_action = (
+            deepcopy(action_list[action_idx])
+            if isinstance(action_idx, int)
+            and 0 <= action_idx < len(action_list)
+            and isinstance(action_list[action_idx], dict)
+            else {}
+        )
+
         deps: ReducerDeps = {
             "get_legal_actions": self.get_legal_actions,
             "enumerate_combos": enumerate_combos,
@@ -138,14 +180,41 @@ class XianqiGameEngine:
             client_version=client_version,
             deps=deps,
         )
-        return {"new_state": self.dump_state()}
+        new_state = self.dump_state()
+        self._log_state_snapshot(new_state)
+        if self._logger is not None:
+            action_seat = legal_actions.get("seat", current_seat) if isinstance(legal_actions, dict) else current_seat
+            self._logger.append_action(
+                {
+                    "version": old_version,
+                    "seat": int(action_seat),
+                    "legal_actions": deepcopy(action_list),
+                    "taken_action": {
+                        "action_idx": int(action_idx),
+                        "action_type": selected_action.get("type"),
+                        "cover_list": deepcopy(cover_list) if cover_list is not None else None,
+                    },
+                }
+            )
+        return {"new_state": new_state}
 
     def settle(self) -> dict[str, Any]:
         state = self._require_state()
+        old_version = int(state.get("version", 0))
         output = settle_state(state)
         self._state = output["new_state"]
+        new_state = self.dump_state()
+        self._log_state_snapshot(new_state)
+        if self._logger is not None:
+            self._logger.write_settlement(
+                {
+                    "from_version": old_version,
+                    "to_version": int(new_state.get("version", 0)),
+                    "settlement": deepcopy(output["settlement"]),
+                }
+            )
         return {
-            "new_state": self.dump_state(),
+            "new_state": new_state,
             "settlement": output["settlement"],
         }
 

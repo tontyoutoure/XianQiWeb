@@ -303,8 +303,51 @@ engine/
 - 可复现：日志首行打印 seed，结束时打印“可复现命令”示例（`python -m engine.cli --seed <seed>`）。
 - 可测试：CLI 主循环应拆分为可单测函数（解析输入、动作渲染、state 渲染），便于用 pytest + monkeypatch 覆盖关键交互路径。
 
-## 10. 变更记录
+## 10. 轻量日志设计（log_path）
+
+### 10.1 目标与入口
+- 目标：提供最小化的对局日志，便于本地排查与复盘，不引入复杂日志系统。
+- 引擎入口：`init_game(config, rng_seed?)` 支持可选 `config.log_path`（字符串）。
+- CLI 入口：`python -m engine.cli [--seed 123456] [--log-path ./log/demo]`，CLI 将 `--log-path` 透传为 `init_game` 的 `config.log_path`。
+- 兼容性：未传 `log_path` 时，日志功能关闭，引擎与 CLI 其余行为保持不变。
+
+### 10.2 日志文件与格式
+- `state_v{version}.json`：
+  - 含义：对应 version 的完整内部状态快照（等价于同版本 `dump_state`）。
+  - 示例：`state_v1.json`、`state_v2.json`。
+- `action.json`：
+  - 含义：动作日志数组，每次成功动作追加一条记录。
+  - 单条记录建议结构：
+    - `version`: 动作执行前的状态版本（old version）。
+    - `seat`: 本次动作决策 seat。
+    - `legal_actions`: 该版本下该 seat 的合法动作列表快照。
+    - `taken_action`: `{action_idx, action_type, cover_list}`。
+- `settle.json`：
+  - 含义：最近一次结算结果（覆盖写，不做历史累积）。
+  - 建议结构：`{from_version, to_version, settlement}`。
+
+### 10.3 写入时机与语义
+- `init_game` 成功后：
+  - 若启用 `log_path`，先清理同目录旧日志（`state_v*.json`、`action.json`、`settle.json`），再写 `state_v1.json`。
+  - 不写 `action.json` 的初始化空记录。
+- `apply_action` 成功后：
+  - 写入新状态 `state_v{new_version}.json`。
+  - 向 `action.json` 追加一条记录（`version = old_version`）。
+- `settle` 成功后：
+  - 写入新状态 `state_v{new_version}.json`。
+  - 覆盖写 `settle.json`。
+- 失败动作语义：
+  - 任何被拒绝的动作（如 `ENGINE_VERSION_CONFLICT`、`ENGINE_INVALID_ACTION_INDEX`、`ENGINE_INVALID_COVER_LIST`）不得产生新日志文件，也不得修改已有日志。
+
+### 10.4 CLI 口径补充
+- CLI 启动时应打印：
+  - 实际 seed（保持可复现口径）。
+  - 当传入 `--log-path` 时打印实际日志目录，便于核对。
+- CLI 日志职责仅为参数透传；日志内容与时机由引擎统一控制，避免双写或不一致。
+
+## 11. 变更记录
 - 2026-02-15：创建文档，补充引擎接口实现逻辑、动作校验链路、结算算法口径与后端集成约定。
 - 2026-02-17：新增“命令行对局接口”设计（seed 约定、状态展示口径、交互循环与错误处理）。
 - 2026-02-17：根据规则澄清完成状态机重构：旧双决策 phase 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。
 - 2026-02-20：CLI COVER 交互改造：当仅有 COVER 动作时跳过 `action_idx`，改为手牌索引选牌输入（如 `01`），不再使用 `TYPE:COUNT` 文本输入。
+- 2026-02-19：补充轻量日志设计：`log_path` 日志开关、`state_v*.json/action.json/settle.json` 写入口径，以及 CLI `--log-path` 接口约定。
