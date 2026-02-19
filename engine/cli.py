@@ -89,21 +89,13 @@ def _compute_pillar_counts(public_state: dict[str, Any]) -> dict[int, int]:
     if not isinstance(groups, list):
         return counts
 
-    def _group_pillar_count(group: dict[str, Any]) -> int:
-        pillars = group.get("pillars")
-        if isinstance(pillars, list) and pillars:
-            return len(pillars)
-        round_kind = int(group.get("round_kind", 0))
-        if round_kind > 0:
-            return round_kind
-        return 1
-
     for group in groups:
         if not isinstance(group, dict):
             continue
         winner_seat = int(group.get("winner_seat", -1))
+        round_kind = int(group.get("round_kind", 0))
         if winner_seat in counts:
-            counts[winner_seat] += _group_pillar_count(group)
+            counts[winner_seat] += max(round_kind, 0)
     return counts
 
 

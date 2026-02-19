@@ -65,7 +65,6 @@ def _build_pillar_groups_from_counts(pillar_counts: tuple[int, int, int]) -> lis
                     "winner_seat": seat,
                     "round_kind": 1,
                     "plays": [],
-                    "pillars": [{"index": 0, "cards": [{"type": "B_NIU", "count": 3}]}],
                 }
             )
             round_index += 1

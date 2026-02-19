@@ -51,6 +51,7 @@ engine/
 - `last_combo` 只记录本轮最大非垫牌组合（`power >= 0`）。
 - “当前谁在决策”统一由 `turn.current_seat` 表达；引擎内不再维护 `decision` 字段。
 - `round_kind = 0` 仅允许在“本轮首手尚未打出”时出现（`buckle_flow`，或 `in_round` 且 `turn.plays` 为空）。
+- `pillar_groups` 为 SSOT：每组柱数由 `round_kind` 表示，不在状态中缓存可推导字段（如 `pillars`）。
 - `phase != buckle_flow` 时，`reveal.pending_order` 必须为空列表。
 - `reveal.pending_order` 非空时，`turn.current_seat` 必须等于 `pending_order[0]`。
 - `state.turn` 一致性检查（建议）：

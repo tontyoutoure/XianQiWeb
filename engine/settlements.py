@@ -13,7 +13,7 @@ def _get_pillar_counts(state: dict[str, Any]) -> list[int]:
             continue
         winner_seat = int(group.get("winner_seat", -1))
         if 0 <= winner_seat <= 2:
-            counts[winner_seat] += 1
+            counts[winner_seat] += int(group.get("round_kind", 0))
     return counts
 
 

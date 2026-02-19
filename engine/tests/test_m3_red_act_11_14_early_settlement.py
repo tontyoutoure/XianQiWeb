@@ -51,7 +51,6 @@ def _make_previous_pillar_groups(pillar_counts: tuple[int, int, int]) -> list[di
                     "winner_seat": seat,
                     "round_kind": 1,
                     "plays": [],
-                    "pillars": [{"index": 0, "cards": [{"type": "R_NIU", "count": 1}]}],
                 }
             )
             round_index += 1

@@ -50,6 +50,7 @@
 ### 1.3 引擎状态结构（建议）
 说明：引擎状态为内部完整记录，包含垫棋牌面；对外 public_state 由后端脱敏处理。
 补充：新一轮由 `buckle_flow` 开始；进入 `in_round` 且尚未出首手时，`round_kind` 应置为 0（表示尚未出牌确定牌型）。
+约束：`pillar_groups` 只保留原始可持久化字段（`round_index/winner_seat/round_kind/plays`），不包含可推导缓存字段（如 `pillars`）。
 ```jsonc
 {
   "version": 12, // 状态版本号，单调递增，用于乐观锁与重连校验（每次动作被接受并更新状态后 +1）

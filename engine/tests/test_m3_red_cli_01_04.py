@@ -72,8 +72,8 @@ def test_m3_cli_04_state_view_shows_public_and_current_private_only() -> None:
         "pillar_groups": [
             {"winner_seat": 1, "round_kind": 2},
             {"winner_seat": 0, "round_kind": 3},
-            {"winner_seat": 1, "pillars": [{"index": 0}, {"index": 1}]},
-            {"winner_seat": 2},
+            {"winner_seat": 1, "round_kind": 2},
+            {"winner_seat": 2, "round_kind": 1},
         ],
     }
     private_state_by_seat = {
@@ -95,3 +95,40 @@ def test_m3_cli_04_state_view_shows_public_and_current_private_only() -> None:
     assert "seat0: hand_count=4, captured_pillar_count=3" in rendered
     assert "seat1: hand_count=5, captured_pillar_count=4" in rendered
     assert "seat2: hand_count=6, captured_pillar_count=1" in rendered
+
+
+def test_m3_ssot_04_state_view_counts_only_round_kind() -> None:
+    """M3-SSOT-04: pillar count should be derived only from round_kind."""
+
+    cli = _load_cli_module()
+
+    public_state: dict[str, Any] = {
+        "version": 8,
+        "phase": "in_round",
+        "turn": {"current_seat": 0},
+        "players": [
+            {"seat": 0, "hand_count": 3},
+            {"seat": 1, "hand_count": 3},
+            {"seat": 2, "hand_count": 3},
+        ],
+        "pillar_groups": [
+            {"winner_seat": 0, "round_kind": 2},
+            {"winner_seat": 0},
+            {"winner_seat": 1, "round_kind": 1},
+        ],
+    }
+    private_state_by_seat = {
+        0: {"hand": {"R_SHI": 1}},
+        1: {"hand": {"B_NIU": 1}},
+        2: {"hand": {"R_NIU": 1}},
+    }
+
+    rendered = cli.render_state_view(
+        public_state=public_state,
+        acting_seat=0,
+        private_state_by_seat=private_state_by_seat,
+    )
+
+    assert "seat0: hand_count=3, captured_pillar_count=2" in rendered
+    assert "seat1: hand_count=3, captured_pillar_count=1" in rendered
+    assert "seat2: hand_count=3, captured_pillar_count=0" in rendered

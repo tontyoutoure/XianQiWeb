@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from copy import deepcopy
 from typing import Any, Callable, TypedDict
 
@@ -36,16 +35,6 @@ def _cards_signature(cards: list[dict[str, int]]) -> tuple[tuple[str, int], ...]
     return tuple(sorted((str(card["type"]), int(card["count"])) for card in cards))
 
 
-def _cards_to_types(cards: list[dict[str, int]], expected_count: int) -> list[str]:
-    expanded: list[str] = []
-    for card in cards:
-        expanded.extend([str(card["type"])] * int(card["count"]))
-    if len(expanded) != expected_count:
-        raise ValueError("card count does not match expected round kind")
-    expanded.sort()
-    return expanded
-
-
 def _consume_cards_from_hand(state: dict[str, Any], seat: int, cards: list[dict[str, int]]) -> None:
     hand = state["players"][int(seat)]["hand"]
     for card in cards:
@@ -60,18 +49,6 @@ def _consume_cards_from_hand(state: dict[str, Any], seat: int, cards: list[dict[
         hand[card_type] = int(hand.get(card_type, 0)) - count
         if hand[card_type] == 0:
             del hand[card_type]
-
-
-def _build_pillars(plays: list[dict[str, Any]], round_kind: int) -> list[dict[str, Any]]:
-    expanded_per_play = [_cards_to_types(play.get("cards", []), round_kind) for play in plays]
-
-    pillars: list[dict[str, Any]] = []
-    for idx in range(round_kind):
-        single_pillar_types = [cards[idx] for cards in expanded_per_play]
-        counter = Counter(single_pillar_types)
-        pillar_cards = [{"type": card_type, "count": count} for card_type, count in sorted(counter.items())]
-        pillars.append({"index": idx, "cards": pillar_cards})
-    return pillars
 
 
 def _find_combo_power(
@@ -94,11 +71,7 @@ def _captured_pillar_count(state: dict[str, Any], seat: int) -> int:
     for group in state.get("pillar_groups", []):
         if int(group.get("winner_seat", -1)) != int(seat):
             continue
-        pillars = group.get("pillars")
-        if isinstance(pillars, list) and pillars:
-            count += len(pillars)
-        else:
-            count += int(group.get("round_kind", 0))
+        count += int(group.get("round_kind", 0))
     return count
 
 
@@ -141,7 +114,6 @@ def _finish_round(state: dict[str, Any]) -> None:
         "winner_seat": winner_seat,
         "round_kind": round_kind,
         "plays": plays,
-        "pillars": _build_pillars(plays, round_kind),
     }
     state.setdefault("pillar_groups", []).append(pillar_group)
     pillar_counts = [_captured_pillar_count(state, seat) for seat in range(3)]

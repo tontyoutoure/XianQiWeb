@@ -1,4 +1,4 @@
-"""M3 Red tests: M3-ACT-08~10 pillar generation and ownership."""
+"""M3 Red tests: M3-ACT-08~10 pillar-group ownership and SSOT shape."""
 
 from __future__ import annotations
 
@@ -111,10 +111,11 @@ def test_m3_act_08_round_end_pillar_group_owned_by_winner() -> None:
     assert group.get("winner_seat") == 1
     assert group.get("round_kind") == 1
     assert len(group.get("plays", [])) == 3
+    assert "pillars" not in group
 
 
 def test_m3_act_09_pair_round_split_same_pair_into_two_pillars() -> None:
-    """M3-ACT-09: pair round should split same pair cards across different pillars."""
+    """M3-ACT-09: pair round should record round_kind=2 without redundant pillars field."""
 
     Engine = _load_engine_class()
     engine = Engine()
@@ -148,22 +149,11 @@ def test_m3_act_09_pair_round_split_same_pair_into_two_pillars() -> None:
     group = groups[-1]
     assert group.get("winner_seat") == 1
     assert group.get("round_kind") == 2
-
-    pillars = group.get("pillars")
-    assert isinstance(pillars, list)
-    assert len(pillars) == 2
-
-    r_shi_distribution = []
-    for pillar in pillars:
-        cards = pillar.get("cards", [])
-        r_shi_count = sum(int(card.get("count", 0)) for card in cards if card.get("type") == "R_SHI")
-        r_shi_distribution.append(r_shi_count)
-
-    assert sorted(r_shi_distribution) == [1, 1]
+    assert "pillars" not in group
 
 
 def test_m3_act_10_triple_round_split_same_triple_into_three_pillars() -> None:
-    """M3-ACT-10: triple round should split same triple cards across three pillars."""
+    """M3-ACT-10: triple round should record round_kind=3 without redundant pillars field."""
 
     Engine = _load_engine_class()
     engine = Engine()
@@ -197,15 +187,4 @@ def test_m3_act_10_triple_round_split_same_triple_into_three_pillars() -> None:
     group = groups[-1]
     assert group.get("winner_seat") == 2
     assert group.get("round_kind") == 3
-
-    pillars = group.get("pillars")
-    assert isinstance(pillars, list)
-    assert len(pillars) == 3
-
-    r_niu_distribution = []
-    for pillar in pillars:
-        cards = pillar.get("cards", [])
-        r_niu_count = sum(int(card.get("count", 0)) for card in cards if card.get("type") == "R_NIU")
-        r_niu_distribution.append(r_niu_count)
-
-    assert sorted(r_niu_distribution) == [1, 1, 1]
+    assert "pillars" not in group

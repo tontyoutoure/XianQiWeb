@@ -45,3 +45,40 @@ def test_m3_ut_08_load_state_asserts_players_index_matches_seat() -> None:
 
     with pytest.raises(AssertionError):
         engine.load_state(broken_state)
+
+
+def test_m3_ssot_02_load_state_rejects_legacy_pillars_field() -> None:
+    """M3-SSOT-02: load_state should fail fast when legacy pillars field exists."""
+
+    Engine = _load_engine_class()
+    engine = Engine()
+
+    legacy_state = {
+        "version": 1,
+        "phase": "buckle_flow",
+        "players": [
+            {"seat": 0, "hand": {"R_SHI": 1}},
+            {"seat": 1, "hand": {"B_SHI": 1}},
+            {"seat": 2, "hand": {"R_NIU": 1}},
+        ],
+        "turn": {
+            "current_seat": 0,
+            "round_index": 0,
+            "round_kind": 0,
+            "last_combo": None,
+            "plays": [],
+        },
+        "pillar_groups": [
+            {
+                "round_index": 0,
+                "winner_seat": 1,
+                "round_kind": 2,
+                "plays": [],
+                "pillars": [{"index": 0, "cards": [{"type": "R_SHI", "count": 3}]}],
+            }
+        ],
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
+    }
+
+    with pytest.raises(AssertionError):
+        engine.load_state(legacy_state)
