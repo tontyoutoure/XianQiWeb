@@ -56,6 +56,30 @@ def _format_hand(hand: dict[str, Any]) -> str:
     return "{ " + ", ".join(parts) + " }"
 
 
+def _compute_pillar_counts(public_state: dict[str, Any]) -> dict[int, int]:
+    counts = {0: 0, 1: 0, 2: 0}
+    groups = public_state.get("pillar_groups") or []
+    if not isinstance(groups, list):
+        return counts
+
+    def _group_pillar_count(group: dict[str, Any]) -> int:
+        pillars = group.get("pillars")
+        if isinstance(pillars, list) and pillars:
+            return len(pillars)
+        round_kind = int(group.get("round_kind", 0))
+        if round_kind > 0:
+            return round_kind
+        return 1
+
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        winner_seat = int(group.get("winner_seat", -1))
+        if winner_seat in counts:
+            counts[winner_seat] += _group_pillar_count(group)
+    return counts
+
+
 def render_state_view(
     *,
     public_state: dict[str, Any],
@@ -66,6 +90,7 @@ def render_state_view(
 
     acting_hint = _resolve_acting_seat(public_state)
     players = public_state.get("players") or []
+    pillar_counts = _compute_pillar_counts(public_state)
 
     lines: list[str] = []
     lines.append("=== Public State ===")
@@ -73,9 +98,11 @@ def render_state_view(
     lines.append(f"phase: {public_state.get('phase')}")
     lines.append(f"current_seat: {acting_hint}")
     for player in players:
-        seat = player.get("seat")
+        seat = int(player.get("seat", -1))
         hand_count = player.get("hand_count", "-")
-        captured = player.get("captured_pillar_count", "-")
+        captured = player.get("captured_pillar_count")
+        if captured is None:
+            captured = pillar_counts.get(seat, 0)
         lines.append(f"seat{seat}: hand_count={hand_count}, captured_pillar_count={captured}")
 
     private_state = private_state_by_seat.get(acting_seat) or private_state_by_seat.get(str(acting_seat), {})

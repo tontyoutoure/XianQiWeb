@@ -69,6 +69,12 @@ def test_m3_cli_04_state_view_shows_public_and_current_private_only() -> None:
             {"seat": 1, "hand_count": 5},
             {"seat": 2, "hand_count": 6},
         ],
+        "pillar_groups": [
+            {"winner_seat": 1, "round_kind": 2},
+            {"winner_seat": 0, "round_kind": 3},
+            {"winner_seat": 1, "pillars": [{"index": 0}, {"index": 1}]},
+            {"winner_seat": 2},
+        ],
     }
     private_state_by_seat = {
         0: {"hand": {"R_SHI": 2}},
@@ -86,3 +92,6 @@ def test_m3_cli_04_state_view_shows_public_and_current_private_only() -> None:
     assert "B_NIU" in rendered
     assert "R_SHI" not in rendered
     assert "R_NIU" not in rendered
+    assert "seat0: hand_count=4, captured_pillar_count=3" in rendered
+    assert "seat1: hand_count=5, captured_pillar_count=4" in rendered
+    assert "seat2: hand_count=6, captured_pillar_count=1" in rendered
