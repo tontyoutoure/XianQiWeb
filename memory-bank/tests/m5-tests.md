@@ -63,5 +63,4 @@
 | M5-UT-05 ~ M5-UT-08 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_05_08_settlement.py -q`，结果 `4 passed`。 |
 | M5-UT-09 ~ M5-UT-12 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，结果 `4 passed`。 |
 | M5-UT-13 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，结果 `1 passed`。 |
-| M5-CLI-01 ~ M5-CLI-04 | 🔴 Red 已执行 | Red 已完成 | 2026-02-20：新增 `engine/tests/test_m5_red_cli_01_04_settlement.py` 并执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `3 failed, 1 passed`（当前 `engine/cli.py` 尚未输出结算区块与拆分明细）。 |
 | M5-CLI-01 ~ M5-CLI-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-20：在 `engine/cli.py` 接入结算展示（自动触发 `settle`、输出 seat 拆分与守恒提示）后执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `4 passed`。 |
