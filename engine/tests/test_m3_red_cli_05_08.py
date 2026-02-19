@@ -42,6 +42,8 @@ def test_m3_cli_05_actions_render_with_explicit_action_idx_and_payload_cards() -
     assert "action_idx=0" in rendered
     assert "payload_cards" in rendered
     assert "action_idx=1" in rendered
+    assert "动作=出棋" in rendered
+    assert "动作=垫棋" in rendered
 
 
 def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
@@ -104,7 +106,7 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
     assert any("ENGINE_INVALID_COVER_LIST" in line for line in outputs)
     assert prompts.count("请输入 action_idx: ") == 0
     assert sum(1 for prompt in prompts if prompt.startswith("请输入 cover 索引串")) == 2
-    assert any("0. R_SHI" in line for line in outputs)
+    assert any("0. 红士" in line for line in outputs)
 
 
 def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:

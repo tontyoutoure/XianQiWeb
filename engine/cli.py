@@ -8,6 +8,30 @@ from typing import Any, Callable
 
 from engine.core import XianqiGameEngine
 
+CARD_NAME_MAP: dict[str, str] = {
+    "R_SHI": "红士",
+    "B_SHI": "黑士",
+    "R_XIANG": "红相",
+    "B_XIANG": "黑相",
+    "R_MA": "红马",
+    "B_MA": "黑马",
+    "R_CHE": "红车",
+    "B_CHE": "黑车",
+    "R_GOU": "红狗",
+    "B_GOU": "黑狗",
+    "R_NIU": "红牛",
+    "B_NIU": "黑牛",
+}
+
+ACTION_NAME_MAP: dict[str, str] = {
+    "PLAY": "出棋",
+    "COVER": "垫棋",
+    "BUCKLE": "扣棋",
+    "PASS_BUCKLE": "不扣",
+    "REVEAL": "掀棋",
+    "PASS_REVEAL": "不掀",
+}
+
 
 def _resolve_acting_seat(public_state: dict[str, Any]) -> int | None:
     turn = public_state.get("turn")
@@ -52,7 +76,10 @@ def render_turn_prompt(public_state: dict[str, Any]) -> str:
 def _format_hand(hand: dict[str, Any]) -> str:
     if not hand:
         return "{}"
-    parts = [f"{card_type}:{int(count)}" for card_type, count in sorted(hand.items())]
+    parts = [
+        f"{CARD_NAME_MAP.get(str(card_type), str(card_type))}:{int(count)}"
+        for card_type, count in sorted(hand.items())
+    ]
     return "{ " + ", ".join(parts) + " }"
 
 
@@ -119,17 +146,18 @@ def _render_actions(actions: list[dict[str, Any]]) -> str:
     lines = ["=== Legal Actions ==="]
     for idx, action in enumerate(actions):
         action_type = str(action.get("type", ""))
+        action_name = ACTION_NAME_MAP.get(action_type, action_type)
         if action_type == "PLAY":
             payload = _format_hand({str(card["type"]): int(card["count"]) for card in action.get("payload_cards", [])})
             lines.append(
-                f"action_idx={idx} type=PLAY payload_cards={payload} power={action.get('power')}"
+                f"action_idx={idx} 动作={action_name} payload_cards={payload} 牌力={action.get('power')}"
             )
         elif action_type == "COVER":
             lines.append(
-                f"action_idx={idx} type=COVER required_count={action.get('required_count')}"
+                f"action_idx={idx} 动作={action_name} required_count={action.get('required_count')}"
             )
         else:
-            lines.append(f"action_idx={idx} type={action_type}")
+            lines.append(f"action_idx={idx} 动作={action_name}")
     return "\n".join(lines)
 
 
@@ -146,7 +174,7 @@ def _expand_hand_cards(hand: dict[str, Any]) -> list[str]:
 def _render_cover_cards(cover_cards: list[str]) -> str:
     lines = ["=== Cover Cards ==="]
     for idx, card_type in enumerate(cover_cards):
-        lines.append(f"{idx}. {card_type}")
+        lines.append(f"{idx}. {CARD_NAME_MAP.get(card_type, card_type)}")
     return "\n".join(lines)
 
 

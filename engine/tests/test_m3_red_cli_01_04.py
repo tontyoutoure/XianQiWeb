@@ -89,9 +89,9 @@ def test_m3_cli_04_state_view_shows_public_and_current_private_only() -> None:
     )
 
     assert "version" in rendered and "phase" in rendered
-    assert "B_NIU" in rendered
-    assert "R_SHI" not in rendered
-    assert "R_NIU" not in rendered
+    assert "黑牛" in rendered
+    assert "红士" not in rendered
+    assert "红牛" not in rendered
     assert "seat0: hand_count=4, captured_pillar_count=3" in rendered
     assert "seat1: hand_count=5, captured_pillar_count=4" in rendered
     assert "seat2: hand_count=6, captured_pillar_count=1" in rendered
