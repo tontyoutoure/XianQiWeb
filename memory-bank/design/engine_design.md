@@ -135,9 +135,9 @@ engine/
   4. 不改写 `last_combo`。
 - 当 `turn.plays` 达到 3 人后触发回合结算：
   1. `last_combo.owner_seat` 获得本回合 `plays`，写入 `pillar_groups`。
-  2. 定义 `winner_seat = last_combo.owner_seat`，下一回合由 `winner_seat` 决策：`phase -> buckle_flow`。
+  2. 统计最新柱数：若任一玩家 `pillar>=6`（瓷）或两名玩家 `pillar>=3`（够），则 `phase -> settlement`；否则进入下一回合 `phase -> buckle_flow`。
   3. `round_index + 1`，并清空 `round_kind/plays/last_combo`（置初始态）。
-  4. `turn.current_seat = winner_seat`。
+  4. `turn.current_seat = winner_seat`（即 `last_combo.owner_seat`）。
   5. 清空本次扣后询问残留：`reveal.buckler_seat=null`，`reveal.pending_order=[]`。
 
 #### 4.2.3 成功收尾（统一）

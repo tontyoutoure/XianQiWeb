@@ -144,13 +144,17 @@ def _finish_round(state: dict[str, Any]) -> None:
         "pillars": _build_pillars(plays, round_kind),
     }
     state.setdefault("pillar_groups", []).append(pillar_group)
+    pillar_counts = [_captured_pillar_count(state, seat) for seat in range(3)]
+    has_ceramic = any(count >= 6 for count in pillar_counts)
+    enough_player_count = sum(1 for count in pillar_counts if count >= 3)
+    should_enter_settlement = has_ceramic or enough_player_count == 2
 
     turn["round_index"] = int(turn.get("round_index", 0)) + 1
     turn["round_kind"] = 0
     turn["last_combo"] = None
     turn["plays"] = []
     turn["current_seat"] = winner_seat
-    state["phase"] = "buckle_flow"
+    state["phase"] = "settlement" if should_enter_settlement else "buckle_flow"
     reveal = _ensure_reveal_state(state)
     reveal["buckler_seat"] = None
     reveal["pending_order"] = []

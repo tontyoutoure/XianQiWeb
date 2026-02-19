@@ -83,6 +83,10 @@
 | M3-ACT-08 | 一轮结束后棋柱归属 | `pillar_groups` 新增记录且 `winner_seat` 等于本轮最大组合玩家 |
 | M3-ACT-09 | 对子回合分柱拆分 | `round_kind=2` 时新增 2 柱，且同一对（如 `R_SHI` 对）拆到不同柱 |
 | M3-ACT-10 | 三牛回合分柱拆分 | `round_kind=3` 时新增 3 柱，且三张同型牛分散到 3 根柱 |
+| M3-ACT-11 | 收轮后“一家瓷”提前结算 | 收轮并更新柱数后任一玩家 `pillar>=6` 时，`phase` 直接切到 `settlement` |
+| M3-ACT-12 | 收轮后“两家够”提前结算 | 收轮并更新柱数后至少两名玩家 `pillar>=3` 时，`phase` 直接切到 `settlement` |
+| M3-ACT-13 | 未命中提前结算时保持原流程 | 收轮后仅一名玩家够且无人瓷时，`phase` 保持 `buckle_flow` |
+| M3-ACT-14 | 提前结算分支状态一致性 | 提前结算后 `reveal.pending_order=[]` 且当前行动位 `legal_actions` 为空 |
 
 ### 4.1 命令行交互测试（新增需求）
 
@@ -184,6 +188,10 @@
 | M3-ACT-08 | 构造一轮结束场景：3 人完成同一轮出牌后触发收轮，且 `last_combo.owner_seat=1` | `pillar_groups` 追加 1 组，新增组 `winner_seat=1`，且该组归档的回合数据与 `turn.plays` 一致 |
 | M3-ACT-09 | 对子轮（`round_kind=2`）且 winner 为 seat1，示例含 `R_SHI` 对参与收轮 | 新增组内总计生成 2 柱；两张 `R_SHI` 分别位于不同柱（不可同柱堆叠） |
 | M3-ACT-10 | 三牛轮（`round_kind=3`）且 winner 为 seat2，示例含 `R_NIU*3` 或 `B_NIU*3` | 新增组内总计生成 3 柱；三张同型牛分别位于 3 根柱（每柱至多 1 张该同型牛） |
+| M3-ACT-11 | 构造收轮前柱数 `seat0=5, seat1=0, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 收轮后 seat0 达到 6 柱，`phase=settlement` |
+| M3-ACT-12 | 构造收轮前柱数 `seat0=2, seat1=3, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 收轮后 `seat0=3, seat1=3`，`phase=settlement` |
+| M3-ACT-13 | 构造收轮前柱数 `seat0=2, seat1=2, seat2=1`，且本轮 winner 为 seat0（`round_kind=1`） | 收轮后仅 seat0 够，`phase=buckle_flow`，并由 winner 继续行动 |
+| M3-ACT-14 | 构造提前结算命中场景，并预置 `reveal.pending_order` 残留 | 收轮触发提前结算后，`reveal.pending_order=[]`、`reveal.buckler_seat=null`，且 `legal_actions` 为空 |
 
 ### 6.4 命令行交互（新增需求）
 
@@ -233,7 +241,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~10`、`M3-CLI-01~08`、`M3-RF-01~03` 与 `M3-BF-01~10`。
+> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~14`、`M3-CLI-01~08`、`M3-RF-01~03` 与 `M3-BF-01~10`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -249,6 +257,7 @@
 | M3-LA-13 ~ M3-LA-22 | ✅ 通过 | Green 已完成 | 2026-02-16：已新增 `engine/tests/test_m3_la_play_enumeration_13_22.py`，执行 `pytest engine/tests/test_m3_la_play_enumeration_13_22.py -q`（10 passed）与 `pytest engine/tests -q`（17 passed） |
 | M3-ACT-01 ~ M3-ACT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-17 已新增 `engine/tests/test_m3_red_act_01_07.py` 并执行（`6 passed, 1 failed`）；Green：2026-02-17 完成 `engine/core.py` 的 `REVEAL/PASS_REVEAL` 状态推进后执行 `pytest engine/tests/test_m3_red_act_01_07.py -q`（7 passed） |
 | M3-ACT-08 ~ M3-ACT-10 | ✅ 通过 | Green 已完成 | Red：2026-02-16 首次执行失败（`apply_action` 未实现）；Green：2026-02-16 完成回合收尾与 `pillar_groups.pillars` 拆柱后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py -q`（3 passed） |
+| M3-ACT-11 ~ M3-ACT-14 | ✅ 通过 | Red 已执行（意外全绿） | 2026-02-19：新增 `engine/tests/test_m3_red_act_11_14_early_settlement.py` 并执行 `pytest engine/tests/test_m3_red_act_11_14_early_settlement.py -q`（4 passed）；同步回归 `pytest engine/tests -q`（92 passed）。 |
 | M3-CLI-01 ~ M3-CLI-04 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_01_04.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 补齐 `build_initial_snapshot / resolve_seed / render_turn_prompt / render_state_view` 后执行同命令（4 passed）。 |
 | M3-CLI-05 ~ M3-CLI-08 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_05_08.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 修复动作索引展示、COVER 重试、错误码前缀与 settlement 提示后执行同命令（4 passed）。 |
 | M3-RF-01 ~ M3-RF-03 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_refactor_apply_action_reducer.py` 并执行 `pytest engine/tests/test_m3_refactor_apply_action_reducer.py -q`（`1 failed, 2 passed`，缺少 `reduce_apply_action` 委托入口）；Green：2026-02-17 新增 `engine/reducer.py` 并完成 `engine/core.py` 委托改造后执行同命令（`3 passed`）。 |

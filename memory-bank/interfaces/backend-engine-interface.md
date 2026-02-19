@@ -276,6 +276,7 @@ in_round 阶段示例（只能垫牌）：
 - COVER 仅给出 `required_count`，由前端在手牌中选择任意同张数牌面并通过 `cover_list` 传回，最终由引擎校验合法性。
 - `buckle_flow` 扣后掀棋询问推进规则：`PASS_REVEAL` 才会继续询问 `pending_order` 下一位；`REVEAL` 会立刻结束本次掀棋决策并进入 `in_round`，不再继续询问剩余玩家。
 - 若当前被询问者是 `active_revealer_seat` 且选择 `PASS_REVEAL`，引擎需先将 `active_revealer_seat` 置为 `null`，再推进询问顺序/终局判定。
+- `in_round` 收轮（`turn.plays` 达到 3 人）后，引擎需先判定提前终局：若任一玩家已瓷（`pillar>=6`）或两名玩家已够（`pillar>=3`），则直接进入 `settlement`；否则进入下一轮 `buckle_flow`。
 - 一致性约束：`legal_actions.seat` 必须等于 `turn.current_seat`。
 
 #### 1.5.4 settlement（结算结果）

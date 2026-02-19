@@ -93,7 +93,7 @@ waiting → playing → settlement →（玩家选择继续）waiting 或直接�
 2) 若选择 PASS_BUCKLE，直接进入 `in_round`，由该玩家打出本轮首手（确定 `round_kind`）。
 3) 若选择 BUCKLE，在 `buckle_flow` 内按规则顺序询问另外两位玩家是否 REVEAL / PASS_REVEAL：若命中首个 REVEAL，则立即进入 `in_round` 且由扣棋玩家打出本轮首手；若两人均 PASS_REVEAL，则直接进入 `settlement`。
 4) 进入 `in_round` 后，其他玩家依次压制（能压必须压）或垫棋，直到本轮结束。
-5) 本轮结束后，最大组合玩家获得本轮棋子并更新柱数，随后作为下一轮起始玩家回到 `buckle_flow`。
+5) 本轮结束后，最大组合玩家获得本轮棋子并更新柱数；若满足“任一玩家瓷（>=6柱）或两名玩家够（>=3柱）”则直接进入 `settlement`，否则由该玩家作为下一轮起始玩家回到 `buckle_flow`。
 
 ## 4. 接口文档
 接口细节已拆分为独立文档：
