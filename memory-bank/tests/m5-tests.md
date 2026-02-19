@@ -1,7 +1,7 @@
 # M5 阶段测试列表（结算与继续下一局）
 
 > 依据文档：`memory-bank/implementation-plan.md`（M5）、`memory-bank/design/engine_design.md`（4.3）、`memory-bank/interfaces/backend-engine-interface.md`（1.5.4）、`XianQi_rules.md`（结算筹码）。
-> 当前范围：先固化“仅引擎结算”TDD清单；`/settlement` 与 `/continue` 接口用例待后续补齐。
+> 当前范围：固化“引擎结算 + engine.cli 结算展示”TDD清单；`/settlement` 与 `/continue` 接口用例待后续补齐。
 
 ## 0) 测试运行环境与执行约定
 
@@ -29,31 +29,39 @@
 | M5-UT-12 | 结算后状态推进 | `phase=settlement` 成功 `settle` 后，`phase -> finished`、`version += 1`，并返回 `final_state + chip_delta_by_seat` |
 | M5-UT-13 | 黑棋路径结算 | 黑棋直达 `settlement` 后 `settle` 成功；三人 `delta/delta_enough/delta_reveal/delta_ceramic` 全为 0 |
 
-## 2) 通用断言（适用于每个成功结算样例）
+## 2) engine.cli 结算展示测试
+
+| 测试ID | 测试描述 | 通过条件 |
+|---|---|---|
+| M5-CLI-01 | CLI 在 `phase=settlement` 自动触发结算 | `run_cli` 检测到 settlement 后自动调用 `engine.settle()`，并打印结算区块标题 |
+| M5-CLI-02 | CLI 展示按 seat 拆分的筹码变化 | 输出包含每名玩家 `delta/delta_enough/delta_reveal/delta_ceramic` |
+| M5-CLI-03 | CLI 展示结算守恒信息 | 输出包含 `sum(delta)=0` 守恒提示，便于本地排查 |
+| M5-CLI-04 | settle 不可用时保留兜底文案 | `engine.settle()` 抛 `NotImplementedError` 时，输出“当前版本未实现 settle”并退出 |
+
+## 3) 通用断言（适用于每个成功结算样例）
 
 - 每名玩家必须满足：`delta = delta_enough + delta_reveal + delta_ceramic`。
 - 三人总和守恒：`sum(delta)=0`，且 `sum(delta_enough)=sum(delta_reveal)=sum(delta_ceramic)=0`。
 - 返回结构完整：`chip_delta_by_seat` 长度为 3，seat 覆盖 `0/1/2`，且与 `final_state` 对应一致。
 - 每个样例前置状态都需满足柱数约束：`pillar_count_sum <= 8`。
 
-## 3) 阶段通过判定（当前子范围）
+## 4) 阶段通过判定（当前子范围）
 
 - `settle` 的 phase 门禁、结算拆分字段（enough/reveal/ceramic）与状态推进行为全部可测。
 - “掀时已够但最终未瓷”的特殊规则被明确锁定，且与常规 enough 结算互不冲突。
 - 黑棋路径可直接结算且增量全零，避免异常分支漏测。
 - 所有成功结算样例均统一检查“分解一致性 + 全局守恒”。
+- CLI 在可结算场景可直接看到结算明细（含拆分字段与守恒提示），不可结算场景保留历史兜底行为。
 
-## 4) TDD 执行记录（进行中）
+## 5) TDD 执行记录（进行中）
 
 > 说明：按“人类指定测试ID -> 编写测试 -> 执行 Red/Green”推进；当前已完成 `M5-UT-01~13` 红测落地与执行。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
-| M5-UT-01 ~ M5-UT-04 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_01_04_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_01_04_settlement.py -q`，结果 `4 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
-| M5-UT-05 ~ M5-UT-08 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_05_08_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_05_08_settlement.py -q`，结果 `4 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
-| M5-UT-09 ~ M5-UT-12 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_09_12_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，结果 `4 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
-| M5-UT-13 | 🔴 Red 已执行 | Red 已完成 | 2026-02-17：新增 `engine/tests/test_m5_red_ut_13_settlement.py` 并执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，结果 `1 failed`（当前 `engine/settlements.py` 仍为 `NotImplemented` 占位）。 |
 | M5-UT-01 ~ M5-UT-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：实现 `engine/settlements.py` 结算逻辑并更新 `engine/core.py` 的 `settle` 返回结构后，执行 `pytest engine/tests/test_m5_red_ut_01_04_settlement.py -q`，结果 `4 passed`。 |
 | M5-UT-05 ~ M5-UT-08 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_05_08_settlement.py -q`，结果 `4 passed`。 |
 | M5-UT-09 ~ M5-UT-12 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，结果 `4 passed`。 |
 | M5-UT-13 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，结果 `1 passed`。 |
+| M5-CLI-01 ~ M5-CLI-04 | 🔴 Red 已执行 | Red 已完成 | 2026-02-20：新增 `engine/tests/test_m5_red_cli_01_04_settlement.py` 并执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `3 failed, 1 passed`（当前 `engine/cli.py` 尚未输出结算区块与拆分明细）。 |
+| M5-CLI-01 ~ M5-CLI-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-20：在 `engine/cli.py` 接入结算展示（自动触发 `settle`、输出 seat 拆分与守恒提示）后执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `4 passed`。 |

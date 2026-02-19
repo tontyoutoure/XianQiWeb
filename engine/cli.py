@@ -135,6 +135,39 @@ def _emit_error(output_fn: Callable[[str], None], exc: Exception) -> None:
     output_fn(message)
 
 
+def _format_settlement_row(row: dict[str, Any]) -> str:
+    seat = int(row.get("seat", -1))
+    delta = int(row.get("delta", 0))
+    delta_enough = int(row.get("delta_enough", 0))
+    delta_reveal = int(row.get("delta_reveal", 0))
+    delta_ceramic = int(row.get("delta_ceramic", 0))
+    return (
+        f"seat{seat}: delta={delta} "
+        f"delta_enough={delta_enough} delta_reveal={delta_reveal} delta_ceramic={delta_ceramic}"
+    )
+
+
+def render_settlement_view(settlement_payload: dict[str, Any]) -> str:
+    rows = settlement_payload.get("chip_delta_by_seat", []) if isinstance(settlement_payload, dict) else []
+    if not isinstance(rows, list):
+        rows = []
+
+    normalized_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        normalized_rows.append(row)
+    normalized_rows.sort(key=lambda row: int(row.get("seat", 99)))
+
+    total_delta = sum(int(row.get("delta", 0)) for row in normalized_rows)
+
+    lines: list[str] = ["=== Settlement ==="]
+    for row in normalized_rows:
+        lines.append(_format_settlement_row(row))
+    lines.append(f"invariant: sum(delta)={total_delta}")
+    return "\n".join(lines)
+
+
 def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, output_fn: Callable[[str], None] = print) -> int:
     """Run one local game loop by rotating seats according to turn.current_seat."""
 
@@ -153,7 +186,11 @@ def run_cli(seed: int | None = None, input_fn: Callable[[str], str] = input, out
             output_fn(render_state_view(public_state=public_state, acting_seat=0, private_state_by_seat={0: {}}))
             if phase == "settlement":
                 try:
-                    engine.settle()
+                    settle_output = engine.settle()
+                    settlement_payload = (
+                        settle_output.get("settlement", {}) if isinstance(settle_output, dict) else {}
+                    )
+                    output_fn(render_settlement_view(settlement_payload))
                     continue
                 except NotImplementedError:
                     output_fn("结算阶段已到达，当前版本未实现 settle，结束演练。")
