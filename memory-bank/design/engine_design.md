@@ -93,6 +93,7 @@ engine/
 3. 由当前 `state` 计算 `legal_actions(turn.current_seat)`。
 4. 校验 `action_idx` 在范围内，取出目标动作 `target_action`。
 5. 校验 `cover_list`：
+   - `cover_list` 使用 CardCountMap（如 `{"R_NIU": 1, "B_NIU": 1}`）。
    - `target_action.type != COVER` 时必须为空/`null`。
    - `target_action.type == COVER` 时必须存在且总张数等于 `required_count`。
    - 所选牌必须在当前行动玩家手牌中可扣减。
@@ -272,7 +273,7 @@ engine/
    - `hand`（完整）。
    - `covered`（若已实现）。
 5. 展示该 seat 全部合法动作（包含 `action_idx`）：
-   - PLAY：显示牌型、`payload_cards`、`power`。
+   - PLAY：显示牌型、`payload_cards`（计数表）、`power`。
    - COVER：显示 `required_count`。若本步合法动作仅有一个 COVER，则跳过 `action_idx` 选择，直接进入垫牌输入。
    - BUCKLE / PASS_BUCKLE / REVEAL / PASS_REVEAL：显示动作名。
 6. 用户输入动作并执行：

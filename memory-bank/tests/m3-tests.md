@@ -8,6 +8,7 @@
 - 建议环境：conda `XQB`。
 - 建议命令：`conda run -n XQB pytest engine/tests -q`。
 - 约定：M3 优先做引擎纯单测（不依赖后端 API）。
+- 牌载荷口径（2026-02-19）：`payload_cards` / `cover_list` / 组合里的 `cards` 均使用计数表（CardCountMap，如 `{"R_SHI":1}`）。
 - 本文档用于记录每个测试用例的 Red/Green 结果。
 
 ## 1) 引擎基础能力测试
@@ -59,7 +60,7 @@
 | M3-LA-11 | `action_idx` 稳定性 | 同一状态多次获取 `actions`，索引含义不漂移 |
 | M3-LA-12 | phase 切换后动作刷新 | `apply_action` 后下一状态的 `actions` 与新 `turn.current_seat` 一致 |
 | M3-LA-13 | `in_round` 首手前态 PLAY 组合全集覆盖 | `round_kind=0` 时 PLAY 必须覆盖单张/对子/狗脚对/三牛全部可出组合 |
-| M3-LA-14 | `in_round` 首手前态 PLAY 与组合枚举一致性 | `round_kind=0` 时 PLAY 的 `payload_cards` 与 `enumerate_combos` 结果一一对应 |
+| M3-LA-14 | `in_round` 首手前态 PLAY 与组合枚举一致性 | `round_kind=0` 时 PLAY 的 `payload_cards`（计数表）与 `enumerate_combos` 结果一一对应 |
 | M3-LA-15 | `in_round` 单张可压制全集 | 仅返回所有 `power > last_combo.power` 的单张 PLAY |
 | M3-LA-16 | `in_round` 对子可压制全集（含狗脚对） | 返回所有可压制对子 PLAY，且包含狗脚对压制场景 |
 | M3-LA-17 | `in_round` 对子严格大于边界 | `power == last_combo.power` 的对子不得出现在 PLAY 列表 |
@@ -76,8 +77,8 @@
 | M3-ACT-01 | `action_idx` 越界 | 引擎返回 `ENGINE_INVALID_ACTION_INDEX` |
 | M3-ACT-02 | `client_version` 冲突 | 引擎返回 `ENGINE_VERSION_CONFLICT` |
 | M3-ACT-03 | 非 COVER 传 `cover_list` | 引擎拒绝并返回 `ENGINE_INVALID_COVER_LIST` |
-| M3-ACT-04 | COVER 传错张数 | `cover_list` 总张数不等于 `required_count` 时拒绝 |
-| M3-ACT-05 | COVER 传不存在手牌 | `cover_list` 超出持牌时拒绝 |
+| M3-ACT-04 | COVER 传错张数 | `cover_list`（计数表）总张数不等于 `required_count` 时拒绝 |
+| M3-ACT-05 | COVER 传不存在手牌 | `cover_list`（计数表）超出持牌时拒绝 |
 | M3-ACT-06 | 回合结束后行动位推进 | 3 人出完后 `turn.current_seat` 切到 round winner |
 | M3-ACT-07 | 掀棋顺序推进 | `reveal.pending_order` 消费与 `turn.current_seat` 推进一致 |
 | M3-ACT-08 | 一轮结束后棋柱归属 | `pillar_groups` 新增记录且 `winner_seat` 等于本轮最大组合玩家 |
@@ -97,7 +98,7 @@
 | M3-CLI-03 | 轮转扮演三座次 | 每一步提示当前 `turn.current_seat`，并按 seat0/1/2 轮转推进 |
 | M3-CLI-04 | 状态展示口径 | 每步展示公共态摘要 + 当前 seat 私有态；不默认泄露其他 seat 私有态 |
 | M3-CLI-05 | 合法动作列表与索引 | CLI 按 `get_legal_actions` 顺序展示全部动作，`action_idx` 可直接提交 |
-| M3-CLI-06 | COVER 输入链路 | 选择 COVER 后可输入 `cover_list`，张数/持牌非法时提示并重试 |
+| M3-CLI-06 | COVER 输入链路 | 选择 COVER 后可输入 `cover_list`（计数表），张数/持牌非法时提示并重试 |
 | M3-CLI-07 | 动作执行失败重试 | 非法输入或引擎错误（如 `ENGINE_INVALID_ACTION_INDEX`）不改状态并可重选 |
 | M3-CLI-08 | 对局结束行为 | 到 `settlement/finished` 时能给出明确提示并结束（或触发 `settle` 流程） |
 
@@ -123,6 +124,13 @@
 | M3-BF-08 | 两人均 `PASS_REVEAL` 进入结算 | 询问队列耗尽且无人 `REVEAL` 时，`phase` 切到 `settlement` |
 | M3-BF-09 | 回合收尾后清理掀扣残留 | `in_round` 第三手收轮后进入新 `buckle_flow`，并清空 `reveal.buckler_seat/pending_order` |
 | M3-BF-10 | `REVEAL` 后切回扣棋方首手前态重置 | 命中首个 `REVEAL` 切回 `buckler_seat` 后，`in_round` 必须保持首手前态：`round_kind=0/plays=[]/last_combo=null` |
+
+### 4.4 `cards` 表达重构专项（CardCountMap-only）
+
+| 测试ID | 测试描述 | 通过条件 |
+|---|---|---|
+| M3-CM-01 | `apply_action` 拒绝旧版 `cover_list` 数组 | COVER 动作传 `[{type,count}]` 时返回 `ENGINE_INVALID_COVER_LIST` |
+| M3-CM-02 | `load_state` 拒绝旧版 `cards` 数组 | `turn.plays[*].cards` 使用旧数组结构时立即抛断言异常 |
 
 ## 5) 阶段通过判定（M3）
 
@@ -171,7 +179,7 @@
 | M3-LA-11 | 固定同一状态（建议 LA-04）连续取 `actions` | 每个 `action_idx` 语义不漂移 |
 | M3-LA-12 | 对同一局面先执行一次 `apply_action` 再取 `actions` | 新状态 actions 与新的 `turn.current_seat` 一致 |
 | M3-LA-13 | `phase=in_round`，`round_kind=0`，`last_combo=null`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
-| M3-LA-14 | 同 LA-13 | PLAY 的 `payload_cards` 集合与 `enumerate_combos(hand)` 输出一致 |
+| M3-LA-14 | 同 LA-13 | PLAY 的 `payload_cards`（计数表）集合与 `enumerate_combos(hand)` 输出一致 |
 | M3-LA-15 | `phase=in_round`，`turn.current_seat=1`，`round_kind=1`，`last_combo.power=3`，`seat1.hand={"R_SHI":1,"B_SHI":1,"R_XIANG":1,"B_CHE":1}` | PLAY 仅含红士/黑士/红相（全部 `power>3`） |
 | M3-LA-16 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=4`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1,"B_NIU":2}` | PLAY 含狗脚对、红士对、黑士对、红马对；不含黑牛对 |
 | M3-LA-17 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=8`，`seat1.hand={"R_SHI":2,"B_SHI":2,"R_MA":2,"R_GOU":1,"B_GOU":1}` | PLAY 仅含狗脚对与红士对，不含黑士对（等于边界） |
@@ -202,7 +210,7 @@
 | M3-CLI-03 | 固定局面，依次提交 3 次合法动作 | 每次提示“当前操作 seat=X”，并与状态中的 `turn.current_seat` 一致 |
 | M3-CLI-04 | 固定局面进入交互一轮 | 展示公共态（phase/version/turn）+ 当前 seat `hand`；其他 seat 不展示完整 `hand` |
 | M3-CLI-05 | 固定局面，获取 legal actions | CLI 列表顺序与 `get_legal_actions` 一致，索引从 0 连续递增 |
-| M3-CLI-06 | 选择 COVER，先输入错误张数，再输入正确 `cover_list` | 首次提示错误并重输；第二次成功推进状态 |
+| M3-CLI-06 | 选择 COVER，先输入错误张数，再输入正确 `cover_list`（计数表） | 首次提示错误并重输；第二次成功推进状态 |
 | M3-CLI-07 | 输入越界 `action_idx`（如 99） | 打印 `ENGINE_INVALID_ACTION_INDEX`，状态版本不变，可继续选择 |
 | M3-CLI-08 | 推进到 `settlement` 或 `finished` | CLI 给出终局提示并退出；若 `settle` 可用则可执行结算后退出 |
 
@@ -210,13 +218,13 @@
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-UT-06 | `load_state` 一个“内部完整态”：`players` 含完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 至少各含 1 条 `power=-1` 且带 `cards` 的垫牌记录；`turn.current_seat` 为有效 seat | 调用 `get_public_state()` 后：1) `players[*]` 仅含 `seat/hand_count`，不含 `hand`；2) 所有 `power=-1` 记录均使用 `covered_count`，不暴露 `cards`；3) 顶层不包含 `decision` 与计时字段；4) `turn.current_seat` 保持可见用于行动位展示 |
+| M3-UT-06 | `load_state` 一个“内部完整态”：`players` 含完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 至少各含 1 条 `power=-1` 且带 `cards`（计数表）的垫牌记录；`turn.current_seat` 为有效 seat | 调用 `get_public_state()` 后：1) `players[*]` 仅含 `seat/hand_count`，不含 `hand`；2) 所有 `power=-1` 记录均使用 `covered_count`，不暴露 `cards`；3) 顶层不包含 `decision` 与计时字段；4) `turn.current_seat` 保持可见用于行动位展示 |
 
 ### 6.6 `get_private_state` 私有态投影（新增需求）
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-UT-07 | `load_state` 一个“内部完整态”：`players` 含三名玩家完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 含多个 `power=-1` 且带 `cards` 的垫牌记录（跨多个 seat）；调用 `get_private_state(1)` | 返回值仅包含 `hand/covered` 两个字段；`hand` 精确等于 seat1 手牌；`covered` 为 seat1 在 `turn.plays + pillar_groups[*].plays` 中所有垫牌 `cards` 的按类型聚合计数；不泄露其他 seat 的 `hand/covered` |
+| M3-UT-07 | `load_state` 一个“内部完整态”：`players` 含三名玩家完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 含多个 `power=-1` 且带 `cards`（计数表）的垫牌记录（跨多个 seat）；调用 `get_private_state(1)` | 返回值仅包含 `hand/covered` 两个字段；`hand` 精确等于 seat1 手牌；`covered` 为 seat1 在 `turn.plays + pillar_groups[*].plays` 中所有垫牌 `cards` 的按类型聚合计数；不泄露其他 seat 的 `hand/covered` |
 
 ### 6.7 `load_state` players 索引断言（新增需求）
 
@@ -251,9 +259,16 @@
 | M3-SSOT-06 | 早结算边界（收轮前后柱数跨越 3/6） | 早结算判定沿用新口径（按 `round_kind`）且行为不回退 |
 | M3-SSOT-07 | `get_public_state` 投影包含历史 `pillar_groups` | 透传 `pillar_groups` 但不新增任何派生字段（不出现 `pillars`） |
 
+### 6.10 `cards` 表达重构专项（CardCountMap-only）
+
+| 测试ID | Mock 输入（显式） | 预期结果（显式） |
+|---|---|---|
+| M3-CM-01 | `phase=in_round` 且当前位仅有 COVER 合法动作，调用 `apply_action(action_idx=cover_idx, cover_list=[{"type":"B_NIU","count":1}])` | 立即返回 `ENGINE_INVALID_COVER_LIST`，状态不推进 |
+| M3-CM-02 | `load_state` 传入 `turn.plays=[{"seat":0,"power":9,"cards":[{"type":"R_SHI","count":1}]}]` 的旧结构状态 | 立即抛 `AssertionError`，拒绝加载旧 schema |
+
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~14`、`M3-CLI-01~08`、`M3-RF-01~03` 与 `M3-BF-01~10`。
+> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~14`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~10` 与 `M3-CM-01~02`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -275,3 +290,5 @@
 | M3-RF-01 ~ M3-RF-03 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_refactor_apply_action_reducer.py` 并执行 `pytest engine/tests/test_m3_refactor_apply_action_reducer.py -q`（`1 failed, 2 passed`，缺少 `reduce_apply_action` 委托入口）；Green：2026-02-17 新增 `engine/reducer.py` 并完成 `engine/core.py` 委托改造后执行同命令（`3 passed`）。 |
 | M3-BF-01 ~ M3-BF-10 | ✅ 通过 | Green 已完成 | Red：2026-02-18 执行 `pytest engine/tests/test_m3_red_bf_01_10.py -q`（10 failed）；Green：2026-02-18 完成 `buckle_flow` 流程重构并移除旧 phase 后复测同命令（10 passed），并回归 `pytest engine/tests -q`（88 passed）。 |
 | M3-SSOT-01 ~ M3-SSOT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-20 执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py engine/tests/test_m3_red_cli_01_04.py engine/tests/test_m3_ssot_01_03_05_07_pillar_groups.py engine/tests/test_m3_red_act_11_14_early_settlement.py -q`（9 failed, 9 passed）；Green：完成 `reducer/serializer/settlements/cli` 重构后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py engine/tests/test_m3_red_cli_01_04.py engine/tests/test_m3_ssot_01_03_05_07_pillar_groups.py engine/tests/test_m3_red_act_11_14_early_settlement.py engine/tests/test_m5_red_ut_01_04_settlement.py engine/tests/test_m5_red_ut_05_08_settlement.py engine/tests/test_m5_red_ut_09_12_settlement.py engine/tests/test_m5_red_ut_13_settlement.py -q`（31 passed），并全量回归 `pytest engine/tests -q`（107 passed）。 |
+| M3-CM-01 ~ M3-CM-02 | ✅ 通过 | Green 已完成 | Red：2026-02-20 将引擎实现切换为 CardCountMap-only 后先执行 `pytest engine/tests/test_m3_red_act_01_07.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py -q`（11 passed）；Green：完成全量测试改造后执行 `pytest engine/tests -q`（109 passed），确认旧数组结构输入不再兼容。 |
+| M3-DOC-01 | ✅ 通过 | Green 已完成 | 2026-02-19：接口口径文档重构检查（`backend-engine-interface`、`frontend-backend-interfaces`、`engine_design`、`m3-tests`）已统一 `cards/payload_cards/cover_list` 为计数表表示；并完成关键字检索确认无旧数组示例残留。 |

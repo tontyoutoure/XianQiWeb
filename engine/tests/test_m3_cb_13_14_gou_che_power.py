@@ -24,8 +24,10 @@ def _load_enumerate_combos():
 def _power_map(combos: list[dict[str, Any]]) -> dict[tuple[tuple[str, int], ...], int]:
     result: dict[tuple[tuple[str, int], ...], int] = {}
     for combo in combos:
-        cards = combo.get("cards", [])
-        signature = tuple(sorted((str(card["type"]), int(card["count"])) for card in cards))
+        cards = combo.get("cards", {})
+        if not isinstance(cards, dict):
+            continue
+        signature = tuple(sorted((str(card_type), int(count)) for card_type, count in cards.items()))
         result[signature] = int(combo["power"])
     return result
 

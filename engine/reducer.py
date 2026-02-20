@@ -13,39 +13,40 @@ class ReducerDeps(TypedDict):
     enumerate_combos: Callable[..., list[dict[str, Any]]]
 
 
-def _count_cards(cards: list[dict[str, int]]) -> int:
-    return sum(int(card.get("count", 0)) for card in cards)
+def _count_cards(cards: dict[str, int]) -> int:
+    return sum(int(count) for count in cards.values())
 
 
-def _normalize_cards(cards: list[dict[str, int]] | None) -> list[dict[str, int]]:
+def _normalize_cards(cards: dict[str, Any] | None) -> dict[str, int]:
     if cards is None:
-        return []
-    normalized: list[dict[str, int]] = []
-    for card in cards:
-        card_type = str(card.get("type", ""))
-        count = int(card.get("count", 0))
+        return {}
+    if not isinstance(cards, dict):
+        raise ValueError("ENGINE_INVALID_COVER_LIST")
+
+    normalized: dict[str, int] = {}
+    for raw_type, raw_count in cards.items():
+        card_type = str(raw_type).strip()
+        try:
+            count = int(raw_count)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("ENGINE_INVALID_COVER_LIST") from exc
         if not card_type or count <= 0:
-            continue
-        normalized.append({"type": card_type, "count": count})
-    normalized.sort(key=lambda item: (item["type"], item["count"]))
+            raise ValueError("ENGINE_INVALID_COVER_LIST")
+        normalized[card_type] = int(normalized.get(card_type, 0)) + count
     return normalized
 
 
-def _cards_signature(cards: list[dict[str, int]]) -> tuple[tuple[str, int], ...]:
-    return tuple(sorted((str(card["type"]), int(card["count"])) for card in cards))
+def _cards_signature(cards: dict[str, int]) -> tuple[tuple[str, int], ...]:
+    return tuple(sorted((str(card_type), int(count)) for card_type, count in cards.items()))
 
 
-def _consume_cards_from_hand(state: dict[str, Any], seat: int, cards: list[dict[str, int]]) -> None:
+def _consume_cards_from_hand(state: dict[str, Any], seat: int, cards: dict[str, int]) -> None:
     hand = state["players"][int(seat)]["hand"]
-    for card in cards:
-        card_type = str(card["type"])
-        count = int(card["count"])
+    for card_type, count in cards.items():
         if int(hand.get(card_type, 0)) < count:
             raise ValueError("ENGINE_INVALID_COVER_LIST")
 
-    for card in cards:
-        card_type = str(card["type"])
-        count = int(card["count"])
+    for card_type, count in cards.items():
         hand[card_type] = int(hand.get(card_type, 0)) - count
         if hand[card_type] == 0:
             del hand[card_type]
@@ -54,13 +55,16 @@ def _consume_cards_from_hand(state: dict[str, Any], seat: int, cards: list[dict[
 def _find_combo_power(
     deps: ReducerDeps,
     hand: dict[str, int],
-    cards: list[dict[str, int]],
+    cards: dict[str, int],
     round_kind: int,
 ) -> int:
     signature = _cards_signature(cards)
     enumerate_combos = deps["enumerate_combos"]
     for combo in enumerate_combos(hand, round_kind=round_kind):
-        combo_sig = _cards_signature(combo.get("cards", []))
+        combo_cards = combo.get("cards", {})
+        if not isinstance(combo_cards, dict):
+            continue
+        combo_sig = _cards_signature(combo_cards)
         if combo_sig == signature:
             return int(combo["power"])
     raise ValueError("ENGINE_INVALID_ACTION")
@@ -136,7 +140,7 @@ def reduce_apply_action(
     *,
     state: dict[str, Any],
     action_idx: int,
-    cover_list: list[dict[str, int]] | None,
+    cover_list: dict[str, int] | None,
     client_version: int | None,
     deps: ReducerDeps,
 ) -> dict[str, Any]:
@@ -170,7 +174,7 @@ def reduce_apply_action(
         raise ValueError("ENGINE_INVALID_COVER_LIST")
 
     if action_type == "PLAY":
-        payload_cards = _normalize_cards(target.get("payload_cards", []))
+        payload_cards = _normalize_cards(target.get("payload_cards", {}))
         round_kind = _count_cards(payload_cards)
         if round_kind == 0:
             raise ValueError("ENGINE_INVALID_ACTION")

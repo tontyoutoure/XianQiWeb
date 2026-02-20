@@ -25,13 +25,17 @@ def _positive_hand(hand: dict[str, int]) -> dict[str, int]:
 
 
 def _combo_kind(combo: dict[str, Any]) -> int:
-    cards = combo.get("cards", [])
-    return sum(int(card.get("count", 0)) for card in cards)
+    cards = combo.get("cards", {})
+    if not isinstance(cards, dict):
+        return 0
+    return sum(int(count) for count in cards.values())
 
 
 def _combo_signature(combo: dict[str, Any]) -> tuple[tuple[str, int], ...]:
-    cards = combo.get("cards", [])
-    return tuple(sorted((str(card["type"]), int(card["count"])) for card in cards))
+    cards = combo.get("cards", {})
+    if not isinstance(cards, dict):
+        return ()
+    return tuple(sorted((str(card_type), int(count)) for card_type, count in cards.items()))
 
 
 def _single_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
@@ -41,7 +45,7 @@ def _single_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
             {
                 "kind": 1,
                 "power": CARD_POWER[card_type],
-                "cards": [{"type": card_type, "count": 1}],
+                "cards": {card_type: 1},
             }
         )
     return combos
@@ -55,7 +59,7 @@ def _pair_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
                 {
                     "kind": 2,
                     "power": CARD_POWER[card_type],
-                    "cards": [{"type": card_type, "count": 2}],
+                    "cards": {card_type: 2},
                 }
             )
 
@@ -64,10 +68,7 @@ def _pair_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
             {
                 "kind": 2,
                 "power": CARD_POWER["R_SHI"],
-                "cards": [
-                    {"type": "R_GOU", "count": 1},
-                    {"type": "B_GOU", "count": 1},
-                ],
+                "cards": {"R_GOU": 1, "B_GOU": 1},
             }
         )
     return combos
@@ -80,7 +81,7 @@ def _triple_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
             {
                 "kind": 3,
                 "power": 11,
-                "cards": [{"type": "R_NIU", "count": 3}],
+                "cards": {"R_NIU": 3},
             }
         )
     if hand.get("B_NIU", 0) >= 3:
@@ -88,7 +89,7 @@ def _triple_combos(hand: dict[str, int]) -> list[dict[str, Any]]:
             {
                 "kind": 3,
                 "power": 10,
-                "cards": [{"type": "B_NIU", "count": 3}],
+                "cards": {"B_NIU": 3},
             }
         )
     return combos

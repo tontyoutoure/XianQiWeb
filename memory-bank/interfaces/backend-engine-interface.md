@@ -20,10 +20,11 @@
 
 ### 1.2 卡牌与组合表示（不区分实例）
 - card_type：如 `R_SHI`, `B_SHI`, `R_XIANG`, `B_XIANG`, `R_MA`, `B_MA`, `R_CHE`, `B_CHE`, `R_GOU`, `B_GOU`, `R_NIU`, `B_NIU`。
-- hand 表示为计数表（多重集合）：`{\"R_SHI\": 2, \"B_NIU\": 1, ...}`。
+- CardCountMap：计数表（多重集合），key 为 `card_type`，value 为正整数，如 `{\"R_SHI\": 2, \"B_SHI\": 2}`。
+- hand 表示为计数表：`{\"R_SHI\": 2, \"B_NIU\": 1, ...}`。
 - combo（出棋/垫棋的具体牌面，不含“本轮牌型”）：
   - power: int（按规则计算；垫棋固定为 -1）
-  - cards: [{type, count}]
+  - cards: CardCountMap（如 `{\"R_SHI\": 1}`）
 - round_kind（本轮牌型/张数）：
   - 1：single（单张）
   - 2：pair / dog_pair（对子/狗脚对）
@@ -69,19 +70,19 @@
     "round_kind": 1, // 本轮牌型/张数（1/2/3）
     "last_combo": {
       "power": 9, // 组合强度（按规则计算，垫棋不会改写 last_combo）
-      "cards": [{"type": "R_SHI", "count": 1}], // 组合内牌的类型与数量
+      "cards": {"R_SHI": 1}, // 组合内牌的计数表
       "owner_seat": 1 // 当前最大组合所属座次
     },
     "plays": [
       {
         "seat": 1,
         "power": 9,
-        "cards": [{"type": "R_SHI", "count": 1}]
+        "cards": {"R_SHI": 1}
       },
       {
         "seat": 2,
         "power": -1,
-        "cards": [{"type": "B_NIU", "count": 1}]
+        "cards": {"B_NIU": 1}
       }
     ]
   },
@@ -94,17 +95,17 @@
         {
           "seat": 1, // 出棋者座次
           "power": 9,
-          "cards": [{"type": "R_SHI", "count": 2}] // 出棋的牌
+          "cards": {"R_SHI": 2} // 出棋的牌
         },
         {
           "seat": 2, // 垫棋者座次
           "power": -1,
-          "cards": [{"type": "B_NIU", "count": 2}] // 垫棋牌面（内部记录）
+          "cards": {"B_NIU": 2} // 垫棋牌面（内部记录）
         },
         {
           "seat": 0,
           "power": -1,
-          "cards": [{"type": "R_NIU", "count": 2}]
+          "cards": {"R_NIU": 2}
         }
       ]
     }
@@ -129,12 +130,12 @@
 {
   "action_idx": 0,
   "client_version": 12,
-  "cover_list": [{"type": "B_NIU", "count": 1}]
+  "cover_list": {"B_NIU": 1}
 }
 ```
 说明：
 - `action_idx` 为当前 `legal_actions.actions` 的下标（从 0 开始）。
-- `cover_list` 仅在 `action_idx` 指向 COVER 时需要，表示实际垫牌牌面；其他动作传 `null`。允许任意组合，但引擎必须校验该玩家是否持有这些牌。
+- `cover_list` 仅在 `action_idx` 指向 COVER 时需要，表示实际垫牌计数表；其他动作传 `null`。允许任意组合，但引擎必须校验该玩家是否持有这些牌。
 - `client_version` 为客户端认为的当前版本号（可选）；引擎必须校验并在不匹配时拒绝该动作。
 
 ### 1.5 引擎输出
@@ -160,11 +161,11 @@
     "round_kind": 1,
     "last_combo": {
       "power": 9,
-      "cards": [{"type": "R_SHI", "count": 1}],
+      "cards": {"R_SHI": 1},
       "owner_seat": 1
     },
     "plays": [
-      {"seat": 1, "power": 9, "cards": [{"type": "R_SHI", "count": 1}]},
+      {"seat": 1, "power": 9, "cards": {"R_SHI": 1}},
       {"seat": 2, "power": -1, "covered_count": 1}
     ]
   },
@@ -174,7 +175,7 @@
       "winner_seat": 1,
       "round_kind": 2,
       "plays": [
-        {"seat": 1, "power": 9, "cards": [{"type": "R_SHI", "count": 2}]},
+        {"seat": 1, "power": 9, "cards": {"R_SHI": 2}},
         {"seat": 2, "power": -1, "covered_count": 2},
         {"seat": 0, "power": -1, "covered_count": 2}
       ]
@@ -239,11 +240,11 @@ in_round 阶段示例（`round_kind = 0`，仅可出首手）：
   "actions": [
     {
       "type": "PLAY",
-      "payload_cards": [{"type": "R_SHI", "count": 1}]
+      "payload_cards": {"R_SHI": 1}
     },
     {
       "type": "PLAY",
-      "payload_cards": [{"type": "B_NIU", "count": 1}]
+      "payload_cards": {"B_NIU": 1}
     }
   ]
 }
@@ -256,7 +257,7 @@ in_round 阶段示例（可压制）：
   "actions": [
     {
       "type": "PLAY",
-      "payload_cards": [{"type": "R_SHI", "count": 1}]
+      "payload_cards": {"R_SHI": 1}
     }
   ]
 }

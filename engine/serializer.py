@@ -19,11 +19,67 @@ def _assert_players_canonical(players: Any) -> None:
             raise AssertionError("state.players must be indexed by seat order")
 
 
+def _assert_card_count_map(value: Any, path: str) -> None:
+    if not isinstance(value, dict):
+        raise AssertionError(f"{path} must be CardCountMap object")
+
+    for card_type, raw_count in value.items():
+        key = str(card_type).strip()
+        if not key:
+            raise AssertionError(f"{path} contains empty card type")
+        try:
+            count = int(raw_count)
+        except (TypeError, ValueError) as exc:
+            raise AssertionError(f"{path} contains invalid card count") from exc
+        if count < 0:
+            raise AssertionError(f"{path} contains negative card count")
+
+
+def _assert_card_maps_canonical(state: dict[str, Any]) -> None:
+    players = state.get("players") or []
+    for seat, player in enumerate(players):
+        if not isinstance(player, dict):
+            continue
+        _assert_card_count_map(player.get("hand", {}), f"state.players[{seat}].hand")
+
+    turn = state.get("turn") or {}
+    if isinstance(turn, dict):
+        last_combo = turn.get("last_combo")
+        if isinstance(last_combo, dict) and "cards" in last_combo:
+            _assert_card_count_map(last_combo.get("cards"), "state.turn.last_combo.cards")
+
+        plays = turn.get("plays") or []
+        if isinstance(plays, list):
+            for idx, play in enumerate(plays):
+                if not isinstance(play, dict):
+                    continue
+                _assert_card_count_map(play.get("cards", {}), f"state.turn.plays[{idx}].cards")
+
+    groups = state.get("pillar_groups") or []
+    if isinstance(groups, list):
+        for group_idx, group in enumerate(groups):
+            if not isinstance(group, dict):
+                continue
+            if "pillars" in group:
+                raise AssertionError("state.pillar_groups[*].pillars is no longer supported")
+            plays = group.get("plays") or []
+            if not isinstance(plays, list):
+                continue
+            for play_idx, play in enumerate(plays):
+                if not isinstance(play, dict):
+                    continue
+                _assert_card_count_map(
+                    play.get("cards", {}),
+                    f"state.pillar_groups[{group_idx}].plays[{play_idx}].cards",
+                )
+
+
 def load_state(state: dict[str, Any]) -> dict[str, Any]:
     """Clone and return internal complete state for engine restore."""
 
     cloned = deepcopy(state)
     _assert_players_canonical(cloned["players"])
+    _assert_card_maps_canonical(cloned)
     return cloned
 
 
@@ -35,8 +91,8 @@ def dump_state(state: dict[str, Any] | None) -> dict[str, Any]:
     return deepcopy(state)
 
 
-def _count_cards(cards: list[dict[str, Any]]) -> int:
-    return sum(int(card.get("count", 0)) for card in cards)
+def _count_cards(cards: dict[str, Any]) -> int:
+    return sum(int(count) for count in cards.values())
 
 
 def _sum_hand_count(hand: dict[str, Any]) -> int:
@@ -49,7 +105,7 @@ def _project_public_play(play: dict[str, Any]) -> dict[str, Any]:
         return projected
 
     cards = projected.pop("cards", None)
-    if isinstance(cards, list):
+    if isinstance(cards, dict):
         covered_count = _count_cards(cards)
     else:
         covered_count = int(projected.get("covered_count", 0))
@@ -117,12 +173,12 @@ def _accumulate_covered_cards(covered: dict[str, int], plays: list[dict[str, Any
             continue
         if int(play.get("power", 0)) != -1:
             continue
-        cards = play.get("cards") or []
-        if not isinstance(cards, list):
+        cards = play.get("cards") or {}
+        if not isinstance(cards, dict):
             continue
-        for card in cards:
-            card_type = str(card.get("type", ""))
-            count = int(card.get("count", 0))
+        for card_type, raw_count in cards.items():
+            card_type = str(card_type)
+            count = int(raw_count)
             if not card_type or count <= 0:
                 continue
             covered[card_type] = int(covered.get(card_type, 0)) + count
@@ -149,4 +205,4 @@ def get_private_state(state: dict[str, Any] | None, seat: int) -> dict[str, Any]
         if isinstance(group_plays, list):
             _accumulate_covered_cards(covered, group_plays, target_seat)
 
-    return {"hand": state["players"][target_seat]["hand"], "covered": covered}
+    return {"hand": deepcopy(state["players"][target_seat]["hand"]), "covered": covered}

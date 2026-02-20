@@ -45,7 +45,7 @@ def _make_in_round_cover_state(
 ) -> dict[str, Any]:
     if plays is None:
         plays = [
-            {"seat": winner_seat, "power": 8, "cards": [{"type": "B_SHI", "count": round_kind}]},
+            {"seat": winner_seat, "power": 8, "cards": {"B_SHI": round_kind}},
         ]
 
     return {
@@ -62,7 +62,7 @@ def _make_in_round_cover_state(
             "round_kind": round_kind,
             "last_combo": {
                 "power": 8,
-                "cards": [{"type": "B_SHI", "count": round_kind}],
+                "cards": {"B_SHI": round_kind},
                 "owner_seat": winner_seat,
             },
             "plays": plays,
@@ -124,8 +124,8 @@ def test_m3_rf_02_cover_round_finish_stays_equivalent() -> None:
         required_cover_hand={"B_NIU": 1},
         winner_seat=1,
         plays=[
-            {"seat": 1, "power": 8, "cards": [{"type": "B_SHI", "count": 1}]},
-            {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
+            {"seat": 1, "power": 8, "cards": {"B_SHI": 1}},
+            {"seat": 2, "power": -1, "cards": {"B_CHE": 1}},
         ],
         version=50,
     )
@@ -136,7 +136,7 @@ def test_m3_rf_02_cover_round_finish_stays_equivalent() -> None:
 
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=50,
     )
     next_state = output.get("new_state", {})

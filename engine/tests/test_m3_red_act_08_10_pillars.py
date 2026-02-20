@@ -45,7 +45,7 @@ def _make_state(
     round_kind: int,
     current_seat: int,
     owner_seat: int,
-    last_combo_cards: list[dict[str, int]],
+    last_combo_cards: dict[str, int],
     last_combo_power: int,
     hand_by_seat: dict[int, dict[str, int]],
     plays: list[dict[str, Any]],
@@ -85,12 +85,12 @@ def test_m3_act_08_round_end_pillar_group_owned_by_winner() -> None:
         round_kind=1,
         current_seat=0,
         owner_seat=1,
-        last_combo_cards=[{"type": "R_XIANG", "count": 1}],
+        last_combo_cards={"R_XIANG": 1},
         last_combo_power=7,
         hand_by_seat={0: {"B_NIU": 1}, 1: {}, 2: {}},
         plays=[
-            {"seat": 1, "power": 7, "cards": [{"type": "R_XIANG", "count": 1}]},
-            {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
+            {"seat": 1, "power": 7, "cards": {"R_XIANG": 1}},
+            {"seat": 2, "power": -1, "cards": {"B_CHE": 1}},
         ],
     )
 
@@ -100,7 +100,7 @@ def test_m3_act_08_round_end_pillar_group_owned_by_winner() -> None:
 
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=42,
     )
     next_state = _extract_state(engine, output)
@@ -124,12 +124,12 @@ def test_m3_act_09_pair_round_split_same_pair_into_two_pillars() -> None:
         round_kind=2,
         current_seat=0,
         owner_seat=1,
-        last_combo_cards=[{"type": "R_SHI", "count": 2}],
+        last_combo_cards={"R_SHI": 2},
         last_combo_power=9,
         hand_by_seat={0: {"B_NIU": 2}, 1: {}, 2: {}},
         plays=[
-            {"seat": 1, "power": 9, "cards": [{"type": "R_SHI", "count": 2}]},
-            {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 2}]},
+            {"seat": 1, "power": 9, "cards": {"R_SHI": 2}},
+            {"seat": 2, "power": -1, "cards": {"B_CHE": 2}},
         ],
     )
 
@@ -139,7 +139,7 @@ def test_m3_act_09_pair_round_split_same_pair_into_two_pillars() -> None:
 
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 2}],
+        cover_list={"B_NIU": 2},
         client_version=42,
     )
     next_state = _extract_state(engine, output)
@@ -162,12 +162,12 @@ def test_m3_act_10_triple_round_split_same_triple_into_three_pillars() -> None:
         round_kind=3,
         current_seat=1,
         owner_seat=2,
-        last_combo_cards=[{"type": "R_NIU", "count": 3}],
+        last_combo_cards={"R_NIU": 3},
         last_combo_power=11,
         hand_by_seat={0: {}, 1: {"B_NIU": 3}, 2: {}},
         plays=[
-            {"seat": 2, "power": 11, "cards": [{"type": "R_NIU", "count": 3}]},
-            {"seat": 0, "power": -1, "cards": [{"type": "B_CHE", "count": 3}]},
+            {"seat": 2, "power": 11, "cards": {"R_NIU": 3}},
+            {"seat": 0, "power": -1, "cards": {"B_CHE": 3}},
         ],
     )
 
@@ -177,7 +177,7 @@ def test_m3_act_10_triple_round_split_same_triple_into_three_pillars() -> None:
 
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 3}],
+        cover_list={"B_NIU": 3},
         client_version=42,
     )
     next_state = _extract_state(engine, output)

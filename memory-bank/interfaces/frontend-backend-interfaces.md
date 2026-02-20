@@ -71,7 +71,7 @@ MVP 约束：房间数量由服务端配置，`room_id` 固定为 `0..N-1`；不
 - GET `/api/games/{game_id}/state`
   - resp: {"game_id": 1, "self_seat": 0, "public_state":{}, "private_state":{...}, "legal_actions": {...}}
 - POST `/api/games/{game_id}/actions`
-  - body: {"action_idx": 0, "cover_list": [{"type":"B_NIU","count":1}], "client_version": 0}
+  - body: {"action_idx": 0, "cover_list": {"B_NIU":1}, "client_version": 0}
   - resp: 204 No Content（成功推进引擎状态）
 - GET `/api/games/{game_id}/settlement`
   - resp: result_json
@@ -82,9 +82,9 @@ MVP 约束：房间数量由服务端配置，`room_id` 固定为 `0..N-1`；不
 说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标，按服务端返回顺序，不做额外排序）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
 `client_version` 为当前 `public_state.version`（由后端下发）。若与服务端版本不一致，后端返回 409，前端应立即通过 REST 拉取最新状态快照。
 
-牌面载荷统一使用 `cards` 结构：
+牌面载荷统一使用 `cards` 计数表结构（CardCountMap）：
 ```json
-{"type": "R_SHI", "count": 1}
+{"R_SHI": 1}
 ```
 
 legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或不返回）：
@@ -92,11 +92,11 @@ legal_actions 结构（仅当前行动玩家存在，其它玩家为 `null` 或�
 {
   "seat": 1,
   "actions": [
-    {"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}]}
+    {"type": "PLAY", "payload_cards": {"R_SHI": 1}}
   ]
 }
 ```
-- PLAY：携带 `payload_cards`（推荐出牌牌面，前端用其决定 `action_idx`）。
+- PLAY：携带 `payload_cards`（计数表，推荐出牌牌面，前端用其决定 `action_idx`）。
 - COVER：只给出 `required_count`，前端自行从手牌选择同张数牌面，通过 `cover_list` 回传。
 - BUCKLE / PASS_BUCKLE / REVEAL / PASS_REVEAL：无额外载荷。
 - 前端仅根据 `legal_actions.actions` 渲染可点击操作，不需要自行推断当前决策类型。
@@ -128,8 +128,8 @@ in_round（`round_kind = 0`，仅可出首手）示例：
 {
   "seat": 0,
   "actions": [
-    {"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}]},
-    {"type": "PLAY", "payload_cards": [{"type": "B_NIU", "count": 1}]}
+    {"type": "PLAY", "payload_cards": {"R_SHI": 1}},
+    {"type": "PLAY", "payload_cards": {"B_NIU": 1}}
   ]
 }
 ```

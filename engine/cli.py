@@ -140,7 +140,8 @@ def _render_actions(actions: list[dict[str, Any]]) -> str:
         action_type = str(action.get("type", ""))
         action_name = ACTION_NAME_MAP.get(action_type, action_type)
         if action_type == "PLAY":
-            payload = _format_hand({str(card["type"]): int(card["count"]) for card in action.get("payload_cards", [])})
+            payload_cards = action.get("payload_cards")
+            payload = _format_hand(payload_cards if isinstance(payload_cards, dict) else {})
             lines.append(
                 f"action_idx={idx} 动作={action_name} payload_cards={payload} 牌力={action.get('power')}"
             )
@@ -170,7 +171,7 @@ def _render_cover_cards(cover_cards: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _parse_cover_indexes(raw: str, required_count: int, cover_cards: list[str]) -> list[dict[str, int]]:
+def _parse_cover_indexes(raw: str, required_count: int, cover_cards: list[str]) -> dict[str, int]:
     text = raw.strip().replace(" ", "")
     if not text:
         raise ValueError("cover 索引不能为空")
@@ -191,7 +192,7 @@ def _parse_cover_indexes(raw: str, required_count: int, cover_cards: list[str]) 
         card_type = cover_cards[idx]
         selected_cards[card_type] = selected_cards.get(card_type, 0) + 1
 
-    return [{"type": card_type, "count": count} for card_type, count in sorted(selected_cards.items())]
+    return {card_type: count for card_type, count in sorted(selected_cards.items())}
 
 
 def _emit_error(output_fn: Callable[[str], None], exc: Exception) -> None:

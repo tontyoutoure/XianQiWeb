@@ -82,3 +82,42 @@ def test_m3_ssot_02_load_state_rejects_legacy_pillars_field() -> None:
 
     with pytest.raises(AssertionError):
         engine.load_state(legacy_state)
+
+
+def test_m3_cm_02_load_state_rejects_legacy_cards_array_shape() -> None:
+    """M3-CM-02: load_state should reject legacy cards array in play entries."""
+
+    Engine = _load_engine_class()
+    engine = Engine()
+
+    legacy_cards_state = {
+        "version": 1,
+        "phase": "in_round",
+        "players": [
+            {"seat": 0, "hand": {"R_SHI": 1}},
+            {"seat": 1, "hand": {"B_SHI": 1}},
+            {"seat": 2, "hand": {"R_NIU": 1}},
+        ],
+        "turn": {
+            "current_seat": 0,
+            "round_index": 0,
+            "round_kind": 1,
+            "last_combo": {
+                "power": 9,
+                "cards": {"R_SHI": 1},
+                "owner_seat": 0,
+            },
+            "plays": [
+                {
+                    "seat": 0,
+                    "power": 9,
+                    "cards": [{"type": "R_SHI", "count": 1}],
+                }
+            ],
+        },
+        "pillar_groups": [],
+        "reveal": {"buckler_seat": None, "active_revealer_seat": None, "pending_order": [], "relations": []},
+    }
+
+    with pytest.raises(AssertionError):
+        engine.load_state(legacy_cards_state)

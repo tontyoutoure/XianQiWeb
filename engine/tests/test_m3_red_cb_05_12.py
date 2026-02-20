@@ -23,15 +23,17 @@ def _load_enumerate_combos():
 
 
 
-def _cards_signature(cards: list[dict[str, Any]]) -> tuple[tuple[str, int], ...]:
-    return tuple(sorted((str(card["type"]), int(card["count"])) for card in cards))
+def _cards_signature(cards: dict[str, Any]) -> tuple[tuple[str, int], ...]:
+    if not isinstance(cards, dict):
+        return ()
+    return tuple(sorted((str(card_type), int(count)) for card_type, count in cards.items()))
 
 
 
 def _combo_signature(combo: dict[str, Any]) -> tuple[tuple[str, int], ...]:
     cards = combo.get("cards")
-    if not isinstance(cards, list):
-        pytest.fail(f"combo.cards must be list, got: {combo}")
+    if not isinstance(cards, dict):
+        pytest.fail(f"combo.cards must be CardCountMap, got: {combo}")
     return _cards_signature(cards)
 
 

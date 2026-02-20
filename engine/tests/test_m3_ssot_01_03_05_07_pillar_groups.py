@@ -56,12 +56,12 @@ def _make_round_end_state(*, version: int) -> dict[str, Any]:
             "round_kind": 2,
             "last_combo": {
                 "power": 9,
-                "cards": [{"type": "R_SHI", "count": 2}],
+                "cards": {"R_SHI": 2},
                 "owner_seat": 1,
             },
             "plays": [
-                {"seat": 1, "power": 9, "cards": [{"type": "R_SHI", "count": 2}]},
-                {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 2}]},
+                {"seat": 1, "power": 9, "cards": {"R_SHI": 2}},
+                {"seat": 2, "power": -1, "cards": {"B_CHE": 2}},
             ],
         },
         "pillar_groups": [],
@@ -84,7 +84,7 @@ def test_m3_ssot_01_round_finish_group_has_no_legacy_pillars() -> None:
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 2}],
+        cover_list={"B_NIU": 2},
         client_version=301,
     )
     next_state = _extract_state(engine, output)
@@ -155,7 +155,7 @@ def test_m3_ssot_05_logged_state_snapshot_excludes_legacy_pillars(tmp_path: Path
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 2}],
+        cover_list={"B_NIU": 2},
         client_version=303,
     )
 
@@ -179,7 +179,7 @@ def test_m3_ssot_07_public_state_does_not_add_pillars_cache() -> None:
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 2}],
+        cover_list={"B_NIU": 2},
         client_version=304,
     )
 

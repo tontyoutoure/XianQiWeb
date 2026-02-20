@@ -86,12 +86,12 @@ def _make_round_end_state(
             "round_kind": 1,
             "last_combo": {
                 "power": 9,
-                "cards": [{"type": "R_SHI", "count": 1}],
+                "cards": {"R_SHI": 1},
                 "owner_seat": owner_seat,
             },
             "plays": [
-                {"seat": owner_seat, "power": 9, "cards": [{"type": "R_SHI", "count": 1}]},
-                {"seat": (owner_seat + 1) % 3, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
+                {"seat": owner_seat, "power": 9, "cards": {"R_SHI": 1}},
+                {"seat": (owner_seat + 1) % 3, "power": -1, "cards": {"B_CHE": 1}},
             ],
         },
         "pillar_groups": _make_previous_pillar_groups(pillar_counts_before),
@@ -110,7 +110,7 @@ def test_m3_act_11_round_end_enters_settlement_when_any_player_reaches_ceramic()
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=111,
     )
     next_state = _extract_state(engine, output)
@@ -129,7 +129,7 @@ def test_m3_act_12_round_end_enters_settlement_when_two_players_are_enough() -> 
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=112,
     )
     next_state = _extract_state(engine, output)
@@ -148,7 +148,7 @@ def test_m3_act_13_round_end_keeps_buckle_flow_when_early_settlement_not_hit() -
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=113,
     )
     next_state = _extract_state(engine, output)
@@ -173,7 +173,7 @@ def test_m3_act_14_early_settlement_cleans_reveal_pending_and_blocks_actions() -
     cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=114,
     )
     next_state = _extract_state(engine, output)

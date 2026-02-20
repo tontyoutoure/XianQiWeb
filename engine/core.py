@@ -152,7 +152,7 @@ class XianqiGameEngine:
     def apply_action(
         self,
         action_idx: int,
-        cover_list: list[dict[str, int]] | None = None,
+        cover_list: dict[str, int] | None = None,
         client_version: int | None = None,
     ) -> dict[str, Any]:
         state = self._require_state()

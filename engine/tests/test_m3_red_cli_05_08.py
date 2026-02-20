@@ -29,7 +29,7 @@ def test_m3_cli_05_actions_render_with_explicit_action_idx_and_payload_cards() -
         [
             {
                 "type": "PLAY",
-                "payload_cards": [{"type": "R_SHI", "count": 1}],
+                "payload_cards": {"R_SHI": 1},
                 "power": 9,
             },
             {
@@ -139,7 +139,7 @@ def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
 
         def get_legal_actions(self, seat: int):
             assert seat == 0
-            return {"seat": 0, "actions": [{"type": "PLAY", "payload_cards": [{"type": "R_SHI", "count": 1}], "power": 9}]}
+            return {"seat": 0, "actions": [{"type": "PLAY", "payload_cards": {"R_SHI": 1}, "power": 9}]}
 
         def apply_action(self, action_idx: int, cover_list=None, client_version=None):  # noqa: ANN001
             assert action_idx == 0

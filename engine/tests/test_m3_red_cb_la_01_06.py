@@ -27,14 +27,9 @@ def _load_enumerate_combos():
 
 def _combo_cards_signature(combo: dict[str, Any]) -> tuple[tuple[str, int], ...]:
     cards = combo.get("cards")
-    if not isinstance(cards, list):
-        pytest.fail(f"combo must contain list cards, got: {combo}")
-    pairs: list[tuple[str, int]] = []
-    for card in cards:
-        if not isinstance(card, dict) or "type" not in card or "count" not in card:
-            pytest.fail(f"invalid card entry in combo: {combo}")
-        pairs.append((card["type"], card["count"]))
-    return tuple(sorted(pairs))
+    if not isinstance(cards, dict):
+        pytest.fail(f"combo must contain CardCountMap cards, got: {combo}")
+    return tuple(sorted((str(card_type), int(count)) for card_type, count in cards.items()))
 
 
 def _extract_actions_types(legal_actions: dict[str, Any]) -> list[str]:
@@ -79,14 +74,14 @@ def _make_in_round_state(
             "round_kind": round_kind,
             "last_combo": {
                 "power": last_combo_power,
-                "cards": [{"type": "B_CHE", "count": round_kind}],
+                "cards": {"B_CHE": round_kind},
                 "owner_seat": (current_seat + 1) % 3,
             },
             "plays": [
                 {
                     "seat": (current_seat + 1) % 3,
                     "power": last_combo_power,
-                    "cards": [{"type": "B_CHE", "count": round_kind}],
+                    "cards": {"B_CHE": round_kind},
                 }
             ],
         },

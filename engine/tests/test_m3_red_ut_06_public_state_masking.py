@@ -37,12 +37,12 @@ def test_m3_ut_06_get_public_state_masks_private_fields() -> None:
             "round_kind": 1,
             "last_combo": {
                 "power": 9,
-                "cards": [{"type": "R_SHI", "count": 1}],
+                "cards": {"R_SHI": 1},
                 "owner_seat": 0,
             },
             "plays": [
-                {"seat": 0, "power": 9, "cards": [{"type": "R_SHI", "count": 1}]},
-                {"seat": 1, "power": -1, "cards": [{"type": "B_NIU", "count": 1}]},
+                {"seat": 0, "power": 9, "cards": {"R_SHI": 1}},
+                {"seat": 1, "power": -1, "cards": {"B_NIU": 1}},
             ],
         },
         "pillar_groups": [
@@ -51,9 +51,9 @@ def test_m3_ut_06_get_public_state_masks_private_fields() -> None:
                 "winner_seat": 2,
                 "round_kind": 2,
                 "plays": [
-                    {"seat": 2, "power": 9, "cards": [{"type": "R_SHI", "count": 2}]},
-                    {"seat": 0, "power": -1, "cards": [{"type": "R_NIU", "count": 2}]},
-                    {"seat": 1, "power": -1, "cards": [{"type": "B_NIU", "count": 2}]},
+                    {"seat": 2, "power": 9, "cards": {"R_SHI": 2}},
+                    {"seat": 0, "power": -1, "cards": {"R_NIU": 2}},
+                    {"seat": 1, "power": -1, "cards": {"B_NIU": 2}},
                 ],
             }
         ],

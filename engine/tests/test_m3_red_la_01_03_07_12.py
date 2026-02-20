@@ -14,15 +14,17 @@ from engine.combos import enumerate_combos
 from engine.core import XianqiGameEngine
 
 
-def _cards_signature(cards: list[dict[str, Any]]) -> tuple[tuple[str, int], ...]:
-    return tuple(sorted((str(card["type"]), int(card["count"])) for card in cards))
+def _cards_signature(cards: dict[str, Any]) -> tuple[tuple[str, int], ...]:
+    if not isinstance(cards, dict):
+        return ()
+    return tuple(sorted((str(card_type), int(count)) for card_type, count in cards.items()))
 
 
 def _play_signatures(legal_actions: dict[str, Any]) -> list[tuple[tuple[str, int], ...]]:
     signatures: list[tuple[tuple[str, int], ...]] = []
     for action in legal_actions.get("actions", []):
         if action.get("type") == "PLAY":
-            signatures.append(_cards_signature(action.get("payload_cards", [])))
+            signatures.append(_cards_signature(action.get("payload_cards", {})))
     return signatures
 
 
@@ -30,7 +32,7 @@ def _action_sequence(legal_actions: dict[str, Any]) -> list[tuple[str, tuple[tup
     sequence: list[tuple[str, tuple[tuple[str, int], ...], int, int]] = []
     for action in legal_actions.get("actions", []):
         action_type = str(action.get("type", ""))
-        payload = _cards_signature(action.get("payload_cards", [])) if action_type == "PLAY" else ()
+        payload = _cards_signature(action.get("payload_cards", {})) if action_type == "PLAY" else ()
         power = int(action.get("power", -999)) if action_type == "PLAY" else -999
         required_count = int(action.get("required_count", -1)) if action_type == "COVER" else -1
         sequence.append((action_type, payload, power, required_count))
@@ -59,7 +61,7 @@ def _make_state(
             "round_kind": round_kind,
             "last_combo": {
                 "power": last_combo_power,
-                "cards": [{"type": "B_CHE", "count": max(round_kind, 1)}],
+                "cards": {"B_CHE": max(round_kind, 1)},
                 "owner_seat": (current_seat + 1) % 3,
             }
             if phase == "in_round" and round_kind > 0

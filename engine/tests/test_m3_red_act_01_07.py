@@ -72,7 +72,7 @@ def _make_in_round_cover_state(
 ) -> dict[str, Any]:
     if plays is None:
         plays = [
-            {"seat": winner_seat, "power": 8, "cards": [{"type": "B_SHI", "count": round_kind}]},
+            {"seat": winner_seat, "power": 8, "cards": {"B_SHI": round_kind}},
         ]
 
     return {
@@ -89,7 +89,7 @@ def _make_in_round_cover_state(
             "round_kind": round_kind,
             "last_combo": {
                 "power": 8,
-                "cards": [{"type": "B_SHI", "count": round_kind}],
+                "cards": {"B_SHI": round_kind},
                 "owner_seat": winner_seat,
             },
             "plays": plays,
@@ -160,7 +160,7 @@ def test_m3_act_03_non_cover_action_must_not_accept_cover_list() -> None:
     with pytest.raises(ValueError, match="ENGINE_INVALID_COVER_LIST"):
         engine.apply_action(
             action_idx=buckle_idx,
-            cover_list=[{"type": "B_NIU", "count": 1}],
+            cover_list={"B_NIU": 1},
             client_version=13,
         )
 
@@ -185,7 +185,7 @@ def test_m3_act_04_cover_wrong_count_rejected() -> None:
     with pytest.raises(ValueError, match="ENGINE_INVALID_COVER_LIST"):
         engine.apply_action(
             action_idx=cover_idx,
-            cover_list=[{"type": "B_NIU", "count": 1}],
+            cover_list={"B_NIU": 1},
             client_version=21,
         )
 
@@ -210,7 +210,32 @@ def test_m3_act_05_cover_with_unowned_cards_rejected() -> None:
     with pytest.raises(ValueError, match="ENGINE_INVALID_COVER_LIST"):
         engine.apply_action(
             action_idx=cover_idx,
-            cover_list=[{"type": "R_SHI", "count": 1}],
+            cover_list={"R_SHI": 1},
+            client_version=22,
+        )
+
+
+def test_m3_cm_01_cover_legacy_array_payload_rejected() -> None:
+    """M3-CM-01: COVER should reject legacy [{type,count}] card payload shape."""
+
+    Engine = _load_engine_class()
+    engine = Engine()
+    state = _make_in_round_cover_state(
+        current_seat=0,
+        round_kind=1,
+        required_cover_hand={"B_NIU": 1},
+        winner_seat=1,
+        version=22,
+    )
+    engine.load_state(state)
+
+    legal_actions = engine.get_legal_actions(0)
+    cover_idx = _find_action_idx(legal_actions, "COVER")
+
+    with pytest.raises(ValueError, match="ENGINE_INVALID_COVER_LIST"):
+        engine.apply_action(
+            action_idx=cover_idx,
+            cover_list=[{"type": "B_NIU", "count": 1}],  # type: ignore[arg-type]
             client_version=22,
         )
 
@@ -227,8 +252,8 @@ def test_m3_act_06_round_end_advances_current_seat_to_winner() -> None:
         required_cover_hand={"B_NIU": 1},
         winner_seat=1,
         plays=[
-            {"seat": 1, "power": 8, "cards": [{"type": "B_SHI", "count": 1}]},
-            {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
+            {"seat": 1, "power": 8, "cards": {"B_SHI": 1}},
+            {"seat": 2, "power": -1, "cards": {"B_CHE": 1}},
         ],
         version=23,
     )
@@ -239,7 +264,7 @@ def test_m3_act_06_round_end_advances_current_seat_to_winner() -> None:
 
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=23,
     )
     next_state = _extract_state(engine, output)

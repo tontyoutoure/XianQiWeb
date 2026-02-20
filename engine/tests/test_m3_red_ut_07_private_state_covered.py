@@ -37,13 +37,13 @@ def test_m3_ut_07_get_private_state_returns_target_hand_and_covered() -> None:
             "round_kind": 1,
             "last_combo": {
                 "power": 9,
-                "cards": [{"type": "R_SHI", "count": 1}],
+                "cards": {"R_SHI": 1},
                 "owner_seat": 0,
             },
             "plays": [
-                {"seat": 0, "power": 9, "cards": [{"type": "R_SHI", "count": 1}]},
-                {"seat": 1, "power": -1, "cards": [{"type": "B_NIU", "count": 1}]},
-                {"seat": 2, "power": -1, "cards": [{"type": "R_NIU", "count": 1}]},
+                {"seat": 0, "power": 9, "cards": {"R_SHI": 1}},
+                {"seat": 1, "power": -1, "cards": {"B_NIU": 1}},
+                {"seat": 2, "power": -1, "cards": {"R_NIU": 1}},
             ],
         },
         "pillar_groups": [
@@ -52,9 +52,9 @@ def test_m3_ut_07_get_private_state_returns_target_hand_and_covered() -> None:
                 "winner_seat": 2,
                 "round_kind": 2,
                 "plays": [
-                    {"seat": 2, "power": 9, "cards": [{"type": "R_SHI", "count": 2}]},
-                    {"seat": 1, "power": -1, "cards": [{"type": "B_NIU", "count": 2}]},
-                    {"seat": 0, "power": -1, "cards": [{"type": "R_NIU", "count": 2}]},
+                    {"seat": 2, "power": 9, "cards": {"R_SHI": 2}},
+                    {"seat": 1, "power": -1, "cards": {"B_NIU": 2}},
+                    {"seat": 0, "power": -1, "cards": {"R_NIU": 2}},
                 ],
             },
             {
@@ -62,14 +62,11 @@ def test_m3_ut_07_get_private_state_returns_target_hand_and_covered() -> None:
                 "winner_seat": 0,
                 "round_kind": 1,
                 "plays": [
-                    {"seat": 0, "power": 5, "cards": [{"type": "R_MA", "count": 1}]},
+                    {"seat": 0, "power": 5, "cards": {"R_MA": 1}},
                     {
                         "seat": 1,
                         "power": -1,
-                        "cards": [
-                            {"type": "R_NIU", "count": 1},
-                            {"type": "B_NIU", "count": 1},
-                        ],
+                        "cards": {"R_NIU": 1, "B_NIU": 1},
                     },
                 ],
             },

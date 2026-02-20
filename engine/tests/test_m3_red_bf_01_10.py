@@ -93,12 +93,12 @@ def _make_in_round_round_end_state(*, version: int = 90) -> dict[str, Any]:
             "round_kind": 1,
             "last_combo": {
                 "power": 8,
-                "cards": [{"type": "B_SHI", "count": 1}],
+                "cards": {"B_SHI": 1},
                 "owner_seat": 1,
             },
             "plays": [
-                {"seat": 1, "power": 8, "cards": [{"type": "B_SHI", "count": 1}]},
-                {"seat": 2, "power": -1, "cards": [{"type": "B_CHE", "count": 1}]},
+                {"seat": 1, "power": 8, "cards": {"B_SHI": 1}},
+                {"seat": 2, "power": -1, "cards": {"B_CHE": 1}},
             ],
         },
         "pillar_groups": [],
@@ -327,7 +327,7 @@ def test_m3_bf_09_round_finish_resets_buckle_flow_and_cleans_reveal_residue() ->
 
     output = engine.apply_action(
         action_idx=cover_idx,
-        cover_list=[{"type": "B_NIU", "count": 1}],
+        cover_list={"B_NIU": 1},
         client_version=90,
     )
     next_state = _extract_state(engine, output)
