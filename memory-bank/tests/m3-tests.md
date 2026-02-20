@@ -23,6 +23,7 @@
 | M3-UT-06 | `get_public_state` 脱敏投影 | 仅返回公共字段：`players[*].hand_count`（不含 `hand`），`power=-1` 的记录改为 `covered_count`，且不输出 `decision` |
 | M3-UT-07 | `get_private_state` 私有态投影 | 仅返回目标 seat 的 `hand/covered`，其中 `covered` 为该 seat 历史垫牌计数聚合 |
 | M3-UT-08 | `load_state` seat 索引一致性断言 | `players` 非 seat 索引顺序时快速失败（抛断言异常） |
+| M3-UT-09 | `load_state` reveal 结构规范断言 | `reveal` 缺关键字段或类型非法（如重复 `pending_order`、非法 `relations`）时快速失败（抛断言异常） |
 
 ## 2) 组合枚举器测试（重点细化）
 
@@ -231,11 +232,12 @@
 |---|---|---|
 | M3-UT-07 | `load_state` 一个“内部完整态”：`players` 含三名玩家完整 `hand`；`turn.plays` 与 `pillar_groups[*].plays` 含多个 `power=-1` 且带 `cards`（计数表）的垫牌记录（跨多个 seat）；调用 `get_private_state(1)` | 返回值仅包含 `hand/covered` 两个字段；`hand` 精确等于 seat1 手牌；`covered` 为 seat1 在 `turn.plays + pillar_groups[*].plays` 中所有垫牌 `cards` 的按类型聚合计数；不泄露其他 seat 的 `hand/covered` |
 
-### 6.7 `load_state` players 索引断言（新增需求）
+### 6.7 `load_state` 输入断言（新增需求）
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
 | M3-UT-08 | `load_state` 输入 `players` 长度为 3 但顺序错位（如 `players[0].seat=1`, `players[1].seat=0`） | 调用 `load_state` 立即抛出断言异常，不进入后续状态推进 |
+| M3-UT-09 | `load_state` 输入 reveal 非规范结构（缺少 `active_revealer_seat` / `pending_order` 含重复 seat / `relations[*].revealer_enough_at_time` 非 bool） | 调用 `load_state` 立即抛出断言异常，不进入后续状态推进 |
 
 ### 6.8 掀扣转换专项（M3-BF）审查样例
 
@@ -274,7 +276,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~16`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~11` 与 `M3-CM-01~02`。
+> 说明：当前已完成 `M3-UT-01~09`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~16`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~11` 与 `M3-CM-01~02`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -282,6 +284,7 @@
 | M3-UT-06 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_red_ut_06_public_state_masking.py` 并执行 `pytest engine/tests/test_m3_red_ut_06_public_state_masking.py -q`（1 failed）；Green：2026-02-17 在 `engine/core.py` 实现 `get_public_state` 脱敏投影后复测同命令（1 passed） |
 | M3-UT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_red_ut_07_private_state_covered.py` 并执行 `pytest engine/tests/test_m3_red_ut_07_private_state_covered.py -q`（1 failed）；Green：2026-02-17 在 `engine/core.py` 实现 `get_private_state` 的 `covered` 聚合后复测同命令（1 passed） |
 | M3-UT-08 | ✅ 通过 | Green 已完成 | 2026-02-17：新增 `engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py` 并执行 `pytest engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py -q`（1 passed），锁定 `load_state` 的 players 索引断言契约 |
+| M3-UT-09 | ✅ 通过 | Green 已完成 | Red：2026-02-20 新增 reveal 规范性断言测试并执行 `pytest engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py -q`（3 failed, 3 passed）；Green：在 `engine/serializer.py` 增加 `reveal` fail-fast 校验并移除 reducer 内部 `_ensure_reveal_state` 后复测同命令（6 passed）；全量回归 `pytest engine/tests -q`（115 passed）。 |
 | M3-CB-01 ~ M3-CB-04 | ✅ 通过 | Green 已完成 | Red：2026-02-15 执行 `conda run -n XQB pytest engine/tests/test_m3_red_cb_la_01_06.py -q`（缺失 `engine.combos`）；Green：2026-02-16 新增 `engine/combos.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-LA-04 ~ M3-LA-06 | ✅ 通过 | Green 已完成 | Red：2026-02-15 同批次执行（缺失 `engine.core`）；Green：2026-02-16 新增 `engine/core.py` 后执行 `pytest engine/tests/test_m3_red_cb_la_01_06.py -q` 通过 |
 | M3-CB-05 ~ M3-CB-12 | ✅ 通过 | Red 已执行（意外全绿） | 2026-02-16：已新增 `engine/tests/test_m3_red_cb_05_12.py` 并执行 `pytest engine/tests/test_m3_red_cb_05_12.py -q`（8 passed）；当前实现已满足用例预期 |

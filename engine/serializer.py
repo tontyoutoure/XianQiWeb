@@ -74,12 +74,69 @@ def _assert_card_maps_canonical(state: dict[str, Any]) -> None:
                 )
 
 
+def _assert_seat_or_none(value: Any, path: str) -> None:
+    if value is None:
+        return
+    if type(value) is not int or value not in (0, 1, 2):
+        raise AssertionError(f"{path} must be null or seat index(0/1/2)")
+
+
+def _assert_seat_index(value: Any, path: str) -> None:
+    if type(value) is not int or value not in (0, 1, 2):
+        raise AssertionError(f"{path} must be seat index(0/1/2)")
+
+
+def _assert_reveal_canonical(state: dict[str, Any]) -> None:
+    reveal = state.get("reveal")
+    if not isinstance(reveal, dict):
+        raise AssertionError("state.reveal must be object")
+
+    required_fields = ("buckler_seat", "active_revealer_seat", "pending_order", "relations")
+    for field in required_fields:
+        if field not in reveal:
+            raise AssertionError(f"state.reveal.{field} is required")
+
+    _assert_seat_or_none(reveal.get("buckler_seat"), "state.reveal.buckler_seat")
+    _assert_seat_or_none(reveal.get("active_revealer_seat"), "state.reveal.active_revealer_seat")
+
+    pending_order = reveal.get("pending_order")
+    if not isinstance(pending_order, list):
+        raise AssertionError("state.reveal.pending_order must be list")
+    if len(pending_order) > 2:
+        raise AssertionError("state.reveal.pending_order must contain at most 2 seats")
+    pending_seen: set[int] = set()
+    for idx, seat in enumerate(pending_order):
+        if type(seat) is not int or seat not in (0, 1, 2):
+            raise AssertionError(f"state.reveal.pending_order[{idx}] must be seat index(0/1/2)")
+        if seat in pending_seen:
+            raise AssertionError("state.reveal.pending_order must not contain duplicates")
+        pending_seen.add(seat)
+
+    relations = reveal.get("relations")
+    if not isinstance(relations, list):
+        raise AssertionError("state.reveal.relations must be list")
+    required_relation_fields = ("revealer_seat", "buckler_seat", "revealer_enough_at_time")
+    for idx, relation in enumerate(relations):
+        if not isinstance(relation, dict):
+            raise AssertionError(f"state.reveal.relations[{idx}] must be object")
+        for field in required_relation_fields:
+            if field not in relation:
+                raise AssertionError(f"state.reveal.relations[{idx}].{field} is required")
+        _assert_seat_index(relation.get("revealer_seat"), f"state.reveal.relations[{idx}].revealer_seat")
+        _assert_seat_index(relation.get("buckler_seat"), f"state.reveal.relations[{idx}].buckler_seat")
+        if type(relation.get("revealer_enough_at_time")) is not bool:
+            raise AssertionError(
+                f"state.reveal.relations[{idx}].revealer_enough_at_time must be bool"
+            )
+
+
 def load_state(state: dict[str, Any]) -> dict[str, Any]:
     """Clone and return internal complete state for engine restore."""
 
     cloned = deepcopy(state)
     _assert_players_canonical(cloned["players"])
     _assert_card_maps_canonical(cloned)
+    _assert_reveal_canonical(cloned)
     return cloned
 
 

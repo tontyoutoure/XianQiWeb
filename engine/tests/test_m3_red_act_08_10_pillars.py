@@ -71,7 +71,12 @@ def _make_state(
             "plays": plays,
         },
         "pillar_groups": [],
-        "reveal": {"buckler_seat": 0, "pending_order": [], "relations": []},
+        "reveal": {
+            "buckler_seat": 0,
+            "active_revealer_seat": None,
+            "pending_order": [],
+            "relations": [],
+        },
     }
 
 

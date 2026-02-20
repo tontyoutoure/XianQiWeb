@@ -79,23 +79,6 @@ def _captured_pillar_count(state: dict[str, Any], seat: int) -> int:
     return count
 
 
-def _ensure_reveal_state(state: dict[str, Any]) -> dict[str, Any]:
-    reveal = state.get("reveal")
-    if not isinstance(reveal, dict):
-        reveal = {}
-
-    pending_raw = reveal.get("pending_order")
-    pending_order = list(pending_raw) if isinstance(pending_raw, list) else []
-
-    relations = reveal.get("relations")
-    reveal["relations"] = relations if isinstance(relations, list) else []
-    reveal["buckler_seat"] = reveal.get("buckler_seat")
-    reveal["active_revealer_seat"] = reveal.get("active_revealer_seat")
-    reveal["pending_order"] = [int(seat) for seat in pending_order]
-    state["reveal"] = reveal
-    return reveal
-
-
 def _reset_turn_for_round_start(state: dict[str, Any], seat: int) -> None:
     turn = state.get("turn")
     if not isinstance(turn, dict):
@@ -112,7 +95,7 @@ def _finish_round(state: dict[str, Any]) -> None:
     round_kind = int(turn.get("round_kind", 0))
     last_combo = turn.get("last_combo") or {}
     winner_seat = int(last_combo.get("owner_seat", 0))
-    reveal = _ensure_reveal_state(state)
+    reveal = state["reveal"]
     active_revealer_raw = reveal.get("active_revealer_seat")
     active_revealer_seat = int(active_revealer_raw) if active_revealer_raw is not None else None
     active_pillars_before = (
@@ -257,7 +240,7 @@ def reduce_apply_action(
         if phase != "buckle_flow":
             raise ValueError("ENGINE_INVALID_PHASE")
 
-        reveal = _ensure_reveal_state(state)
+        reveal = state["reveal"]
         if reveal.get("pending_order"):
             raise ValueError("ENGINE_INVALID_PHASE")
 
@@ -281,7 +264,7 @@ def reduce_apply_action(
         if phase != "buckle_flow":
             raise ValueError("ENGINE_INVALID_PHASE")
 
-        reveal = _ensure_reveal_state(state)
+        reveal = state["reveal"]
         if reveal.get("pending_order"):
             raise ValueError("ENGINE_INVALID_PHASE")
 
@@ -294,8 +277,8 @@ def reduce_apply_action(
         if phase != "buckle_flow":
             raise ValueError("ENGINE_INVALID_PHASE")
 
-        reveal = _ensure_reveal_state(state)
-        pending_order = list(reveal.get("pending_order", []))
+        reveal = state["reveal"]
+        pending_order = list(reveal["pending_order"])
         if not pending_order or int(pending_order[0]) != acting_seat:
             raise ValueError("ENGINE_INVALID_PHASE")
 
@@ -310,7 +293,7 @@ def reduce_apply_action(
         if buckler_raw is None:
             raise ValueError("ENGINE_INVALID_PHASE")
         buckler_seat = int(buckler_raw)
-        relations = reveal.setdefault("relations", [])
+        relations = reveal["relations"]
         if action_type == "REVEAL":
             relations.append(
                 {

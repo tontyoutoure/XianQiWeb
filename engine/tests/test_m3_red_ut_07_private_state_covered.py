@@ -71,7 +71,12 @@ def test_m3_ut_07_get_private_state_returns_target_hand_and_covered() -> None:
                 ],
             },
         ],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {
+            "buckler_seat": None,
+            "active_revealer_seat": None,
+            "pending_order": [],
+            "relations": [],
+        },
     }
 
     engine.load_state(internal_state)

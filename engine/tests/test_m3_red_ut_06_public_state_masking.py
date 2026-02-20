@@ -57,7 +57,12 @@ def test_m3_ut_06_get_public_state_masks_private_fields() -> None:
                 ],
             }
         ],
-        "reveal": {"buckler_seat": None, "pending_order": [], "relations": []},
+        "reveal": {
+            "buckler_seat": None,
+            "active_revealer_seat": None,
+            "pending_order": [],
+            "relations": [],
+        },
     }
 
     engine.load_state(internal_state)
