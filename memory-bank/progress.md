@@ -1,35 +1,11 @@
-## 当前进度
-- M0 文档基线已冻结：架构、规则、接口、后端设计均完成。
-- 术语追认（2026-02-20）：规则与架构文档将“扣后询问阶段”统一追认为“扣掀决策阶段”；`XianQi_rules.md` 保持纯中文规则表达，架构文档补充与引擎 `buckle_flow` 的对应关系。
-- M0 架构文档 SSOT 收敛（2026-02-20）：`memory-bank/architecture.md` 已删除重复的引擎状态机细则（原 3.2/3.3），改为规则/设计/接口文档指针；术语表与 `XianQi_rules.md` 完整拉齐并补充中英对照。
-- 规则文档重构（2026-02-20）：`XianQi_rules.md` 已改为全中文规范体例（术语定义 + 状态不变量 + 转移表），并将扣棋/掀棋拆分为“触发、顺序、单步推进、终止”四段明确口径。
-- 术语替换工具落地（2026-02-20）：新增 `scripts/term_replace_round_trip.py`，支持“命中提取 -> 中间文件审阅 -> 锚点回写”，并已用于 `XianQi_rules.md` 的“轮 -> 回合”统一替换（31 处，0 失败）。
-- 术语澄清（2026-02-20）：规则与 memory-bank 文档链路将旧回合收尾术语统一为“回合收束”，并在 `XianQi_rules.md` 增加明确定义，区分“回合收束”与“对局结算”。
-- memory-bank 回合术语清理（2026-02-20）：将代表“回合”语义的旧称统一替换为“回合”，并保留“轮换/轮询/轮转”等非回合语义用词。
-- M1 鉴权能力已完成：Auth REST + WS 鉴权链路可用。
-- 真实服务联调（2026-02-14）已全绿：REST 01-13、WS 01-06、E2E 01-03 全部通过。
-- M3 设计文档补充（2026-02-15）：已新增 `memory-bank/design/engine_design.md`，明确对局引擎各对外接口实现逻辑与状态推进口径。
-- M3 逻辑引擎 TDD 完成（2026-02-18）：UT/CB/LA/ACT/CLI/RF/BF 全套测试已绿，正在向收口测试推进。
-- M3 规则补充（2026-02-19）：回合收束后新增“提前结算”判定（任一玩家瓷或两名玩家够即进入 settlement），并完成 `M3-ACT-11~14` 测试落地。
-- M5 CLI 结算接入（2026-02-20）：`engine/cli.py` 在 `phase=settlement` 自动触发 `settle` 并输出按 seat 拆分的结算明细（含 `sum(delta)` 守恒提示），`M5-CLI-01~04` 已通过。
-- M3 CLI 交互优化（2026-02-20）：cover-only 场景跳过 `action_idx`，改为手牌索引输入（如 `01`）选择垫牌，降低 `cover_list` 输入复杂度。
-- M3 CLI 显示修复（2026-02-20）：玩家柱数在缺失 `captured_pillar_count` 字段时改为从 `pillar_groups` 本地推导，避免显示为 `-`。
-- M3 CLI 柱数统计修复（2026-02-20）：柱数推导统一改为按 `pillar_groups[*].round_kind` 累计，修复对子/三牛回合仅加 1 的问题。
-- M3 轻量日志能力（2026-02-19）：`init_game` 新增可选 `log_path`；按版本落盘 `state_v{version}.json`，成功动作追加 `action.json`，`settle()` 覆盖写 `settle.json`；CLI 已支持 `--log-path` 直连测试。
-- M3 轻量日志结构升级（2026-02-20）：`state_v{version}.json` 顶层已升级为同级输出 `global/public/private_states`，用于同文件并行查看全局态、脱敏公共态与三座次私有态；日志相关测试已通过。
-- M0 接口牌载荷口径精简（2026-02-19）：`backend-engine-interface`、`frontend-backend-interfaces`、`engine_design` 与 `m3-tests` 已统一 `cards/payload_cards/cover_list` 为计数表（CardCountMap）表示，不再使用 `{type,count}` 数组示例。
-- M3 引擎状态 SSOT 收敛（2026-02-20）：移除 `pillar_groups.pillars` 冗余缓存字段；`load_state` 对旧字段立即不兼容；reducer/settlement/CLI 柱数口径统一为 `sum(round_kind)`；相关回归测试通过。
-- M3 引擎 `cards` 结构全面切换（2026-02-20）：`combos/actions/reducer/serializer/core/cli` 与全量引擎测试统一为 CardCountMap；新增 `M3-CM-01~02` 锁定“不兼容旧数组格式”约束。
-- M3 扣掀清零口径对齐（2026-02-20）：`engine/reducer.py` 已对齐最新设计，新增“活跃掀棋者本人 `BUCKLE` 先清零再排询问顺序”与“回合收束命中 `<3 -> >=3` 即清零活跃掀棋者”；`M3-BF-11`、`M3-ACT-15~16` 已通过。
-- M3 引擎输入边界收敛（2026-02-20）：`load_state` 新增 `reveal` 结构 fail-fast 校验（必填字段、`pending_order` 去重、`relations` 类型约束），并移除 reducer 内部 `_ensure_reveal_state` 自修复逻辑；新增 `M3-UT-09` 通过。
-- M2（房间大厅）进展（2026-02-15）：
-  - 已完成：主链路全绿（`M2-API-01~14`、`M2-WS-01~06`、`M2-CC-01~03`）。
-  - 已完成：真实服务收口全链路通过（`M2-RS-REST-01~15,18`、`M2-RS-WS-01~10`、`M2-RS-CC-01~03`）。
-  - 待补：`M2-RS-REST-16~17` 因 M3 开局未接入暂时 skip。
+## 当前进度（精简版）
+- M0 文档基线已完成并稳定：架构、规则、接口与设计文档已对齐。
+- M1 鉴权链路已完成：REST + WebSocket 登录态可用。
+- M2 房间大厅主链路已完成，剩余少量依赖引擎开局能力的收尾项。
+- M3 逻辑引擎核心规则已实现并通过阶段测试；CLI 可完成一局从开局到结算的基础演示。
+- M5 结算能力已接入 CLI：进入 `settlement` 后可直接输出按 seat 的结算明细。
 
 ## 当前阶段
-- M3（逻辑引擎核心规则）已基本收口：`M3-UT-01~09`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~16`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~11`、`M3-CM-01~02` 已通过。
-- M5（结算与继续下一局）推进中：引擎与 CLI 结算链路已打通（`M5-UT-01~13`、`M5-CLI-01~04` 通过），接口层 `/settlement`、`/continue` 待后续里程碑接入。
-- 当前全量引擎测试为 `115 passed`（`pytest engine/tests -q`）。
-- M3 轻量日志已接入引擎与 CLI：可按局输出状态/动作/结算日志用于本地排查与回放。
-- M2（房间大厅）收口中：仅剩 `M2-RS-REST-16~17` 待 M3 开局能力接入后回补。
+- 结论（2026-02-20）：引擎以 CLI 端简测为主已完成基本验收，可支持后续后端接口联调。
+- 取舍：暂不继续投入高成本“封口测试”，后续按联调/线上问题再补针对性用例。
+- 下一步重心：推进后端 `/settlement`、`/continue` 接口接入，并回补 M2 剩余收尾项。
