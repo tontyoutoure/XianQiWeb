@@ -5,4 +5,6 @@ state v 16 pending order 有三个
 - 掀棋者够棋后未被移除活跃掀棋者身份
 - 掀棋者扣棋后未被移除活跃掀棋者身份
 
-3. cards结构的重构，和hand一样即可。
+3. cards结构的重构，和hand一样即可。✅
+
+检查publi state中当前轮别人扣的棋，是否能看到。

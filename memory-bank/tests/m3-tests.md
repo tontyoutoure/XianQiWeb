@@ -84,9 +84,9 @@
 | M3-ACT-08 | 一轮结束后棋柱归属 | `pillar_groups` 新增记录且 `winner_seat` 等于本轮最大组合玩家 |
 | M3-ACT-09 | 对子回合柱数记录 | `round_kind=2` 时新增组记录 `round_kind=2` 且不写入冗余 `pillars` |
 | M3-ACT-10 | 三牛回合柱数记录 | `round_kind=3` 时新增组记录 `round_kind=3` 且不写入冗余 `pillars` |
-| M3-ACT-11 | 收轮后“一家瓷”提前结算 | 收轮并更新柱数后任一玩家 `pillar>=6` 时，`phase` 直接切到 `settlement` |
-| M3-ACT-12 | 收轮后“两家够”提前结算 | 收轮并更新柱数后至少两名玩家 `pillar>=3` 时，`phase` 直接切到 `settlement` |
-| M3-ACT-13 | 未命中提前结算时保持原流程 | 收轮后仅一名玩家够且无人瓷时，`phase` 保持 `buckle_flow` |
+| M3-ACT-11 | 回合收束后“一家瓷”提前结算 | 回合收束并更新柱数后任一玩家 `pillar>=6` 时，`phase` 直接切到 `settlement` |
+| M3-ACT-12 | 回合收束后“两家够”提前结算 | 回合收束并更新柱数后至少两名玩家 `pillar>=3` 时，`phase` 直接切到 `settlement` |
+| M3-ACT-13 | 未命中提前结算时保持原流程 | 回合收束后仅一名玩家够且无人瓷时，`phase` 保持 `buckle_flow` |
 | M3-ACT-14 | 提前结算分支状态一致性 | 提前结算后 `reveal.pending_order=[]` 且当前行动位 `legal_actions` 为空 |
 
 ### 4.1 命令行交互测试（新增需求）
@@ -107,7 +107,7 @@
 | 测试ID | 测试描述 | 通过条件 |
 |---|---|---|
 | M3-RF-01 | `core.apply_action` 委托 reducer | `engine.core` 的 `apply_action` 通过 `engine.reducer.reduce_apply_action` 推进状态，且返回结构保持 `{"new_state": ...}` |
-| M3-RF-02 | reducer 成功路径等效 | 典型成功动作（如 `COVER` 收轮）后的 `phase/turn/pillar_groups/version` 与拆分前一致 |
+| M3-RF-02 | reducer 成功路径等效 | 典型成功动作（如 `COVER` 回合收束）后的 `phase/turn/pillar_groups/version` 与拆分前一致 |
 | M3-RF-03 | reducer 失败路径等效 | 越界 `action_idx`、版本冲突、非法 `cover_list` 仍返回原错误码，失败不改 `version` |
 
 ### 4.3 掀扣转换专项测试（buckle_flow）
@@ -122,7 +122,7 @@
 | M3-BF-06 | 首个 `REVEAL` 命中即结束询问 | 追加 `relations`、更新 `active_revealer_seat`、清空 `pending_order`，并立即切回 `buckler_seat` 进入 `in_round` |
 | M3-BF-07 | 活跃掀棋者 `PASS_REVEAL` 清空活跃位 | 当前位等于 `active_revealer_seat` 时 `PASS_REVEAL`，应先清空 `active_revealer_seat` 再继续推进 |
 | M3-BF-08 | 两人均 `PASS_REVEAL` 进入结算 | 询问队列耗尽且无人 `REVEAL` 时，`phase` 切到 `settlement` |
-| M3-BF-09 | 回合收尾后清理掀扣残留 | `in_round` 第三手收轮后进入新 `buckle_flow`，并清空 `reveal.buckler_seat/pending_order` |
+| M3-BF-09 | 回合收束后清理掀扣残留 | `in_round` 第三手回合收束后进入新 `buckle_flow`，并清空 `reveal.buckler_seat/pending_order` |
 | M3-BF-10 | `REVEAL` 后切回扣棋方首手前态重置 | 命中首个 `REVEAL` 切回 `buckler_seat` 后，`in_round` 必须保持首手前态：`round_kind=0/plays=[]/last_combo=null` |
 
 ### 4.4 `cards` 表达重构专项（CardCountMap-only）
@@ -193,13 +193,13 @@
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-ACT-08 | 构造一轮结束场景：3 人完成同一轮出牌后触发收轮，且 `last_combo.owner_seat=1` | `pillar_groups` 追加 1 组，新增组 `winner_seat=1`，且该组归档的回合数据与 `turn.plays` 一致 |
-| M3-ACT-09 | 对子轮（`round_kind=2`）且 winner 为 seat1，示例含 `R_SHI` 对参与收轮 | 新增组记录 `round_kind=2`；`pillar_groups` 不包含 `pillars` |
+| M3-ACT-08 | 构造一轮结束场景：3 人完成同一轮出牌后触发回合收束，且 `last_combo.owner_seat=1` | `pillar_groups` 追加 1 组，新增组 `winner_seat=1`，且该组归档的回合数据与 `turn.plays` 一致 |
+| M3-ACT-09 | 对子轮（`round_kind=2`）且 winner 为 seat1，示例含 `R_SHI` 对参与回合收束 | 新增组记录 `round_kind=2`；`pillar_groups` 不包含 `pillars` |
 | M3-ACT-10 | 三牛轮（`round_kind=3`）且 winner 为 seat2，示例含 `R_NIU*3` 或 `B_NIU*3` | 新增组记录 `round_kind=3`；`pillar_groups` 不包含 `pillars` |
-| M3-ACT-11 | 构造收轮前柱数 `seat0=5, seat1=0, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 收轮后 seat0 达到 6 柱，`phase=settlement` |
-| M3-ACT-12 | 构造收轮前柱数 `seat0=2, seat1=3, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 收轮后 `seat0=3, seat1=3`，`phase=settlement` |
-| M3-ACT-13 | 构造收轮前柱数 `seat0=2, seat1=2, seat2=1`，且本轮 winner 为 seat0（`round_kind=1`） | 收轮后仅 seat0 够，`phase=buckle_flow`，并由 winner 继续行动 |
-| M3-ACT-14 | 构造提前结算命中场景，并预置 `reveal.pending_order` 残留 | 收轮触发提前结算后，`reveal.pending_order=[]`、`reveal.buckler_seat=null`，且 `legal_actions` 为空 |
+| M3-ACT-11 | 构造回合收束前柱数 `seat0=5, seat1=0, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 回合收束后 seat0 达到 6 柱，`phase=settlement` |
+| M3-ACT-12 | 构造回合收束前柱数 `seat0=2, seat1=3, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 回合收束后 `seat0=3, seat1=3`，`phase=settlement` |
+| M3-ACT-13 | 构造回合收束前柱数 `seat0=2, seat1=2, seat2=1`，且本轮 winner 为 seat0（`round_kind=1`） | 回合收束后仅 seat0 够，`phase=buckle_flow`，并由 winner 继续行动 |
+| M3-ACT-14 | 构造提前结算命中场景，并预置 `reveal.pending_order` 残留 | 回合收束触发提前结算后，`reveal.pending_order=[]`、`reveal.buckler_seat=null`，且 `legal_actions` 为空 |
 
 ### 6.4 命令行交互（新增需求）
 
@@ -244,19 +244,19 @@
 | M3-BF-06 | `phase=buckle_flow`，`pending_order=[1,2]`，`buckler_seat=0`，`turn.current_seat=1` | seat1 执行 `REVEAL` 后：追加 relation、`active_revealer_seat=1`、`pending_order=[]`、`phase=in_round`、`turn.current_seat=0` |
 | M3-BF-07 | `phase=buckle_flow`，`pending_order=[1,2]`，`active_revealer_seat=1`，`turn.current_seat=1` | seat1 执行 `PASS_REVEAL` 后 `active_revealer_seat=null`，并继续询问 seat2 |
 | M3-BF-08 | `phase=buckle_flow`，`pending_order=[1]`，`relations=[]`，`turn.current_seat=1` | seat1 执行 `PASS_REVEAL` 后 `pending_order=[]` 且 `phase=settlement` |
-| M3-BF-09 | `phase=in_round`，`turn.plays` 已有两手，第三手执行后触发收轮 | 收轮后 `phase=buckle_flow`，`turn.current_seat=winner`，`reveal.buckler_seat=null`，`reveal.pending_order=[]` |
+| M3-BF-09 | `phase=in_round`，`turn.plays` 已有两手，第三手执行后触发回合收束 | 回合收束后 `phase=buckle_flow`，`turn.current_seat=winner`，`reveal.buckler_seat=null`，`reveal.pending_order=[]` |
 | M3-BF-10 | 与 BF-06 相同但额外断言 `turn` | `REVEAL` 切回扣棋方进入 `in_round` 后，`round_kind=0`、`plays=[]`、`last_combo=null` |
 
 ### 6.9 `pillar_groups` SSOT 重构专项（新增）
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-SSOT-01 | 构造收轮场景（`round_kind=2/3`），第三手后触发收轮 | 新增 `pillar_groups` 仅含 `round_index/winner_seat/round_kind/plays`，不包含 `pillars` |
+| M3-SSOT-01 | 构造回合收束场景（`round_kind=2/3`），第三手后触发回合收束 | 新增 `pillar_groups` 仅含 `round_index/winner_seat/round_kind/plays`，不包含 `pillars` |
 | M3-SSOT-02 | `load_state` 输入旧 schema（`pillar_groups[*].pillars` 存在） | 立即失败（抛断言异常），不进入后续状态推进 |
 | M3-SSOT-03 | settlement 输入 `pillar_groups` 含多组混合 `round_kind`（如 2/1/3） | 各 seat 柱数按 `sum(round_kind)` 统计，不按组数统计 |
 | M3-SSOT-04 | CLI 公共态 `pillar_groups` 仅提供 `winner_seat + round_kind` | `captured_pillar_count` 显示按 `round_kind` 累计，且不依赖 `pillars` |
 | M3-SSOT-05 | `dump_state` 与日志快照 | 快照中 `pillar_groups[*]` 不出现 `pillars` 字段 |
-| M3-SSOT-06 | 早结算边界（收轮前后柱数跨越 3/6） | 早结算判定沿用新口径（按 `round_kind`）且行为不回退 |
+| M3-SSOT-06 | 早结算边界（回合收束前后柱数跨越 3/6） | 早结算判定沿用新口径（按 `round_kind`）且行为不回退 |
 | M3-SSOT-07 | `get_public_state` 投影包含历史 `pillar_groups` | 透传 `pillar_groups` 但不新增任何派生字段（不出现 `pillars`） |
 
 ### 6.10 `cards` 表达重构专项（CardCountMap-only）

@@ -1,5 +1,5 @@
 # 重要提示（必须遵守）：
-- 每次对文件进行变更后，都在最后输出一条建议的commit message，内容应当尽可能简略，用于可能的版本控制。
+- 每次对文件进行变更后，都在最后输出一条建议的commit message，内容应当尽可能简略，用于可能的版本控制。plan mode/计划模式不用给出commit message。
 - 写任何代码前必须完整阅读 memory-bank/architecture.md
 - 写任何代码前必须完整阅读 memory-bank/product-requirements.md
 - 每完成一个重大功能或里程碑后，必须更新 memory-bank/progress.md
