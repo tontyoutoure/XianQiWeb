@@ -16,7 +16,7 @@
 掀棋|Reveal
 活跃掀棋者|Active Revealer
 待询问顺序|Pending Reveal Order
-扣后询问阶段|Post-Buckle Query Phase
+扣掀决策阶段|buckle-flow phase
 回合进行阶段|In-Round Phase
 结算|Settlement
 柱数|Pillar Count
