@@ -115,27 +115,29 @@ class XianqiGameEngine:
         if player_count != 3:
             raise ValueError("ENGINE_INVALID_CONFIG")
         self._setup_logger(self._parse_log_path(config))
+        base_seed = int(rng_seed) if rng_seed is not None else random.SystemRandom().randrange(0, 1 << 63)
+        effective_seed = base_seed
+        while True:
+            rng = random.Random(effective_seed)
+            deck = self._init_deck()
+            rng.shuffle(deck)
 
-        rng = random.Random(rng_seed)
-        deck = self._init_deck()
-        rng.shuffle(deck)
-
-        dealt_cards: dict[int, list[str]] = {0: [], 1: [], 2: []}
-        for idx, card in enumerate(deck):
-            dealt_cards[idx % 3].append(card)
-
-        players = [
-            {"seat": seat, "hand": self._cards_to_hand(dealt_cards[seat])}
-            for seat in range(3)
-        ]
+            dealt_cards: dict[int, list[str]] = {0: [], 1: [], 2: []}
+            for idx, card in enumerate(deck):
+                dealt_cards[idx % 3].append(card)
+            players = [
+                {"seat": seat, "hand": self._cards_to_hand(dealt_cards[seat])}
+                for seat in range(3)
+            ]
+            if not any(self._is_black_hand(player["hand"]) for player in players):
+                break
+            effective_seed += 1
 
         first_seat = int(rng.randint(0, 2))
-        black_chess = any(self._is_black_hand(player["hand"]) for player in players)
-        phase = "settlement" if black_chess else "buckle_flow"
 
         self._state = {
             "version": 1,
-            "phase": phase,
+            "phase": "buckle_flow",
             "players": players,
             "turn": {
                 "current_seat": first_seat,

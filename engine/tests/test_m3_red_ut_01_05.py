@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import random
 from typing import Any
 import sys
 
@@ -39,6 +40,34 @@ def _extract_state_after_init(engine: Any, output: Any) -> dict[str, Any]:
 def _has_black_hand(hand: dict[str, int]) -> bool:
     shi_xiang = hand.get("R_SHI", 0) + hand.get("B_SHI", 0) + hand.get("R_XIANG", 0) + hand.get("B_XIANG", 0)
     return shi_xiang == 0
+
+
+def _seed_has_black_opening(seed: int) -> bool:
+    deck_template = {
+        "R_SHI": 2,
+        "B_SHI": 2,
+        "R_XIANG": 2,
+        "B_XIANG": 2,
+        "R_MA": 2,
+        "B_MA": 2,
+        "R_CHE": 2,
+        "B_CHE": 2,
+        "R_GOU": 1,
+        "B_GOU": 1,
+        "R_NIU": 3,
+        "B_NIU": 3,
+    }
+    deck: list[str] = []
+    for card_type, count in deck_template.items():
+        deck.extend([card_type] * count)
+    rng = random.Random(seed)
+    rng.shuffle(deck)
+
+    hands: list[dict[str, int]] = [{}, {}, {}]
+    for idx, card in enumerate(deck):
+        seat = idx % 3
+        hands[seat][card] = int(hands[seat].get(card, 0)) + 1
+    return any(_has_black_hand(hand) for hand in hands)
 
 
 def test_m3_ut_01_init_game_deal_counts() -> None:
@@ -81,22 +110,25 @@ def test_m3_ut_02_seed_is_reproducible() -> None:
     assert seat_a == seat_b
 
 
-def test_m3_ut_03_black_chess_goes_to_settlement() -> None:
-    """M3-UT-03: if any starting hand has no SHI/XIANG, phase must be settlement."""
+def test_m3_ut_03_black_chess_triggers_seed_plus_one_reroll() -> None:
+    """M3-UT-03: black opening should reroll by seed+1 until non-black."""
 
     Engine = _load_engine_class()
 
     for seed in range(0, 2048):
+        if not _seed_has_black_opening(seed):
+            continue
         engine = Engine()
         output = engine.init_game({"player_count": 3}, rng_seed=seed)
         state = _extract_state_after_init(engine, output)
-
         players = state.get("players", [])
-        if any(_has_black_hand(player.get("hand", {})) for player in players):
-            assert state.get("phase") == "settlement"
-            return
 
-    pytest.fail("did not find a black-chess seed in [0, 2048)")
+        assert state.get("phase") == "buckle_flow"
+        assert len(players) == 3
+        assert not any(_has_black_hand(player.get("hand", {})) for player in players)
+        return
+
+    pytest.fail("did not find a black-opening seed in [0, 2048)")
 
 
 def test_m3_ut_04_version_increment_and_invalid_action_no_change() -> None:

@@ -17,6 +17,7 @@
 - `get_legal_actions(seat) -> legal_actions`：获取指定 seat 的合法动作列表（通常为当前行动玩家）。
 - `dump_state() -> state`：导出完整内部状态用于持久化/重连。
 - `load_state(state)`：从持久化状态恢复引擎。
+- 黑棋重发约定（MVP）：`init_game` 发牌后若命中黑棋（任一玩家 `SHI+XIANG=0`），引擎在初始化内部将随机种子 `+1` 并重发；若仍黑棋则继续 `+1`，直到无人黑棋后再返回。该过程不进入对局 `settlement` 阶段。
 
 ### 1.2 卡牌与组合表示（不区分实例）
 - card_type：如 `R_SHI`, `B_SHI`, `R_XIANG`, `B_XIANG`, `R_MA`, `B_MA`, `R_CHE`, `B_CHE`, `R_GOU`, `B_GOU`, `R_NIU`, `B_NIU`。

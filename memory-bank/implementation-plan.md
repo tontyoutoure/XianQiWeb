@@ -41,7 +41,7 @@
 
 ### M3 逻辑引擎核心规则
 目标：独立完成可复用的三人掀棋引擎。
-- 实现：牌堆构建、发牌、先手随机、黑棋结束判定。
+- 实现：牌堆构建、发牌、先手随机、黑棋命中后按 `seed+1` 自动重发直到非黑棋。
 - 实现：阶段状态机 `init → buckle_flow → in_round → settlement → finished`（`buckle_flow` 内含 BUCKLE/PASS_BUCKLE 与 REVEAL/PASS_REVEAL 询问流）。
 - 实现：出棋/压制/垫棋/扣棋/掀棋与回合归属、柱数组统计。
 - 实现：公开态/私有态脱敏输出与 `legal_actions` 生成。

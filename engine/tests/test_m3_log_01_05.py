@@ -26,14 +26,30 @@ def _read_json(path: Path):
         return json.load(stream)
 
 
-def _find_black_seed() -> int:
-    Engine = _load_engine_class()
-    probe = Engine()
-    for seed in range(4096):
-        probe.init_game({"player_count": 3}, rng_seed=seed)
-        if probe.dump_state().get("phase") == "settlement":
-            return seed
-    pytest.fail("M3-LOG: could not find black-chess seed in [0, 4096)")
+def _make_settlement_state(version: int = 7) -> dict[str, object]:
+    return {
+        "version": version,
+        "phase": "settlement",
+        "players": [
+            {"seat": 0, "hand": {}},
+            {"seat": 1, "hand": {}},
+            {"seat": 2, "hand": {}},
+        ],
+        "turn": {
+            "current_seat": 0,
+            "round_index": 0,
+            "round_kind": 0,
+            "last_combo": None,
+            "plays": [],
+        },
+        "pillar_groups": [],
+        "reveal": {
+            "buckler_seat": None,
+            "active_revealer_seat": None,
+            "pending_order": [],
+            "relations": [],
+        },
+    }
 
 
 def test_m3_log_01_init_with_log_path_resets_old_logs_and_writes_state_v1(tmp_path: Path) -> None:
@@ -107,11 +123,11 @@ def test_m3_log_04_settle_overwrites_settle_json_and_writes_new_state(tmp_path: 
     """M3-LOG-04: settle success should overwrite settle.json and emit next state snapshot."""
 
     Engine = _load_engine_class()
-    black_seed = _find_black_seed()
     log_dir = tmp_path / "engine-log"
 
     engine = Engine()
-    engine.init_game({"player_count": 3, "log_path": str(log_dir)}, rng_seed=black_seed)
+    engine.init_game({"player_count": 3, "log_path": str(log_dir)}, rng_seed=20260219)
+    engine.load_state(_make_settlement_state(version=7))
     before = engine.dump_state()
     assert before.get("phase") == "settlement"
 
@@ -121,7 +137,7 @@ def test_m3_log_04_settle_overwrites_settle_json_and_writes_new_state(tmp_path: 
     assert settle_payload["from_version"] == int(before.get("version", 0))
     assert settle_payload["to_version"] == int(settle_output["new_state"]["version"])
     assert settle_payload["settlement"] == settle_output["settlement"]
-    assert (log_dir / "state_v2.json").is_file()
+    assert (log_dir / f"state_v{int(settle_output['new_state']['version'])}.json").is_file()
 
 
 def test_m3_log_05_cli_passes_log_path_to_engine_init() -> None:

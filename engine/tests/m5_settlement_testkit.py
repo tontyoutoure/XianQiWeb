@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import random
 import sys
 from typing import Any
 
@@ -195,14 +196,38 @@ def _has_black_hand(hand: dict[str, int]) -> bool:
     return shi_xiang == 0
 
 
-def find_black_seed(engine_class: Any, *, max_seed: int = 4096) -> int:
-    """Find a deterministic seed that produces a black-chess opening."""
+def _seed_has_black_opening(seed: int) -> bool:
+    deck_template = {
+        "R_SHI": 2,
+        "B_SHI": 2,
+        "R_XIANG": 2,
+        "B_XIANG": 2,
+        "R_MA": 2,
+        "B_MA": 2,
+        "R_CHE": 2,
+        "B_CHE": 2,
+        "R_GOU": 1,
+        "B_GOU": 1,
+        "R_NIU": 3,
+        "B_NIU": 3,
+    }
+    deck: list[str] = []
+    for card_type, count in deck_template.items():
+        deck.extend([card_type] * count)
+    rng = random.Random(seed)
+    rng.shuffle(deck)
+
+    hands: list[dict[str, int]] = [{}, {}, {}]
+    for idx, card in enumerate(deck):
+        seat = idx % 3
+        hands[seat][card] = int(hands[seat].get(card, 0)) + 1
+    return any(_has_black_hand(hand) for hand in hands)
+
+
+def find_black_opening_seed(*, max_seed: int = 4096) -> int:
+    """Find a deterministic seed whose first deal would be black-chess."""
 
     for seed in range(max_seed):
-        engine = engine_class()
-        output = engine.init_game({"player_count": 3}, rng_seed=seed)
-        state = extract_state(output, engine)
-        players = state.get("players", [])
-        if any(_has_black_hand(player.get("hand", {})) for player in players):
+        if _seed_has_black_opening(seed):
             return seed
-    pytest.fail(f"did not find a black-chess seed in [0, {max_seed})")
+    pytest.fail(f"did not find a black-opening seed in [0, {max_seed})")

@@ -1,4 +1,4 @@
-"""M5 Red tests: M5-UT-13 black-chess settlement path."""
+"""M5 Red tests: M5-UT-13 black-opening reroll behavior."""
 
 from __future__ import annotations
 
@@ -10,27 +10,27 @@ if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
 from m5_settlement_testkit import (
-    assert_seat_delta,
-    find_black_seed,
+    find_black_opening_seed,
     load_engine_class,
-    settle_and_index,
 )
 
 
-def test_m5_ut_13_black_chess_settlement_all_deltas_zero() -> None:
-    """M5-UT-13: black-chess path should settle with zero deltas for all seats."""
+def _has_black_hand(hand: dict[str, int]) -> bool:
+    shi_xiang = hand.get("R_SHI", 0) + hand.get("B_SHI", 0) + hand.get("R_XIANG", 0) + hand.get("B_XIANG", 0)
+    return shi_xiang == 0
+
+
+def test_m5_ut_13_black_opening_seed_rerolls_to_playable_state() -> None:
+    """M5-UT-13: black-opening seed should reroll to a non-black buckle_flow state."""
 
     Engine = load_engine_class()
-    seed = find_black_seed(Engine, max_seed=4096)
+    seed = find_black_opening_seed(max_seed=4096)
 
     engine = Engine()
     init_output = engine.init_game({"player_count": 3}, rng_seed=seed)
     state = init_output.get("new_state", {})
-    assert state.get("phase") == "settlement"
+    players = state.get("players", [])
 
-    _, _, indexed = settle_and_index(engine)
-
-    assert_seat_delta(indexed[0], delta=0, enough=0, reveal=0, ceramic=0)
-    assert_seat_delta(indexed[1], delta=0, enough=0, reveal=0, ceramic=0)
-    assert_seat_delta(indexed[2], delta=0, enough=0, reveal=0, ceramic=0)
-
+    assert state.get("phase") == "buckle_flow"
+    assert len(players) == 3
+    assert not any(_has_black_hand(player.get("hand", {})) for player in players)

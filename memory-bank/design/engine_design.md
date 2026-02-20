@@ -71,20 +71,21 @@ engine/
 #### 4.1.1 输入与校验
 - 校验 `config.player_count == 3`。
 - 校验初始筹码、规则开关等参数满足 MVP 约束。
-- `rng_seed` 有值则固定随机源，无值则系统随机。
+- `rng_seed` 有值则固定随机源；无值则生成系统随机种子作为本局起始 seed。
 
 #### 4.1.2 执行步骤
-1. 构建 24 张牌堆并洗牌。
-2. 逆时针发牌（每人 8 张），生成 `players[].hand`。
-3. 判定黑棋：任一玩家若 `SHI+XIANG` 为 0，直接进入 `settlement`。
-4. 若非黑棋，随机先手 seat，进入 `buckle_flow`。
-5. 初始化 `turn`：`round_index=0`，`round_kind=0`，`plays=[]`，`last_combo=null`，`current_seat=先手`。
-6. 初始化 `reveal`：`buckler_seat=null`，`active_revealer_seat=null`，`pending_order=[]`，`relations=[]`。
-7. 输出统一 `output`（含 public/private/legal_actions）。
+1. 设定本局起始 `seed`（优先使用传入 `rng_seed`；未传时使用系统随机值）。
+2. 基于当前 seed 构建随机源，构建 24 张牌堆并洗牌。
+3. 逆时针发牌（每人 8 张），生成 `players[].hand`。
+4. 判定黑棋：任一玩家若 `SHI+XIANG` 为 0，则本次发牌作废，`seed = seed + 1` 后回到步骤 2 重发（不设次数上限）。
+5. 命中“无人黑棋”后，使用该次随机源随机先手 seat，进入 `buckle_flow`。
+6. 初始化 `turn`：`round_index=0`，`round_kind=0`，`plays=[]`，`last_combo=null`，`current_seat=先手`。
+7. 初始化 `reveal`：`buckler_seat=null`，`active_revealer_seat=null`，`pending_order=[]`，`relations=[]`。
+8. 输出统一 `output`（含 public/private/legal_actions）。
 
 #### 4.1.3 状态变化
 - 新建状态后 `version=1`。
-- 黑棋场景可在首次 `settle()` 后进入 `finished`。
+- `init_game` 成功返回时，`phase` 固定为 `buckle_flow`（黑棋在初始化内部已通过重发消化，不暴露为对局阶段）。
 
 ### 4.2 `apply_action(action_idx, cover_list=None, client_version=None) -> output`
 
@@ -241,7 +242,7 @@ engine/
 
 ## 8. 测试建议（接口行为优先）
 - 详细测试清单见 `memory-bank/tests/m3-tests.md`（含组合枚举器与合法动作枚举专项）。
-- `init_game`：固定 seed 下发牌与先手可复现；黑棋分支可触发。
+- `init_game`：固定 seed 下发牌与先手可复现；命中黑棋时按 `seed+1` 自动重发并最终落到非黑棋开局。
 - `apply_action`：
   - `action_idx` 稳定性与越界错误。
   - `client_version` 冲突返回。
