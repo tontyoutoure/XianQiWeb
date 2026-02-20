@@ -8,15 +8,24 @@
 房间|Room
 对局|Game
 回合|Round
+回合起始玩家|Round Starter
+回合收束|Round Closure
 出棋|Play
 垫棋|Cover
 扣棋|Buckle
 掀棋|Reveal
+活跃掀棋者|Active Revealer
+待询问顺序|Pending Reveal Order
+扣后询问阶段|Post-Buckle Query Phase
+回合进行阶段|In-Round Phase
 结算|Settlement
 柱数|Pillar Count
 够棋|Enough
 瓷棋|Ceramic
+黑棋|Black Chess
 掀扣关系|Reveal-Buckle Relation
+
+说明：术语语义与判定口径以 `XianQi_rules.md` 为准；本表仅用于中英文对照与索引。
 
 ## 1. 总体架构与依赖方向
 - 前端（Vue3 + TS）：只做展示与交互，所有规则判定与状态演进在后端/引擎完成。
@@ -79,21 +88,9 @@ waiting → playing → settlement →（玩家选择继续）waiting 或直接�
 - engine.phase = finished → games.status = finished
 - rooms.status：当前房间有 `games.status = in_progress` 则为 playing；有 `games.status = settlement` 则为 settlement；否则为 waiting
 
-### 3.2 对局阶段（game phase）
-- init：房间三人就绪后创建对局（发牌与先手判定在此完成）。
-- buckle_flow：回合起始玩家仅可选择 BUCKLE / PASS_BUCKLE。若 PASS_BUCKLE，则立即进入 `in_round`，并由该玩家打出本回合首手；若 BUCKLE，则在本阶段内按顺序询问其他玩家是否 REVEAL / PASS_REVEAL，命中首个 REVEAL 后立即结束询问并进入 `in_round`（由扣棋方打出本回合首手），若两人均 PASS_REVEAL 则进入 `settlement`。
-- in_round：回合进行中（出棋/压制/垫棋）。当 `round_kind = 0`（尚未有人打出首手）时，当前行动位仅允许 PLAY，不允许 COVER。
-- settlement：结算。
-- finished：结算完成并记录筹码变化。
-
-注：MVP 阶段不单独设 `dealing` 阶段。
-
-### 3.3 回合流程（简化）
-1) 回合起始玩家进入 `buckle_flow`，仅可选择 BUCKLE / PASS_BUCKLE。
-2) 若选择 PASS_BUCKLE，直接进入 `in_round`，由该玩家打出本回合首手（确定 `round_kind`）。
-3) 若选择 BUCKLE，在 `buckle_flow` 内按规则顺序询问另外两位玩家是否 REVEAL / PASS_REVEAL：若命中首个 REVEAL，则立即进入 `in_round` 且由扣棋玩家打出本回合首手；若两人均 PASS_REVEAL，则直接进入 `settlement`。
-4) 进入 `in_round` 后，其他玩家依次压制（能压必须压）或垫棋，直到本回合结束。
-5) 本回合结束后，最大组合玩家获得本回合棋子并更新柱数；若满足“任一玩家瓷（>=6柱）或两名玩家够（>=3柱）”则直接进入 `settlement`，否则由该玩家作为下一回合起始玩家回到 `buckle_flow`。
+### 3.2 引擎规则状态机引用（SSOT）
+- 引擎规则状态机、动作合法性、状态转移与结算触发：以 `XianQi_rules.md` 为唯一事实来源（SSOT）。
+- 引擎实现层模块拆分、执行流程、异常口径与联调约定：见 `memory-bank/design/engine_design.md`。
 
 ## 4. 接口文档
 接口细节已拆分为独立文档：
