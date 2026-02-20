@@ -163,7 +163,7 @@ def test_m3_ssot_05_logged_state_snapshot_excludes_legacy_pillars(tmp_path: Path
     assert state_path.is_file()
     with state_path.open("r", encoding="utf-8") as stream:
         logged_state = json.load(stream)
-    groups = logged_state.get("pillar_groups", [])
+    groups = (logged_state.get("global") or {}).get("pillar_groups", [])
     assert isinstance(groups, list)
     assert groups
     assert "pillars" not in groups[0]

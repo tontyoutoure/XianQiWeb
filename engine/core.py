@@ -101,7 +101,14 @@ class XianqiGameEngine:
     def _log_state_snapshot(self, state: dict[str, Any]) -> None:
         if self._logger is None:
             return
-        self._logger.write_state(version=int(state.get("version", 0)), state=state)
+        public_state = serializer_get_public_state(state)
+        private_states = [serializer_get_private_state(state, seat) for seat in range(3)]
+        snapshot_payload = {
+            "global": deepcopy(state),
+            "public": public_state,
+            "private_states": private_states,
+        }
+        self._logger.write_state(version=int(state.get("version", 0)), state=snapshot_payload)
 
     def init_game(self, config: dict[str, Any], rng_seed: int | None = None) -> dict[str, Any]:
         player_count = int(config.get("player_count", 0))

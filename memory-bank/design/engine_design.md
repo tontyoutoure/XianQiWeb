@@ -320,7 +320,10 @@ engine/
 
 ### 10.2 日志文件与格式
 - `state_v{version}.json`：
-  - 含义：对应 version 的完整内部状态快照（等价于同版本 `dump_state`）。
+  - 含义：对应 version 的状态快照聚合，顶层同级包含：
+    - `global`：完整内部状态（等价同版本 `dump_state`）。
+    - `public`：脱敏公共状态（等价同版本 `get_public_state`）。
+    - `private_states`：私有状态数组，固定 3 项，依次对应 seat `0/1/2`（等价 `[get_private_state(0), get_private_state(1), get_private_state(2)]`）。
   - 示例：`state_v1.json`、`state_v2.json`。
 - `action.json`：
   - 含义：动作日志数组，每次成功动作追加一条记录。
@@ -358,4 +361,5 @@ engine/
 - 2026-02-17：根据规则澄清完成状态机重构：旧双决策 phase 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。
 - 2026-02-20：CLI COVER 交互改造：当仅有 COVER 动作时跳过 `action_idx`，改为手牌索引选牌输入（如 `01`），不再使用 `TYPE:COUNT` 文本输入。
 - 2026-02-19：补充轻量日志设计：`log_path` 日志开关、`state_v*.json/action.json/settle.json` 写入口径，以及 CLI `--log-path` 接口约定。
+- 2026-02-20：`state_v*.json` 升级为聚合快照结构：同级输出 `global/public/private_states`，用于同文件并行查看全局态、公共态与三座次私有态。
 - 2026-02-20：同步规则文档 `aeefde4` 清零口径：新增“活跃掀棋者本人 `BUCKLE` 先清零再排询问顺序”与“回合收束 `<3 -> >=3` 跨阈值清零”设计说明。

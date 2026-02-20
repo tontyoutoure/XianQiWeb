@@ -54,7 +54,9 @@ def test_m3_log_01_init_with_log_path_resets_old_logs_and_writes_state_v1(tmp_pa
     assert not (log_dir / "state_v99.json").exists()
     assert not (log_dir / "action.json").exists()
     assert not (log_dir / "settle.json").exists()
-    assert _read_json(state_v1).get("version") == 1
+    snapshot = _read_json(state_v1)
+    assert set(snapshot.keys()) == {"global", "public", "private_states"}
+    assert snapshot["global"].get("version") == 1
 
 
 def test_m3_log_02_apply_action_updates_state_and_appends_action_record(tmp_path: Path) -> None:
@@ -159,3 +161,52 @@ def test_m3_log_05_cli_passes_log_path_to_engine_init() -> None:
     assert captured["config"] == {"player_count": 3, "log_path": "/tmp/xq-log"}
     assert captured["rng_seed"] == 7
     assert any("log_path=/tmp/xq-log" in line for line in outputs)
+
+
+def test_m3_log_06_state_snapshot_uses_global_public_private_states_shape(tmp_path: Path) -> None:
+    """M3-LOG-06: state_v*.json should use global/public/private_states top-level schema."""
+
+    Engine = _load_engine_class()
+    log_dir = tmp_path / "engine-log"
+    engine = Engine()
+    engine.init_game({"player_count": 3, "log_path": str(log_dir)}, rng_seed=20260219)
+
+    snapshot = _read_json(log_dir / "state_v1.json")
+    assert set(snapshot.keys()) == {"global", "public", "private_states"}
+    assert snapshot["global"] == engine.dump_state()
+    assert snapshot["public"] == engine.get_public_state()
+    assert snapshot["private_states"] == [engine.get_private_state(seat) for seat in range(3)]
+
+
+def test_m3_log_07_apply_action_snapshot_matches_engine_projections(tmp_path: Path) -> None:
+    """M3-LOG-07: post-action snapshot should match dump/public/private projections."""
+
+    Engine = _load_engine_class()
+    log_dir = tmp_path / "engine-log"
+    engine = Engine()
+    engine.init_game({"player_count": 3, "log_path": str(log_dir)}, rng_seed=20260219)
+    state_before = engine.dump_state()
+    engine.apply_action(action_idx=0, cover_list=None, client_version=int(state_before["version"]))
+
+    snapshot = _read_json(log_dir / "state_v2.json")
+    assert set(snapshot.keys()) == {"global", "public", "private_states"}
+    assert snapshot["global"] == engine.dump_state()
+    assert snapshot["public"] == engine.get_public_state()
+    assert snapshot["private_states"] == [engine.get_private_state(seat) for seat in range(3)]
+
+
+def test_m3_log_08_invalid_action_keeps_snapshot_schema_and_no_new_files(tmp_path: Path) -> None:
+    """M3-LOG-08: invalid action should not create new state/action logs."""
+
+    Engine = _load_engine_class()
+    log_dir = tmp_path / "engine-log"
+    engine = Engine()
+    engine.init_game({"player_count": 3, "log_path": str(log_dir)}, rng_seed=20260219)
+
+    with pytest.raises(ValueError, match="ENGINE_INVALID_ACTION_INDEX"):
+        engine.apply_action(action_idx=999, cover_list=None, client_version=1)
+
+    state_v1 = _read_json(log_dir / "state_v1.json")
+    assert set(state_v1.keys()) == {"global", "public", "private_states"}
+    assert not (log_dir / "state_v2.json").exists()
+    assert not (log_dir / "action.json").exists()

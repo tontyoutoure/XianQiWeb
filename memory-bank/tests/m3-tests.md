@@ -136,6 +136,14 @@
 | M3-CM-01 | `apply_action` 拒绝旧版 `cover_list` 数组 | COVER 动作传 `[{type,count}]` 时返回 `ENGINE_INVALID_COVER_LIST` |
 | M3-CM-02 | `load_state` 拒绝旧版 `cards` 数组 | `turn.plays[*].cards` 使用旧数组结构时立即抛断言异常 |
 
+### 4.5 轻量日志结构升级专项（state_v 新顶层）
+
+| 测试ID | 测试描述 | 通过条件 |
+|---|---|---|
+| M3-LOG-06 | `init_game` 首帧日志写入新顶层结构 | `state_v1.json` 顶层仅包含 `global/public/private_states` 三个同级字段 |
+| M3-LOG-07 | 成功动作后日志内容与引擎投影一致 | `state_v2.json` 中 `global == dump_state`、`public == get_public_state`、`private_states == [get_private_state(0), get_private_state(1), get_private_state(2)]` |
+| M3-LOG-08 | 失败动作不产生日志副作用（新结构回归） | 非法动作后不新增 `state_v{n+1}.json`，且不写/不改 `action.json` |
+
 ## 5) 阶段通过判定（M3）
 
 - 组合枚举与牌力比较规则完整可测，且顺序稳定。
@@ -274,9 +282,17 @@
 | M3-CM-01 | `phase=in_round` 且当前位仅有 COVER 合法动作，调用 `apply_action(action_idx=cover_idx, cover_list=[{"type":"B_NIU","count":1}])` | 立即返回 `ENGINE_INVALID_COVER_LIST`，状态不推进 |
 | M3-CM-02 | `load_state` 传入 `turn.plays=[{"seat":0,"power":9,"cards":[{"type":"R_SHI","count":1}]}]` 的旧结构状态 | 立即抛 `AssertionError`，拒绝加载旧 schema |
 
+### 6.11 轻量日志结构升级专项（state_v 新顶层）
+
+| 测试ID | Mock 输入（显式） | 预期结果（显式） |
+|---|---|---|
+| M3-LOG-06 | `init_game({"player_count":3,"log_path":"<tmp>"})` 成功后读取 `state_v1.json` | 顶层字段仅有 `global/public/private_states`；`global.version=1`；`private_states` 长度为 3 |
+| M3-LOG-07 | 在 LOG-06 局面执行 1 次成功 `apply_action` 后读取 `state_v2.json` | `global` 与引擎 `dump_state()` 完全一致；`public` 与 `get_public_state()` 一致；`private_states[0..2]` 分别等于 `get_private_state(0..2)` |
+| M3-LOG-08 | 在 LOG-06 局面执行 `apply_action(action_idx=999, client_version=1)` 并捕获异常 | 仅保留 `state_v1.json`；`state_v2.json` 不存在；`action.json` 不存在（无副作用） |
+
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~09`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~16`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~11` 与 `M3-CM-01~02`。
+> 说明：当前已完成 `M3-UT-01~09`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~16`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~11`、`M3-CM-01~02` 与 `M3-LOG-01~08`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -301,4 +317,5 @@
 | M3-ACT-15 ~ M3-ACT-16, M3-BF-11 | ✅ 通过 | Green 已完成 | Red：2026-02-20 新增测试后执行 `pytest engine/tests/test_m3_red_bf_01_10.py engine/tests/test_m3_red_act_11_14_early_settlement.py -q`（3 failed, 14 passed）；Green：在 `engine/reducer.py` 落地“BUCKLE 自清零”和“回合收束跨阈值清零”后复测同命令（17 passed），并执行 `pytest engine/tests -q`（112 passed）。 |
 | M3-SSOT-01 ~ M3-SSOT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-20 执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py engine/tests/test_m3_red_cli_01_04.py engine/tests/test_m3_ssot_01_03_05_07_pillar_groups.py engine/tests/test_m3_red_act_11_14_early_settlement.py -q`（9 failed, 9 passed）；Green：完成 `reducer/serializer/settlements/cli` 重构后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py engine/tests/test_m3_red_cli_01_04.py engine/tests/test_m3_ssot_01_03_05_07_pillar_groups.py engine/tests/test_m3_red_act_11_14_early_settlement.py engine/tests/test_m5_red_ut_01_04_settlement.py engine/tests/test_m5_red_ut_05_08_settlement.py engine/tests/test_m5_red_ut_09_12_settlement.py engine/tests/test_m5_red_ut_13_settlement.py -q`（31 passed），并全量回归 `pytest engine/tests -q`（107 passed）。 |
 | M3-CM-01 ~ M3-CM-02 | ✅ 通过 | Green 已完成 | Red：2026-02-20 将引擎实现切换为 CardCountMap-only 后先执行 `pytest engine/tests/test_m3_red_act_01_07.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py -q`（11 passed）；Green：完成全量测试改造后执行 `pytest engine/tests -q`（109 passed），确认旧数组结构输入不再兼容。 |
+| M3-LOG-06 ~ M3-LOG-08 | ✅ 通过 | Green 已完成 | Red：2026-02-20 执行 `pytest engine/tests/test_m3_log_01_05.py -q`（3 failed, 5 passed）；Green：在 `engine/core.py` 将 `state_v*.json` 切换为 `global/public/private_states` 顶层结构，并同步日志相关测试后执行同命令（8 passed），回归 `pytest engine/tests -q`（118 passed）。 |
 | M3-DOC-01 | ✅ 通过 | Green 已完成 | 2026-02-19：接口口径文档重构检查（`backend-engine-interface`、`frontend-backend-interfaces`、`engine_design`、`m3-tests`）已统一 `cards/payload_cards/cover_list` 为计数表表示；并完成关键字检索确认无旧数组示例残留。 |
