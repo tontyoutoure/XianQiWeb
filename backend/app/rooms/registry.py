@@ -33,6 +33,10 @@ class RoomNotWaitingError(RoomError):
     """Raised when ready state is changed outside waiting phase."""
 
 
+class GameNotFoundError(RoomError):
+    """Raised when game_id does not exist in in-memory registry."""
+
+
 @dataclass(slots=True)
 class RoomMember:
     """Room member state tracked in memory."""
@@ -56,6 +60,17 @@ class Room:
     current_game_id: int | None = None
 
 
+@dataclass(slots=True)
+class GameSession:
+    """In-memory game session metadata mapped to one room."""
+
+    game_id: int
+    room_id: int
+    status: str
+    seat_to_user_id: dict[int, int]
+    user_id_to_seat: dict[int, int]
+
+
 class RoomRegistry:
     """In-memory registry for all preset rooms."""
 
@@ -74,6 +89,8 @@ class RoomRegistry:
         self._member_room: dict[int, int] = {}
         self._join_sequence: int = 0
         self._initial_chips = initial_chips
+        self._games_by_id: dict[int, GameSession] = {}
+        self._next_game_id: int = 1
 
     def get_room(self, room_id: int) -> Room:
         """Return room snapshot by room id."""
@@ -89,6 +106,25 @@ class RoomRegistry:
     def find_room_id_by_user(self, user_id: int) -> int | None:
         """Return current room id for user, or None if user is not in any room."""
         return self._member_room.get(user_id)
+
+    def get_game(self, game_id: int) -> GameSession:
+        """Return game session snapshot by game id."""
+        game = self._games_by_id.get(game_id)
+        if game is None:
+            raise GameNotFoundError(f"game_id={game_id} not found")
+        return game
+
+    def mark_game_settlement(self, game_id: int) -> None:
+        """Move an in-progress game to settlement and reset room ready flags."""
+        game = self.get_game(game_id)
+        with self.lock_room(game.room_id):
+            game = self.get_game(game_id)
+            game.status = "settlement"
+            room = self.get_room(game.room_id)
+            if room.current_game_id == game_id:
+                room.status = "settlement"
+                for member in room.members:
+                    member.ready = False
 
     @contextmanager
     def lock_room(self, room_id: int) -> Iterator[None]:
@@ -177,6 +213,10 @@ class RoomRegistry:
                 room.owner_id = self._pick_next_owner(room)
 
             if room.status == "playing":
+                if room.current_game_id is not None:
+                    game = self._games_by_id.get(room.current_game_id)
+                    if game is not None:
+                        game.status = "aborted"
                 room.status = "waiting"
                 room.current_game_id = None
                 for member in room.members:
@@ -185,10 +225,10 @@ class RoomRegistry:
             return room
 
     def set_ready(self, room_id: int, user_id: int, ready: bool) -> Room:
-        """Update member ready flag when room is in waiting state."""
+        """Update member ready flag when room is in waiting/settlement state."""
         with self.lock_room(room_id):
             room = self.get_room(room_id)
-            if room.status != "waiting":
+            if room.status not in {"waiting", "settlement"}:
                 raise RoomNotWaitingError(
                     f"room_id={room_id} status={room.status} does not allow ready updates"
                 )
@@ -197,8 +237,34 @@ class RoomRegistry:
             if idx is None:
                 raise RoomNotMemberError(f"user_id={user_id} not in room_id={room_id}")
 
+            was_all_ready = (
+                len(room.members) == MAX_ROOM_MEMBERS
+                and all(member.ready for member in room.members)
+            )
             room.members[idx].ready = ready
+            is_all_ready = (
+                len(room.members) == MAX_ROOM_MEMBERS
+                and all(member.ready for member in room.members)
+            )
+            if is_all_ready and not was_all_ready:
+                self._start_game(room)
             return room
+
+    def _start_game(self, room: Room) -> None:
+        game_id = self._next_game_id
+        self._next_game_id += 1
+
+        seat_to_user_id = {member.seat: member.user_id for member in room.members}
+        user_id_to_seat = {user_id: seat for seat, user_id in seat_to_user_id.items()}
+        self._games_by_id[game_id] = GameSession(
+            game_id=game_id,
+            room_id=room.room_id,
+            status="in_progress",
+            seat_to_user_id=seat_to_user_id,
+            user_id_to_seat=user_id_to_seat,
+        )
+        room.current_game_id = game_id
+        room.status = "playing"
 
     @staticmethod
     def _find_member_index(room: Room, user_id: int) -> int | None:
@@ -225,6 +291,8 @@ class RoomRegistry:
 
 __all__ = [
     "DEFAULT_CHIPS",
+    "GameNotFoundError",
+    "GameSession",
     "MAX_ROOM_MEMBERS",
     "Room",
     "RoomError",
