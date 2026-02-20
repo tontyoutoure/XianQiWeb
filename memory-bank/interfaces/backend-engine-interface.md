@@ -4,7 +4,7 @@
 
 ### 1.1 基本约定
 - 引擎是一个对象，内部维护当前对局状态（state），对外暴露明确的方法。
-- 所有校验在引擎完成（手牌合法性、轮次、必须压制/垫棋等）。
+- 所有校验在引擎完成（手牌合法性、回合次序、必须压制/垫棋等）。
 - 引擎内部只使用座次（seat）标识玩家；用户 id 与座次映射由后端维护。
 - “当前谁在决策”属于一等状态，由 `turn.current_seat` 表达；计时/超时由后端会话层维护，不进入引擎状态。
 
@@ -22,10 +22,10 @@
 - card_type：如 `R_SHI`, `B_SHI`, `R_XIANG`, `B_XIANG`, `R_MA`, `B_MA`, `R_CHE`, `B_CHE`, `R_GOU`, `B_GOU`, `R_NIU`, `B_NIU`。
 - CardCountMap：计数表（多重集合），key 为 `card_type`，value 为正整数，如 `{\"R_SHI\": 2, \"B_SHI\": 2}`。
 - hand 表示为计数表：`{\"R_SHI\": 2, \"B_NIU\": 1, ...}`。
-- combo（出棋/垫棋的具体牌面，不含“本轮牌型”）：
+- combo（出棋/垫棋的具体牌面，不含“本回合牌型”）：
   - power: int（按规则计算；垫棋固定为 -1）
   - cards: CardCountMap（如 `{\"R_SHI\": 1}`）
-- round_kind（本轮牌型/张数）：
+- round_kind（本回合牌型/张数）：
   - 1：single（单张）
   - 2：pair / dog_pair（对子/狗脚对）
   - 3：triple（三牛）
@@ -46,11 +46,11 @@
 |R_NIU|红牛/兵|1|
 |B_NIU|黑牛/卒|0|
 两张棋牌力：狗脚对 = 红士对 > 黑士对 > 其余同型对子。
-一轮出牌是牌力为-1的时候，代表该轮是垫牌的。
+一回合出牌是牌力为 -1 的时候，代表该回合是垫牌回合。
 
 ### 1.3 引擎状态结构（建议）
 说明：引擎状态为内部完整记录，包含垫棋牌面；对外 public_state 由后端脱敏处理。
-补充：新一轮由 `buckle_flow` 开始；进入 `in_round` 且尚未出首手时，`round_kind` 应置为 0（表示尚未出牌确定牌型）。
+补充：新一回合由 `buckle_flow` 开始；进入 `in_round` 且尚未出首手时，`round_kind` 应置为 0（表示尚未出牌确定牌型）。
 约束：`pillar_groups` 只保留原始可持久化字段（`round_index/winner_seat/round_kind/plays`），不包含可推导缓存字段（如 `pillars`）。
 ```jsonc
 {
@@ -67,7 +67,7 @@
   "turn": {
     "current_seat": 0, // 当前该行动/当前决策座次
     "round_index": 2, // 第几回合（从0开始）
-    "round_kind": 1, // 本轮牌型/张数（1/2/3）
+    "round_kind": 1, // 本回合牌型/张数（1/2/3）
     "last_combo": {
       "power": 9, // 组合强度（按规则计算，垫棋不会改写 last_combo）
       "cards": {"R_SHI": 1}, // 组合内牌的计数表
@@ -278,7 +278,7 @@ in_round 阶段示例（只能垫牌）：
 - COVER 仅给出 `required_count`，由前端在手牌中选择任意同张数牌面并通过 `cover_list` 传回，最终由引擎校验合法性。
 - `buckle_flow` 扣后掀棋询问推进规则：`PASS_REVEAL` 才会继续询问 `pending_order` 下一位；`REVEAL` 会立刻结束本次掀棋决策并进入 `in_round`，不再继续询问剩余玩家。
 - 若当前被询问者是 `active_revealer_seat` 且选择 `PASS_REVEAL`，引擎需先将 `active_revealer_seat` 置为 `null`，再推进询问顺序/终局判定。
-- `in_round` 回合收束（`turn.plays` 达到 3 人，即三名玩家完成本回合动作）后，引擎需先判定提前终局：若任一玩家已瓷（`pillar>=6`）或两名玩家已够（`pillar>=3`），则直接进入 `settlement`；否则进入下一轮 `buckle_flow`。
+- `in_round` 回合收束（`turn.plays` 达到 3 人，即三名玩家完成本回合动作）后，引擎需先判定提前终局：若任一玩家已瓷（`pillar>=6`）或两名玩家已够（`pillar>=3`），则直接进入 `settlement`；否则进入下一回合 `buckle_flow`。
 - 一致性约束：`legal_actions.seat` 必须等于 `turn.current_seat`。
 
 #### 1.5.4 settlement（结算结果）

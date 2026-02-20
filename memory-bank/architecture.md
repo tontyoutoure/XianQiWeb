@@ -81,7 +81,7 @@ waiting → playing → settlement →（玩家选择继续）waiting 或直接�
 
 ### 3.2 对局阶段（game phase）
 - init：房间三人就绪后创建对局（发牌与先手判定在此完成）。
-- buckle_flow：回合起始玩家仅可选择 BUCKLE / PASS_BUCKLE。若 PASS_BUCKLE，则立即进入 `in_round`，并由该玩家打出本轮首手；若 BUCKLE，则在本阶段内按顺序询问其他玩家是否 REVEAL / PASS_REVEAL，命中首个 REVEAL 后立即结束询问并进入 `in_round`（由扣棋方打出本轮首手），若两人均 PASS_REVEAL 则进入 `settlement`。
+- buckle_flow：回合起始玩家仅可选择 BUCKLE / PASS_BUCKLE。若 PASS_BUCKLE，则立即进入 `in_round`，并由该玩家打出本回合首手；若 BUCKLE，则在本阶段内按顺序询问其他玩家是否 REVEAL / PASS_REVEAL，命中首个 REVEAL 后立即结束询问并进入 `in_round`（由扣棋方打出本回合首手），若两人均 PASS_REVEAL 则进入 `settlement`。
 - in_round：回合进行中（出棋/压制/垫棋）。当 `round_kind = 0`（尚未有人打出首手）时，当前行动位仅允许 PLAY，不允许 COVER。
 - settlement：结算。
 - finished：结算完成并记录筹码变化。
@@ -90,10 +90,10 @@ waiting → playing → settlement →（玩家选择继续）waiting 或直接�
 
 ### 3.3 回合流程（简化）
 1) 回合起始玩家进入 `buckle_flow`，仅可选择 BUCKLE / PASS_BUCKLE。
-2) 若选择 PASS_BUCKLE，直接进入 `in_round`，由该玩家打出本轮首手（确定 `round_kind`）。
-3) 若选择 BUCKLE，在 `buckle_flow` 内按规则顺序询问另外两位玩家是否 REVEAL / PASS_REVEAL：若命中首个 REVEAL，则立即进入 `in_round` 且由扣棋玩家打出本轮首手；若两人均 PASS_REVEAL，则直接进入 `settlement`。
-4) 进入 `in_round` 后，其他玩家依次压制（能压必须压）或垫棋，直到本轮结束。
-5) 本轮结束后，最大组合玩家获得本轮棋子并更新柱数；若满足“任一玩家瓷（>=6柱）或两名玩家够（>=3柱）”则直接进入 `settlement`，否则由该玩家作为下一轮起始玩家回到 `buckle_flow`。
+2) 若选择 PASS_BUCKLE，直接进入 `in_round`，由该玩家打出本回合首手（确定 `round_kind`）。
+3) 若选择 BUCKLE，在 `buckle_flow` 内按规则顺序询问另外两位玩家是否 REVEAL / PASS_REVEAL：若命中首个 REVEAL，则立即进入 `in_round` 且由扣棋玩家打出本回合首手；若两人均 PASS_REVEAL，则直接进入 `settlement`。
+4) 进入 `in_round` 后，其他玩家依次压制（能压必须压）或垫棋，直到本回合结束。
+5) 本回合结束后，最大组合玩家获得本回合棋子并更新柱数；若满足“任一玩家瓷（>=6柱）或两名玩家够（>=3柱）”则直接进入 `settlement`，否则由该玩家作为下一回合起始玩家回到 `buckle_flow`。
 
 ## 4. 接口文档
 接口细节已拆分为独立文档：

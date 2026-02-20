@@ -48,9 +48,9 @@ engine/
 ### 3.2 全局不变量
 - 三名玩家手牌总和 + `pillar_groups` 中卡牌总和 = 24。
 - 同一回合内所有 `plays` 的总张数一致（都等于 `round_kind`）。
-- `last_combo` 只记录本轮最大非垫牌组合（`power >= 0`）。
+- `last_combo` 只记录本回合最大非垫牌组合（`power >= 0`）。
 - “当前谁在决策”统一由 `turn.current_seat` 表达；引擎内不再维护 `decision` 字段。
-- `round_kind = 0` 仅允许在“本轮首手尚未打出”时出现（`buckle_flow`，或 `in_round` 且 `turn.plays` 为空）。
+- `round_kind = 0` 仅允许在“本回合首手尚未打出”时出现（`buckle_flow`，或 `in_round` 且 `turn.plays` 为空）。
 - `pillar_groups` 为 SSOT：每组柱数由 `round_kind` 表示，不在状态中缓存可推导字段（如 `pillars`）。
 - `phase != buckle_flow` 时，`reveal.pending_order` 必须为空列表。
 - `reveal.pending_order` 非空时，`turn.current_seat` 必须等于 `pending_order[0]`。
@@ -118,7 +118,7 @@ engine/
   2. `revealer_enough_at_time` 由该玩家当前柱数（>=3）计算。
   3. `active_revealer_seat = revealer_seat`。
   4. 命中首个 `REVEAL` 后立即结束本次询问：`pending_order=[]`。
-  5. `phase -> in_round`，`turn.current_seat = buckler_seat`，并初始化本轮首手前态（`round_kind=0, plays=[], last_combo=null`）。
+  5. `phase -> in_round`，`turn.current_seat = buckler_seat`，并初始化本回合首手前态（`round_kind=0, plays=[], last_combo=null`）。
 - `PASS_REVEAL`：
   1. 若当前 seat 等于 `active_revealer_seat`，先将 `active_revealer_seat = null`。
   2. 从 `pending_order` 弹出当前 seat。
@@ -127,7 +127,7 @@ engine/
 
 ##### 4.2.2.3 C. `phase=in_round`
 - `PLAY`（出首手或压制）：
-  1. 若 `round_kind=0`，这是本轮首手：设置 `round_kind = 张数(1/2/3)`。
+  1. 若 `round_kind=0`，这是本回合首手：设置 `round_kind = 张数(1/2/3)`。
   2. 若 `round_kind>0`，组合张数必须等于 `round_kind`，且 `power > last_combo.power`。
   3. 扣减手牌，写入 `turn.plays`，更新 `turn.last_combo`。
 - `COVER`（垫牌）：
@@ -279,7 +279,7 @@ engine/
 6. 用户输入动作并执行：
    - 非 COVER：输入 `action_idx` 即可。
    - COVER：先展示手牌索引列表（如 `0. R_NIU`、`1. B_NIU`），再输入索引串（如需垫两张则输入 `01`）。
-7. 调用 `apply_action`，成功后进入下一轮循环；失败则展示错误码并重试。
+7. 调用 `apply_action`，成功后进入下一次循环；失败则展示错误码并重试。
 8. 当 `phase=settlement`：
    - 若 `settle` 已实现，提示执行结算（或默认自动 `settle`）。
    - 若 `settle` 未实现，提示“结算阶段已到达，当前版本未实现 settle”，并结束本次演练。

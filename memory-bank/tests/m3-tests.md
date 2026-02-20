@@ -81,7 +81,7 @@
 | M3-ACT-05 | COVER 传不存在手牌 | `cover_list`（计数表）超出持牌时拒绝 |
 | M3-ACT-06 | 回合结束后行动位推进 | 3 人出完后 `turn.current_seat` 切到 round winner |
 | M3-ACT-07 | 掀棋顺序推进 | `reveal.pending_order` 消费与 `turn.current_seat` 推进一致 |
-| M3-ACT-08 | 一轮结束后棋柱归属 | `pillar_groups` 新增记录且 `winner_seat` 等于本轮最大组合玩家 |
+| M3-ACT-08 | 一回合结束后棋柱归属 | `pillar_groups` 新增记录且 `winner_seat` 等于本回合最大组合玩家 |
 | M3-ACT-09 | 对子回合柱数记录 | `round_kind=2` 时新增组记录 `round_kind=2` 且不写入冗余 `pillars` |
 | M3-ACT-10 | 三牛回合柱数记录 | `round_kind=3` 时新增组记录 `round_kind=3` 且不写入冗余 `pillars` |
 | M3-ACT-11 | 回合收束后“一家瓷”提前结算 | 回合收束并更新柱数后任一玩家 `pillar>=6` 时，`phase` 直接切到 `settlement` |
@@ -193,22 +193,22 @@
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-ACT-08 | 构造一轮结束场景：3 人完成同一轮出牌后触发回合收束，且 `last_combo.owner_seat=1` | `pillar_groups` 追加 1 组，新增组 `winner_seat=1`，且该组归档的回合数据与 `turn.plays` 一致 |
-| M3-ACT-09 | 对子轮（`round_kind=2`）且 winner 为 seat1，示例含 `R_SHI` 对参与回合收束 | 新增组记录 `round_kind=2`；`pillar_groups` 不包含 `pillars` |
-| M3-ACT-10 | 三牛轮（`round_kind=3`）且 winner 为 seat2，示例含 `R_NIU*3` 或 `B_NIU*3` | 新增组记录 `round_kind=3`；`pillar_groups` 不包含 `pillars` |
-| M3-ACT-11 | 构造回合收束前柱数 `seat0=5, seat1=0, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 回合收束后 seat0 达到 6 柱，`phase=settlement` |
-| M3-ACT-12 | 构造回合收束前柱数 `seat0=2, seat1=3, seat2=0`，且本轮 winner 为 seat0（`round_kind=1`） | 回合收束后 `seat0=3, seat1=3`，`phase=settlement` |
-| M3-ACT-13 | 构造回合收束前柱数 `seat0=2, seat1=2, seat2=1`，且本轮 winner 为 seat0（`round_kind=1`） | 回合收束后仅 seat0 够，`phase=buckle_flow`，并由 winner 继续行动 |
+| M3-ACT-08 | 构造一回合结束场景：3 人完成同一回合出牌后触发回合收束，且 `last_combo.owner_seat=1` | `pillar_groups` 追加 1 组，新增组 `winner_seat=1`，且该组归档的回合数据与 `turn.plays` 一致 |
+| M3-ACT-09 | 对子回合（`round_kind=2`）且 winner 为 seat1，示例含 `R_SHI` 对参与回合收束 | 新增组记录 `round_kind=2`；`pillar_groups` 不包含 `pillars` |
+| M3-ACT-10 | 三牛回合（`round_kind=3`）且 winner 为 seat2，示例含 `R_NIU*3` 或 `B_NIU*3` | 新增组记录 `round_kind=3`；`pillar_groups` 不包含 `pillars` |
+| M3-ACT-11 | 构造回合收束前柱数 `seat0=5, seat1=0, seat2=0`，且本回合 winner 为 seat0（`round_kind=1`） | 回合收束后 seat0 达到 6 柱，`phase=settlement` |
+| M3-ACT-12 | 构造回合收束前柱数 `seat0=2, seat1=3, seat2=0`，且本回合 winner 为 seat0（`round_kind=1`） | 回合收束后 `seat0=3, seat1=3`，`phase=settlement` |
+| M3-ACT-13 | 构造回合收束前柱数 `seat0=2, seat1=2, seat2=1`，且本回合 winner 为 seat0（`round_kind=1`） | 回合收束后仅 seat0 够，`phase=buckle_flow`，并由 winner 继续行动 |
 | M3-ACT-14 | 构造提前结算命中场景，并预置 `reveal.pending_order` 残留 | 回合收束触发提前结算后，`reveal.pending_order=[]`、`reveal.buckler_seat=null`，且 `legal_actions` 为空 |
 
 ### 6.4 命令行交互（新增需求）
 
 | 测试ID | Mock 输入（显式） | 预期结果（显式） |
 |---|---|---|
-| M3-CLI-01 | `python -m engine.cli --seed 20260217` 连续启动两次 | 两次都打印相同 seed，且首轮 `turn.current_seat` 与 3 名玩家起手分布一致 |
+| M3-CLI-01 | `python -m engine.cli --seed 20260217` 连续启动两次 | 两次都打印相同 seed，且首回合 `turn.current_seat` 与 3 名玩家起手分布一致 |
 | M3-CLI-02 | `python -m engine.cli`（无 seed） | 输出“实际 seed=xxxxxx”；复制该 seed 再次启动可复现 |
 | M3-CLI-03 | 固定局面，依次提交 3 次合法动作 | 每次提示“当前操作 seat=X”，并与状态中的 `turn.current_seat` 一致 |
-| M3-CLI-04 | 固定局面进入交互一轮 | 展示公共态（phase/version/turn）+ 当前 seat `hand`；其他 seat 不展示完整 `hand` |
+| M3-CLI-04 | 固定局面进入交互一回合 | 展示公共态（phase/version/turn）+ 当前 seat `hand`；其他 seat 不展示完整 `hand` |
 | M3-CLI-05 | 固定局面，获取 legal actions | CLI 列表顺序与 `get_legal_actions` 一致，索引从 0 连续递增 |
 | M3-CLI-06 | 选择 COVER，先输入错误张数，再输入正确 `cover_list`（计数表） | 首次提示错误并重输；第二次成功推进状态 |
 | M3-CLI-07 | 输入越界 `action_idx`（如 99） | 打印 `ENGINE_INVALID_ACTION_INDEX`，状态版本不变，可继续选择 |
