@@ -1,4 +1,4 @@
-"""M3 Red tests: M3-ACT-11~14 early settlement after round finish."""
+"""M3 Red tests: M3-ACT-11~16 early settlement and active revealer reset."""
 
 from __future__ import annotations
 
@@ -185,3 +185,55 @@ def test_m3_act_14_early_settlement_cleans_reveal_pending_and_blocks_actions() -
     current_seat = int(next_state.get("turn", {}).get("current_seat", 0))
     legal_actions = engine.get_legal_actions(current_seat)
     assert legal_actions.get("actions") == []
+
+
+def test_m3_act_15_round_end_cross_threshold_clears_active_revealer_without_settlement() -> None:
+    """M3-ACT-15: active revealer should be cleared on <3->>=3 crossing in buckle_flow branch."""
+
+    Engine = _load_engine_class()
+    engine = Engine()
+    state = _make_round_end_state(
+        owner_seat=0,
+        version=115,
+        pillar_counts_before=(2, 2, 1),
+        reveal_override={"active_revealer_seat": 0},
+    )
+    engine.load_state(state)
+
+    cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
+    output = engine.apply_action(
+        action_idx=cover_idx,
+        cover_list={"B_NIU": 1},
+        client_version=115,
+    )
+    next_state = _extract_state(engine, output)
+    reveal = next_state.get("reveal", {})
+
+    assert next_state.get("phase") == "buckle_flow"
+    assert reveal.get("active_revealer_seat") is None
+
+
+def test_m3_act_16_round_end_cross_threshold_clears_active_revealer_with_settlement() -> None:
+    """M3-ACT-16: active revealer crossing should still clear when round end enters settlement."""
+
+    Engine = _load_engine_class()
+    engine = Engine()
+    state = _make_round_end_state(
+        owner_seat=0,
+        version=116,
+        pillar_counts_before=(2, 3, 0),
+        reveal_override={"active_revealer_seat": 0},
+    )
+    engine.load_state(state)
+
+    cover_idx = _find_action_idx(engine.get_legal_actions(0), "COVER")
+    output = engine.apply_action(
+        action_idx=cover_idx,
+        cover_list={"B_NIU": 1},
+        client_version=116,
+    )
+    next_state = _extract_state(engine, output)
+    reveal = next_state.get("reveal", {})
+
+    assert next_state.get("phase") == "settlement"
+    assert reveal.get("active_revealer_seat") is None

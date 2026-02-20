@@ -1,4 +1,4 @@
-"""M3 Red tests: buckle_flow reveal-buckle transition coverage (M3-BF-01~10)."""
+"""M3 Red tests: buckle_flow reveal-buckle transition coverage (M3-BF-01~11)."""
 
 from __future__ import annotations
 
@@ -366,3 +366,31 @@ def test_m3_bf_10_reveal_to_in_round_resets_turn_first_hand_fields() -> None:
     assert turn.get("round_kind") == 0
     assert turn.get("plays") == []
     assert turn.get("last_combo") is None
+
+
+def test_m3_bf_11_buckle_by_active_revealer_clears_active_before_pending_order() -> None:
+    """M3-BF-11: BUCKLE by active revealer should clear active seat before order generation."""
+
+    Engine = _load_engine_class()
+    engine = Engine()
+    engine.load_state(
+        _make_buckle_flow_state(
+            current_seat=1,
+            pending_order=[],
+            active_revealer_seat=1,
+            version=56,
+        )
+    )
+
+    legal = engine.get_legal_actions(1)
+    buckle_idx = _find_action_idx(legal, "BUCKLE")
+
+    output = engine.apply_action(action_idx=buckle_idx, client_version=56)
+    next_state = _extract_state(engine, output)
+
+    reveal = next_state.get("reveal") or {}
+    turn = next_state.get("turn") or {}
+    assert reveal.get("active_revealer_seat") is None
+    assert reveal.get("pending_order") == [2, 0]
+    assert reveal.get("buckler_seat") == 1
+    assert turn.get("current_seat") == 2

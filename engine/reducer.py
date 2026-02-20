@@ -112,6 +112,14 @@ def _finish_round(state: dict[str, Any]) -> None:
     round_kind = int(turn.get("round_kind", 0))
     last_combo = turn.get("last_combo") or {}
     winner_seat = int(last_combo.get("owner_seat", 0))
+    reveal = _ensure_reveal_state(state)
+    active_revealer_raw = reveal.get("active_revealer_seat")
+    active_revealer_seat = int(active_revealer_raw) if active_revealer_raw is not None else None
+    active_pillars_before = (
+        _captured_pillar_count(state, active_revealer_seat)
+        if active_revealer_seat is not None
+        else None
+    )
 
     pillar_group = {
         "round_index": int(turn.get("round_index", 0)),
@@ -121,6 +129,12 @@ def _finish_round(state: dict[str, Any]) -> None:
     }
     state.setdefault("pillar_groups", []).append(pillar_group)
     pillar_counts = [_captured_pillar_count(state, seat) for seat in range(3)]
+
+    if active_revealer_seat is not None and active_pillars_before is not None:
+        active_pillars_after = _captured_pillar_count(state, active_revealer_seat)
+        if active_pillars_before < 3 <= active_pillars_after:
+            reveal["active_revealer_seat"] = None
+
     has_ceramic = any(count >= 6 for count in pillar_counts)
     enough_player_count = sum(1 for count in pillar_counts if count >= 3)
     should_enter_settlement = has_ceramic or enough_player_count == 2
@@ -131,7 +145,6 @@ def _finish_round(state: dict[str, Any]) -> None:
     turn["plays"] = []
     turn["current_seat"] = winner_seat
     state["phase"] = "settlement" if should_enter_settlement else "buckle_flow"
-    reveal = _ensure_reveal_state(state)
     reveal["buckler_seat"] = None
     reveal["pending_order"] = []
 
@@ -250,6 +263,9 @@ def reduce_apply_action(
 
         default_order = [((acting_seat + 1) % 3), ((acting_seat + 2) % 3)]
         active_revealer = reveal.get("active_revealer_seat")
+        if active_revealer is not None and int(active_revealer) == acting_seat:
+            reveal["active_revealer_seat"] = None
+            active_revealer = None
         if active_revealer is None:
             pending = default_order
         else:

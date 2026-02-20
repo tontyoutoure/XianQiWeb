@@ -63,6 +63,7 @@ engine/
 `buckle_flow` 统一承载两类决策：
 1. **回合起始决策**：`pending_order=[]`，当前位仅可 `BUCKLE / PASS_BUCKLE`。
 2. **扣后询问掀棋**：`pending_order!=[]`，当前位仅可 `REVEAL / PASS_REVEAL`。
+- 活跃掀棋者清零可发生在三处：扣后询问子流程中活跃位执行 `PASS_REVEAL`、回合起始决策中活跃位本人执行 `BUCKLE`、以及回合收束后命中“柱数 `<3 -> >=3` 跨阈值”。
 
 ## 4. 对外接口实现逻辑
 
@@ -107,10 +108,11 @@ engine/
   3. `turn.round_kind=0`、`turn.plays=[]`、`turn.last_combo=null`。
 - `BUCKLE`：
   1. 记录 `reveal.buckler_seat = turn.current_seat`。
-  2. 计算 `pending_order`：
+  2. 若 `reveal.active_revealer_seat == reveal.buckler_seat`，先将 `active_revealer_seat = null`（避免扣棋方在本次询问中被当作活跃掀棋者优先询问）。
+  3. 计算 `pending_order`：
      - 若 `active_revealer_seat != null`，则从该 seat 开始询问；
      - 否则从扣棋者下一位（逆时针）开始。
-  3. `turn.current_seat = pending_order[0]`，保持 `phase=buckle_flow` 进入扣后询问子流程。
+  4. `turn.current_seat = pending_order[0]`，保持 `phase=buckle_flow` 进入扣后询问子流程。
 
 ##### 4.2.2.2 B. `phase=buckle_flow` 且 `pending_order!=[]`（扣后询问掀棋）
 - `REVEAL`：
@@ -137,10 +139,11 @@ engine/
   4. 不改写 `last_combo`。
 - 当 `turn.plays` 达到 3 人后触发回合结算：
   1. `last_combo.owner_seat` 获得本回合 `plays`，写入 `pillar_groups`。
-  2. 统计最新柱数：若任一玩家 `pillar>=6`（瓷）或两名玩家 `pillar>=3`（够），则 `phase -> settlement`；否则进入下一回合 `phase -> buckle_flow`。
-  3. `round_index + 1`，并清空 `round_kind/plays/last_combo`（置初始态）。
-  4. `turn.current_seat = winner_seat`（即 `last_combo.owner_seat`）。
-  5. 清空本次扣后询问残留：`reveal.buckler_seat=null`，`reveal.pending_order=[]`。
+  2. 若存在 `active_revealer_seat`，比较其回合收束前后柱数；当且仅当命中 `<3 -> >=3` 时，立即清空 `active_revealer_seat`。
+  3. 统计最新柱数：若任一玩家 `pillar>=6`（瓷）或两名玩家 `pillar>=3`（够），则 `phase -> settlement`；否则进入下一回合 `phase -> buckle_flow`。
+  4. `round_index + 1`，并清空 `round_kind/plays/last_combo`（置初始态）。
+  5. `turn.current_seat = winner_seat`（即 `last_combo.owner_seat`）。
+  6. 清空本次扣后询问残留：`reveal.buckler_seat=null`，`reveal.pending_order=[]`。
 
 #### 4.2.3 成功收尾（统一）
 - 动作成功后 `state.version += 1`。
@@ -244,8 +247,10 @@ engine/
   - `client_version` 冲突返回。
   - `PASS_BUCKLE -> in_round` 后，`round_kind=0` 且首手仅可 PLAY。
   - `BUCKLE` 后询问顺序正确（活跃掀棋者优先，否则逆时针）。
+  - 当 `BUCKLE` 扣棋方等于当前 `active_revealer_seat` 时，先清空 `active_revealer_seat`，再按“无活跃掀棋者”口径生成 `pending_order`。
   - `PASS_REVEAL` 才继续推进 `pending_order`；首个 `REVEAL` 命中后立即结束询问并切回扣棋方。
   - 当活跃掀棋者选择 `PASS_REVEAL` 时，`active_revealer_seat` 被清空。
+  - 回合收束后若命中活跃掀棋者柱数 `<3 -> >=3`，`active_revealer_seat` 立即清空（无论后续进入 `settlement` 或下一回合）。
 - `settle`：够/瓷/掀棋惩罚与“已够时掀棋未瓷不收够棋”边界。
 - `dump/load`：序列化后再恢复，三类输出（public/private/legal）一致。
 
@@ -353,3 +358,4 @@ engine/
 - 2026-02-17：根据规则澄清完成状态机重构：旧双决策 phase 合并为 `buckle_flow`，并移除 `decision` 字段，统一以 `turn.current_seat` 表达当前决策位。
 - 2026-02-20：CLI COVER 交互改造：当仅有 COVER 动作时跳过 `action_idx`，改为手牌索引选牌输入（如 `01`），不再使用 `TYPE:COUNT` 文本输入。
 - 2026-02-19：补充轻量日志设计：`log_path` 日志开关、`state_v*.json/action.json/settle.json` 写入口径，以及 CLI `--log-path` 接口约定。
+- 2026-02-20：同步规则文档 `aeefde4` 清零口径：新增“活跃掀棋者本人 `BUCKLE` 先清零再排询问顺序”与“回合收束 `<3 -> >=3` 跨阈值清零”设计说明。

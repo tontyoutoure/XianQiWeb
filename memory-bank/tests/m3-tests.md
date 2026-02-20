@@ -88,6 +88,8 @@
 | M3-ACT-12 | 回合收束后“两家够”提前结算 | 回合收束并更新柱数后至少两名玩家 `pillar>=3` 时，`phase` 直接切到 `settlement` |
 | M3-ACT-13 | 未命中提前结算时保持原流程 | 回合收束后仅一名玩家够且无人瓷时，`phase` 保持 `buckle_flow` |
 | M3-ACT-14 | 提前结算分支状态一致性 | 提前结算后 `reveal.pending_order=[]` 且当前行动位 `legal_actions` 为空 |
+| M3-ACT-15 | 回合收束跨阈值清零活跃掀棋者（未提前结算分支） | 若 `active_revealer_seat` 本回合柱数命中 `<3 -> >=3`，则回合收束后立即清空 `active_revealer_seat`，且仍按常规进入下一回合 |
+| M3-ACT-16 | 回合收束跨阈值清零活跃掀棋者（提前结算分支） | 若 `active_revealer_seat` 本回合柱数命中 `<3 -> >=3` 且同时触发提前结算，`active_revealer_seat` 仍需被清空 |
 
 ### 4.1 命令行交互测试（新增需求）
 
@@ -124,6 +126,7 @@
 | M3-BF-08 | 两人均 `PASS_REVEAL` 进入结算 | 询问队列耗尽且无人 `REVEAL` 时，`phase` 切到 `settlement` |
 | M3-BF-09 | 回合收束后清理掀扣残留 | `in_round` 第三手回合收束后进入新 `buckle_flow`，并清空 `reveal.buckler_seat/pending_order` |
 | M3-BF-10 | `REVEAL` 后切回扣棋方首手前态重置 | 命中首个 `REVEAL` 切回 `buckler_seat` 后，`in_round` 必须保持首手前态：`round_kind=0/plays=[]/last_combo=null` |
+| M3-BF-11 | 活跃掀棋者本人 `BUCKLE` 时先清零再排询问顺序 | 当 `BUCKLE` 扣棋方 seat 等于 `active_revealer_seat` 时，应先清空 `active_revealer_seat`，再按“无活跃掀棋者”逆时针规则生成 `pending_order` |
 
 ### 4.4 `cards` 表达重构专项（CardCountMap-only）
 
@@ -200,6 +203,8 @@
 | M3-ACT-12 | 构造回合收束前柱数 `seat0=2, seat1=3, seat2=0`，且本回合 winner 为 seat0（`round_kind=1`） | 回合收束后 `seat0=3, seat1=3`，`phase=settlement` |
 | M3-ACT-13 | 构造回合收束前柱数 `seat0=2, seat1=2, seat2=1`，且本回合 winner 为 seat0（`round_kind=1`） | 回合收束后仅 seat0 够，`phase=buckle_flow`，并由 winner 继续行动 |
 | M3-ACT-14 | 构造提前结算命中场景，并预置 `reveal.pending_order` 残留 | 回合收束触发提前结算后，`reveal.pending_order=[]`、`reveal.buckler_seat=null`，且 `legal_actions` 为空 |
+| M3-ACT-15 | 回合收束前柱数 `seat0=2, seat1=2, seat2=1`，`active_revealer_seat=0`，本回合 winner 为 seat0（`round_kind=1`） | 回合收束后 `seat0` 命中 `<3 -> >=3`，`active_revealer_seat` 立即清空，`phase=buckle_flow` |
+| M3-ACT-16 | 回合收束前柱数 `seat0=2, seat1=3, seat2=0`，`active_revealer_seat=0`，本回合 winner 为 seat0（`round_kind=1`） | 回合收束后 `seat0` 命中 `<3 -> >=3` 且触发提前结算，`active_revealer_seat` 仍立即清空，`phase=settlement` |
 
 ### 6.4 命令行交互（新增需求）
 
@@ -246,6 +251,7 @@
 | M3-BF-08 | `phase=buckle_flow`，`pending_order=[1]`，`relations=[]`，`turn.current_seat=1` | seat1 执行 `PASS_REVEAL` 后 `pending_order=[]` 且 `phase=settlement` |
 | M3-BF-09 | `phase=in_round`，`turn.plays` 已有两手，第三手执行后触发回合收束 | 回合收束后 `phase=buckle_flow`，`turn.current_seat=winner`，`reveal.buckler_seat=null`，`reveal.pending_order=[]` |
 | M3-BF-10 | 与 BF-06 相同但额外断言 `turn` | `REVEAL` 切回扣棋方进入 `in_round` 后，`round_kind=0`、`plays=[]`、`last_combo=null` |
+| M3-BF-11 | `phase=buckle_flow`，`pending_order=[]`，`turn.current_seat=1`，`active_revealer_seat=1` | seat1 执行 `BUCKLE` 时先清空 `active_revealer_seat`，再按逆时针生成 `pending_order=[2,0]` |
 
 ### 6.9 `pillar_groups` SSOT 重构专项（新增）
 
@@ -268,7 +274,7 @@
 
 ## 7) TDD 执行记录（进行中）
 
-> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~14`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~10` 与 `M3-CM-01~02`。
+> 说明：当前已完成 `M3-UT-01~08`、`M3-CB-01~14`、`M3-LA-01~22`、`M3-ACT-01~16`、`M3-CLI-01~08`、`M3-RF-01~03`、`M3-BF-01~11` 与 `M3-CM-01~02`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -289,6 +295,7 @@
 | M3-CLI-05 ~ M3-CLI-08 | ✅ 通过 | Green 已完成 | Red：2026-02-17 执行 `pytest engine/tests/test_m3_red_cli_05_08.py -q`（4 failed）；Green：2026-02-17 在 `engine/cli.py` 修复动作索引展示、COVER 重试、错误码前缀与 settlement 提示后执行同命令（4 passed）。 |
 | M3-RF-01 ~ M3-RF-03 | ✅ 通过 | Green 已完成 | Red：2026-02-17 新增 `engine/tests/test_m3_refactor_apply_action_reducer.py` 并执行 `pytest engine/tests/test_m3_refactor_apply_action_reducer.py -q`（`1 failed, 2 passed`，缺少 `reduce_apply_action` 委托入口）；Green：2026-02-17 新增 `engine/reducer.py` 并完成 `engine/core.py` 委托改造后执行同命令（`3 passed`）。 |
 | M3-BF-01 ~ M3-BF-10 | ✅ 通过 | Green 已完成 | Red：2026-02-18 执行 `pytest engine/tests/test_m3_red_bf_01_10.py -q`（10 failed）；Green：2026-02-18 完成 `buckle_flow` 流程重构并移除旧 phase 后复测同命令（10 passed），并回归 `pytest engine/tests -q`（88 passed）。 |
+| M3-ACT-15 ~ M3-ACT-16, M3-BF-11 | ✅ 通过 | Green 已完成 | Red：2026-02-20 新增测试后执行 `pytest engine/tests/test_m3_red_bf_01_10.py engine/tests/test_m3_red_act_11_14_early_settlement.py -q`（3 failed, 14 passed）；Green：在 `engine/reducer.py` 落地“BUCKLE 自清零”和“回合收束跨阈值清零”后复测同命令（17 passed），并执行 `pytest engine/tests -q`（112 passed）。 |
 | M3-SSOT-01 ~ M3-SSOT-07 | ✅ 通过 | Green 已完成 | Red：2026-02-20 执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py engine/tests/test_m3_red_cli_01_04.py engine/tests/test_m3_ssot_01_03_05_07_pillar_groups.py engine/tests/test_m3_red_act_11_14_early_settlement.py -q`（9 failed, 9 passed）；Green：完成 `reducer/serializer/settlements/cli` 重构后执行 `pytest engine/tests/test_m3_red_act_08_10_pillars.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py engine/tests/test_m3_red_cli_01_04.py engine/tests/test_m3_ssot_01_03_05_07_pillar_groups.py engine/tests/test_m3_red_act_11_14_early_settlement.py engine/tests/test_m5_red_ut_01_04_settlement.py engine/tests/test_m5_red_ut_05_08_settlement.py engine/tests/test_m5_red_ut_09_12_settlement.py engine/tests/test_m5_red_ut_13_settlement.py -q`（31 passed），并全量回归 `pytest engine/tests -q`（107 passed）。 |
 | M3-CM-01 ~ M3-CM-02 | ✅ 通过 | Green 已完成 | Red：2026-02-20 将引擎实现切换为 CardCountMap-only 后先执行 `pytest engine/tests/test_m3_red_act_01_07.py engine/tests/test_m3_ut_08_load_state_players_indexed_by_seat.py -q`（11 passed）；Green：完成全量测试改造后执行 `pytest engine/tests -q`（109 passed），确认旧数组结构输入不再兼容。 |
 | M3-DOC-01 | ✅ 通过 | Green 已完成 | 2026-02-19：接口口径文档重构检查（`backend-engine-interface`、`frontend-backend-interfaces`、`engine_design`、`m3-tests`）已统一 `cards/payload_cards/cover_list` 为计数表表示；并完成关键字检索确认无旧数组示例残留。 |
