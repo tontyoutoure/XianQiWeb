@@ -66,6 +66,9 @@ MVP 约束：房间数量由服务端配置，`room_id` 固定为 `0..N-1`；不
 - 同房幂等：若用户已在目标房间，再次调用 `/join` 返回 `200 + room_detail`，不报错。
 - 跨房自动迁移：若用户已在其他房间，服务端先完成从原房间离开，再加入目标房间；若原房间处于 `playing`，原房间触发冷结束规则。
 前端提示约定：若房间状态由 `playing` 直接切到 `waiting` 且无结算消息，前端提示“对局结束”并进入等待态。
+ready 复用约定（下一局准备）：
+- 对局进入结算后，服务端先将房间成员 `ready` 全部重置为 `false`。
+- 下一局沿用 `/api/rooms/{room_id}/ready`，三名成员重新 ready 后才开局。
 
 ### 1.3 Games / Actions / Reconnect
 - GET `/api/games/{game_id}/state`
@@ -75,8 +78,12 @@ MVP 约束：房间数量由服务端配置，`room_id` 固定为 `0..N-1`；不
   - resp: 204 No Content（成功推进引擎状态）
 - GET `/api/games/{game_id}/settlement`
   - resp: result_json
-- POST `/api/games/{game_id}/continue`
-  - body: {"continue": true/false}
+
+#### 1.3.0 鉴权与访问约束
+- `/api/games/*` 全部要求 Bearer access token。
+- 调用者必须是该 `game_id` 对应房间成员，否则返回 `403`（`ROOM_NOT_MEMBER` 或 `GAME_FORBIDDEN`）。
+- `game_id` 不存在返回 `404 + GAME_NOT_FOUND`。
+- `game_id` 存在但与当前房间状态不匹配（如已冷结束）返回 `409 + GAME_STATE_CONFLICT`。
 
 #### 1.3.1 动作/牌载荷与 legal_actions
 说明：前端只提交 `action_idx`（在 `legal_actions.actions` 中的下标，按服务端返回顺序，不做额外排序）。`cover_list` 仅在动作类型为 COVER 时传入，其他动作传 `null` 或省略。
@@ -139,10 +146,10 @@ in_round（非首手）动作约束：
 - 无法压制时仅返回 COVER 动作（含 `required_count`）。
 - 掀棋决策顺序由服务端控制：某玩家在 `buckle_flow` 扣后询问中选择 `REVEAL` 时，本次询问立即结束并切回扣棋方出棋，不再给第三名玩家下发掀棋决策。
 
-#### 1.3.2 settlement / continue 调用时机
+#### 1.3.2 settlement / 下一局准备调用时机
 - `/settlement`：仅当 `phase = settlement | finished` 时可调用，且仅限房间成员。
-- `/continue`：仅在结算阶段允许，房间成员各自提交是否继续；当三人均 `continue=true` 时服务端立即创建新局并将房间状态置为 `playing`（无需再次准备）。
-- 若任一玩家提交 `continue=false`，则本局结束，房间返回 `waiting`。
+- 本协议不提供 `/api/games/{game_id}/continue`。
+- 下一局通过房间 ready 机制触发：结算后重置全员 ready，三人再次调用 `/api/rooms/{room_id}/ready` 且均为 `true` 时创建新局。
 说明：此处 `phase` 指 `public_state.phase`。
 
 ## 2. WebSocket 协议
@@ -154,6 +161,7 @@ in_round（非首手）动作约束：
 
 **房间 WS（/ws/rooms/{room_id}）**
 - `/ws/rooms/{room_id}?token=ACCESS_TOKEN`：房间与对局公共消息（含开始/结算）。
+- MVP 不新增 `/ws/games/{game_id}` 通道；对局推送统一走房间通道。
 
 ### 2.2 消息结构
 ```json
@@ -182,7 +190,11 @@ in_round（非首手）动作约束：
 - ERROR：{"code":"","message":"","detail":{}}。
 - PING/PONG：心跳保活。
 
-初始快照策略：连接成功后立即下发一次全量快照（大厅为 ROOM_LIST；房间为 ROOM_UPDATE + GAME_PUBLIC_STATE + GAME_PRIVATE_STATE）。
+初始快照策略：连接成功后立即下发一次全量快照（大厅为 ROOM_LIST；房间至少下发 ROOM_UPDATE；若存在当前对局再下发 GAME_PUBLIC_STATE + GAME_PRIVATE_STATE）。
+补充约束：
+- 若房间当前无进行中/结算中对局（`current_game_id = null`），房间 WS 初始快照仅下发 `ROOM_UPDATE`。
+- 若房间存在当前对局，房间 WS 初始快照下发顺序为：`ROOM_UPDATE` -> `GAME_PUBLIC_STATE` -> （仅给本人）`GAME_PRIVATE_STATE`。
+- 动作提交成功后，房间内推送顺序为：先 `GAME_PUBLIC_STATE`，再向各 seat 单播对应 `GAME_PRIVATE_STATE`；若伴随房态变化，再补发 `ROOM_UPDATE`。
 心跳策略：服务端每 30s 发送一次 PING，客户端需在 10s 内回 PONG；连续 2 次未响应可断开连接。
 私有状态默认通过 WS 单连接私发；断线重连或兜底则通过 HTTP 拉取。
 鉴权失败：WS 连接直接关闭（推荐 close code 4401 + reason "UNAUTHORIZED"）。
@@ -234,3 +246,10 @@ access_token 过期：服务端可主动关闭已建立连接（4401）；客户
 - 404 资源不存在（房间/对局不存在）
 - 409 业务冲突（房间已满、非自己回合、状态不允许）
 - 500 服务器内部错误
+
+推荐补充错误码（Games）：
+- `GAME_NOT_FOUND`
+- `GAME_FORBIDDEN`
+- `GAME_STATE_CONFLICT`
+- `GAME_VERSION_CONFLICT`
+- `GAME_INVALID_ACTION`

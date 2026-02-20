@@ -3,13 +3,13 @@
 本文档用于沉淀后端实现层面的详细设计，作为 `memory-bank/architecture.md` 与接口文档的实现补充。
 
 ## 0. 文档范围与基线
-- 当前版本覆盖：M1（后端基础与鉴权）、M2（房间与大厅）。
+- 当前版本覆盖：M1（后端基础与鉴权）、M2（房间与大厅）、M4（后端-引擎集成）、M5（结算与重新 ready 开下一局）、M6（游戏实时推送与重连）。
 - 一致性基线：
   - `memory-bank/architecture.md`
   - `memory-bank/interfaces/frontend-backend-interfaces.md`
   - `memory-bank/interfaces/backend-engine-interface.md`
 - 安全基线（MVP）：安全性保持基础可用，重点保障鉴权正确与服务稳定；对用户恶意行为暂不做强对抗防护（如复杂风控、反刷、设备指纹、行为审计）。
-- 非目标：M3+ 的引擎规则、结算细节与前端实现（仅做接口预留，不做实现展开）。
+- 非目标：前端页面实现与跨重启历史恢复（仅定义后端契约与内存态行为）。
 
 ## 1. M1 后端基础与鉴权设计
 
@@ -286,7 +286,7 @@ backend/
 #### POST `/api/rooms/{room_id}/ready`
 - body: `{"ready": true|false}`。
 - 仅房间成员可调用。
-- 仅 `room.status=waiting` 时允许变更 ready。
+- M2 口径下仅 `room.status=waiting` 时允许变更 ready；M4+ 集成后扩展为 `waiting|settlement` 均可变更（settlement 用于准备下一局）。
 - 成功返回最新 `room_detail`。
 - 当三人均 `ready=true` 时：
   - 若引擎未接入，先预留 `start_game` 钩子。
@@ -325,7 +325,105 @@ backend/
 - WS 测试：
   - join/leave/ready 后大厅与房间消息正确到达。
 
-## 3. M1-M2 交付检查清单
+## 3. M4-M6 后端引擎集成设计
+
+### 3.1 目标
+- 将现有 RoomRegistry 与引擎对象联动，形成完整对局生命周期：
+  - 三人全 ready 开局
+  - 动作推进
+  - 结算与“结算后清空 ready，重新 ready 开下一局”
+  - 房间内实时公共/私有推送
+
+### 3.2 内存域模型补充（GameSession）
+
+#### GameSession
+- `game_id: int`
+- `room_id: int`
+- `status: in_progress|settlement|finished|aborted`
+- `engine: XianQiEngine`（内嵌引擎对象）
+- `seat_to_user_id: dict[int, int]`
+- `user_id_to_seat: dict[int, int]`
+- `created_at/updated_at/ended_at`
+
+#### GameRegistry（建议）
+- `games_by_id: dict[int, GameSession]`
+- `room_to_current_game: dict[int, int]`
+- 约束：同一房间同一时刻最多一个“未结束” game。
+
+### 3.3 生命周期与状态联动
+- 开局触发：`/api/rooms/{room_id}/ready` 达成三人全 ready。
+  1. 构造 seat 映射并创建 `GameSession`。
+  2. 调用引擎 `init_game(config, rng_seed)`。
+  3. 写入 `room.current_game_id`，`room.status=playing`。
+  4. 广播 `ROOM_UPDATE` 与首帧 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE`。
+- 动作推进：`/api/games/{game_id}/actions` 调引擎 `apply_action`，按输出更新 game 状态并推送快照。
+- 进入结算：引擎 `phase=settlement` 后可 `GET /settlement`，并通过 WS 发 `SETTLEMENT`。
+- 结算后下一局准备：
+  - 进入结算时服务端将房间成员 `ready` 全部重置为 `false`。
+  - 保持房间 `status=settlement` 展示结算；成员通过 `/api/rooms/{room_id}/ready` 重新提交准备。
+  - 当三人再次 `ready=true` 时，立即创建新局并切换 `room.status=playing`。
+- 冷结束：`room.status=playing` 有成员 leave 时：
+  - game 标记 `aborted`，不做结算不改 chips；
+  - 房间回 waiting 并广播 `ROOM_UPDATE`。
+
+### 3.4 REST 接口落地（Games）
+
+#### GET `/api/games/{game_id}/state`
+- 权限：Bearer + 房间成员。
+- 返回：`game_id/self_seat/public_state/private_state/legal_actions`。
+- 用途：断线恢复、409 后刷新本地状态。
+
+#### POST `/api/games/{game_id}/actions`
+- 请求：`action_idx + cover_list? + client_version?`。
+- 成功：`204 No Content`。
+- 失败：
+  - `409 GAME_VERSION_CONFLICT`（版本冲突）
+  - `409 GAME_INVALID_ACTION`（非法动作/phase 不匹配）
+  - `403 GAME_FORBIDDEN`（非成员）
+  - `404 GAME_NOT_FOUND`
+
+#### GET `/api/games/{game_id}/settlement`
+- 仅 `phase in {settlement, finished}` 可调用。
+- 返回引擎 settlement 结构（含 `chip_delta_by_seat`）。
+
+### 3.5 WS 推送策略（M6）
+- 不新增 `/ws/games/*`；继续使用 `/ws/rooms/{room_id}` 承载游戏事件。
+- 房间 WS 初始快照：
+  - 无对局：仅 `ROOM_UPDATE`。
+  - 有对局：`ROOM_UPDATE` -> `GAME_PUBLIC_STATE` ->（私发）`GAME_PRIVATE_STATE`。
+- 动作成功后的推送顺序：
+  1. 广播 `GAME_PUBLIC_STATE`
+  2. 按连接私发 `GAME_PRIVATE_STATE`
+  3. 如房态变化（例如进入结算/回 waiting），补发 `ROOM_UPDATE`
+  4. 若本次进入结算，追加 `SETTLEMENT`
+- 重连策略：客户端优先调 `GET /state`，WS 只做增量与首帧同步。
+
+### 3.6 错误码补充（Games）
+- `GAME_NOT_FOUND`（404）
+- `GAME_FORBIDDEN`（403）
+- `GAME_STATE_CONFLICT`（409）
+- `GAME_VERSION_CONFLICT`（409）
+- `GAME_INVALID_ACTION`（409）
+
+### 3.7 测试设计（M4-M6）
+- 单元：
+  - `GameSession` 生命周期（create/advance/settle/abort）
+  - seat 映射与成员鉴权
+  - 结算后 ready 重置与重新就绪开局逻辑
+- API：
+  - `/state` 快照结构与权限
+  - `/actions` 204/409/403/404 分支
+  - `/settlement` phase 门禁
+  - 复用 `/api/rooms/{room_id}/ready` 完成结算后的下一局准备
+- WS：
+  - 初始快照（无局/有局）分支
+  - 动作后 public/private 推送顺序
+  - 结算与冷结束广播
+- 并发：
+  - 同一 game 并发动作仅接受一个（其余版本冲突或非法动作）
+  - 结算后并发 ready 只触发一次开局
+
+## 4. M1-M2-M4-M6 交付检查清单
 - [ ] 代码结构与配置文件落地。
 - [ ] DB 建表与索引落地。
 - [ ] Auth 五个接口通过测试。
@@ -336,9 +434,15 @@ backend/
 - [ ] 房间初始化规则为 `id=0..N-1`（由 `XQWEB_ROOM_COUNT` 控制）。
 - [ ] 单用户跨房间自动迁移规则可用（必要时触发原房间冷结束）。
 - [ ] Lobby/Room WS 推送与心跳可用。
+- [ ] 三人全 ready 可创建 game 并进入 `playing`。
+- [ ] Games 三接口（`/state`、`/actions`、`/settlement`）通过契约测试。
+- [ ] 动作版本冲突与非法动作分支可观测（409 + 统一错误体）。
+- [ ] 房间 WS 可推送 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE/SETTLEMENT`。
+- [ ] 结算后 ready 清零，且三人重新 ready 仅触发一次新局创建。
+- [ ] playing 中 leave 冷结束行为在 game 与 room 侧均一致。
 - [ ] 统一错误响应与关键日志字段可观测。
 
-## 4. 已知风险与决策
+## 5. 已知风险与决策
 - 风险：refresh token 无限增长。
   - 决策：服务启动清理一次 + 每天 00:00 清理一次（仅删过期/撤销记录）。
 - 风险：房间并发写导致座位冲突。
@@ -349,8 +453,12 @@ backend/
   - 决策：MVP 固定单进程单 worker。
 - 风险：`client_version` 不一致导致旧状态动作覆盖新状态。
   - 决策：后端返回 409；前端收到后立即通过 REST 拉取一次最新状态并重建本地视图。
+- 风险：房间 WS 同时承载房间与对局事件，消息量上升导致前端处理复杂。
+  - 决策：统一事件顺序（public -> private -> room_update），并在文档固定首帧/增量策略。
+- 风险：结算后并发 ready 触发重复开局。
+  - 决策：沿用同房间写锁；当 `status=settlement` 且“从非全员 ready -> 全员 ready”仅允许一次 start_game 迁移。
 
-## 5. 变更记录
+## 6. 变更记录
 - 2026-02-13：创建文档骨架。
 - 2026-02-13：补充 M1-M2 后端详细设计（目录、数据、接口、并发、测试、风险）。
 - 2026-02-13：统一环境变量前缀为 `XQWEB_`，补充 `.env.dev/.env.test` 本地约定。
@@ -360,3 +468,4 @@ backend/
 - 2026-02-13：补充共识约束：username 按用户可见字符计数（<=10）、access 30 分钟主动刷新/1 小时过期（可配置）、跨房间迁移原子化。
 - 2026-02-13：补充共识约束：`client_version` 冲突返回 409 且前端 REST 拉态、WS token 过期主动断开、username 大小写敏感、MVP 允许空密码、冷结束前端提示“对局结束”。
 - 2026-02-13：补充 username 归一化口径：注册/登录统一 NFC 归一化后再校验与匹配。
+- 2026-02-20：补充 M4-M6 后端引擎集成设计：GameSession 内存模型、Games REST、房间 WS 游戏事件、结算后重新 ready 开局与并发约束。

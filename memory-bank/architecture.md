@@ -80,7 +80,7 @@
 - settlement：单局结算展示阶段。
 
 状态流转：
-waiting → playing → settlement →（玩家选择继续）waiting 或直接创建新局
+waiting → playing → settlement →（结算后清空 ready）等待玩家重新 ready → playing
 
 状态映射（建议）：
 - engine.phase = init / buckle_flow / in_round → games.status = in_progress
