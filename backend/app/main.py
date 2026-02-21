@@ -36,6 +36,7 @@ from app.rooms.registry import MAX_ROOM_MEMBERS
 from app.rooms.registry import GameForbiddenError
 from app.rooms.registry import GameInvalidActionError
 from app.rooms.registry import GameNotFoundError
+from app.rooms.registry import GameStateConflictError
 from app.rooms.registry import GameVersionConflictError
 from app.rooms.registry import Room
 from app.rooms.registry import RoomFullError
@@ -465,6 +466,39 @@ def post_game_action(
             status_code=409,
             code="GAME_INVALID_ACTION",
             message="game action is invalid",
+            detail={"game_id": game_id},
+        )
+
+
+@app.get("/api/games/{game_id}/settlement")
+def get_game_settlement(
+    game_id: int,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, object]:
+    """Return settlement payload for a room member in settlement/finished phases."""
+    user = _require_current_user(authorization)
+    user_id = int(user["id"])
+    try:
+        return room_registry.get_game_settlement_for_user(game_id=game_id, user_id=user_id)
+    except GameNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="GAME_NOT_FOUND",
+            message="game not found",
+            detail={"game_id": game_id},
+        )
+    except GameForbiddenError:
+        _raise_room_error(
+            status_code=403,
+            code="GAME_FORBIDDEN",
+            message="user is not a game member",
+            detail={"game_id": game_id, "user_id": user_id},
+        )
+    except GameStateConflictError:
+        _raise_room_error(
+            status_code=409,
+            code="GAME_STATE_CONFLICT",
+            message="game state conflict",
             detail={"game_id": game_id},
         )
 

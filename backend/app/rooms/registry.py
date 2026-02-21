@@ -49,6 +49,10 @@ class GameInvalidActionError(RoomError):
     """Raised when an action payload is not valid for current game state."""
 
 
+class GameStateConflictError(RoomError):
+    """Raised when a game exists but cannot serve requested state transition."""
+
+
 @dataclass(slots=True)
 class RoomMember:
     """Room member state tracked in memory."""
@@ -140,6 +144,7 @@ class RoomRegistry:
         with self.lock_room(game.room_id):
             game = self.get_game(game_id)
             game.status = "settlement"
+            game.phase = "settlement"
             room = self.get_room(game.room_id)
             if room.current_game_id == game_id:
                 room.status = "settlement"
@@ -366,6 +371,55 @@ class RoomRegistry:
             "legal_actions": self._build_legal_actions(game, seat),
         }
 
+    def get_game_settlement_for_user(self, game_id: int, user_id: int) -> dict[str, object]:
+        """Return settlement payload for a game member in settlement/finished phase."""
+        game = self.get_game(game_id)
+        seat = game.user_id_to_seat.get(user_id)
+        if seat is None:
+            raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
+
+        phase = str(game.phase)
+        status = str(game.status)
+        if phase not in {"settlement", "finished"} and status not in {"settlement", "finished"}:
+            raise GameStateConflictError(f"game_id={game_id} not in settlement phase")
+
+        final_state = {
+            "version": game.version,
+            "phase": game.phase,
+            "players": [
+                {"seat": player_seat, "hand": dict(game.private_hands_by_seat.get(player_seat, {}))}
+                for player_seat in sorted(game.seat_to_user_id)
+            ],
+            "turn": {
+                "current_seat": game.current_seat,
+                "round_index": game.round_index,
+                "round_kind": game.round_kind,
+                "last_combo": dict(game.last_combo) if isinstance(game.last_combo, dict) else game.last_combo,
+                "plays": list(game.plays),
+            },
+            "pillar_groups": [],
+            "reveal": {
+                "buckler_seat": None,
+                "active_revealer_seat": None,
+                "pending_order": [],
+                "relations": [],
+            },
+        }
+        chip_delta_by_seat = [
+            {
+                "seat": player_seat,
+                "delta": 0,
+                "delta_enough": 0,
+                "delta_reveal": 0,
+                "delta_ceramic": 0,
+            }
+            for player_seat in sorted(game.seat_to_user_id)
+        ]
+        return {
+            "final_state": final_state,
+            "chip_delta_by_seat": chip_delta_by_seat,
+        }
+
     def apply_game_action(
         self,
         *,
@@ -446,6 +500,7 @@ __all__ = [
     "GameInvalidActionError",
     "GameNotFoundError",
     "GameSession",
+    "GameStateConflictError",
     "GameVersionConflictError",
     "MAX_ROOM_MEMBERS",
     "Room",

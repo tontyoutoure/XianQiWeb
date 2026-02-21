@@ -269,34 +269,122 @@ def test_m4_rs_rest_05_post_actions_version_conflict(live_server: str) -> None:
     assert payload["code"] == "GAME_VERSION_CONFLICT"
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_06_post_actions_reject_non_turn_player() -> None:
+def test_m4_rs_rest_06_post_actions_reject_non_turn_player(live_server: str) -> None:
     """M4-API-06: /actions rejects non-turn player."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m406")
+        game_id = context["game_id"]
+
+        probe_state = client.get(
+            f"/api/games/{game_id}/state",
+            headers=_auth_headers(context["token_by_seat"][0]),
+        )
+        assert probe_state.status_code == 200
+        probe_payload = probe_state.json()
+        current_seat = int(probe_payload["public_state"]["turn"]["current_seat"])
+
+        actor_token = context["token_by_seat"][current_seat]
+        actor_state = client.get(f"/api/games/{game_id}/state", headers=_auth_headers(actor_token))
+        assert actor_state.status_code == 200
+        action_payload = _build_action_payload_from_state(state_payload=actor_state.json())
+
+        non_turn_seat = (current_seat + 1) % 3
+        response = client.post(
+            f"/api/games/{game_id}/actions",
+            headers=_auth_headers(context["token_by_seat"][non_turn_seat]),
+            json=action_payload,
+        )
+
+    payload = _assert_error_payload(response=response, expected_status=409)
+    assert payload["code"] == "GAME_INVALID_ACTION"
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_07_post_actions_reject_invalid_cover_list() -> None:
+def test_m4_rs_rest_07_post_actions_reject_invalid_cover_list(live_server: str) -> None:
     """M4-API-07: /actions rejects invalid cover_list."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m407")
+        game_id = context["game_id"]
+
+        probe_state = client.get(
+            f"/api/games/{game_id}/state",
+            headers=_auth_headers(context["token_by_seat"][0]),
+        )
+        assert probe_state.status_code == 200
+        probe_payload = probe_state.json()
+        current_seat = int(probe_payload["public_state"]["turn"]["current_seat"])
+        actor_token = context["token_by_seat"][current_seat]
+
+        actor_state = client.get(f"/api/games/{game_id}/state", headers=_auth_headers(actor_token))
+        assert actor_state.status_code == 200
+        action_payload = _build_action_payload_from_state(state_payload=actor_state.json())
+        action_payload["cover_list"] = {"R_SHI": 1}
+
+        response = client.post(
+            f"/api/games/{game_id}/actions",
+            headers=_auth_headers(actor_token),
+            json=action_payload,
+        )
+
+    payload = _assert_error_payload(response=response, expected_status=409)
+    assert payload["code"] == "GAME_INVALID_ACTION"
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_08_post_actions_forbidden_non_member() -> None:
+def test_m4_rs_rest_08_post_actions_forbidden_non_member(live_server: str) -> None:
     """M4-API-08: /actions rejects non-member."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m408")
+        game_id = context["game_id"]
+        _, outsider_token = _register_user(client=client, username="m408x")
+
+        probe_state = client.get(
+            f"/api/games/{game_id}/state",
+            headers=_auth_headers(context["token_by_seat"][0]),
+        )
+        assert probe_state.status_code == 200
+        probe_payload = probe_state.json()
+        current_seat = int(probe_payload["public_state"]["turn"]["current_seat"])
+
+        actor_token = context["token_by_seat"][current_seat]
+        actor_state = client.get(f"/api/games/{game_id}/state", headers=_auth_headers(actor_token))
+        assert actor_state.status_code == 200
+        action_payload = _build_action_payload_from_state(state_payload=actor_state.json())
+
+        response = client.post(
+            f"/api/games/{game_id}/actions",
+            headers=_auth_headers(outsider_token),
+            json=action_payload,
+        )
+
+    payload = _assert_error_payload(response=response, expected_status=403)
+    assert payload["code"] in {"GAME_FORBIDDEN", "ROOM_NOT_MEMBER"}
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_09_post_actions_game_not_found() -> None:
+def test_m4_rs_rest_09_post_actions_game_not_found(live_server: str) -> None:
     """M4-API-09: /actions returns GAME_NOT_FOUND for unknown game."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        _, access_token = _register_user(client=client, username="m409u")
+        response = client.post(
+            "/api/games/999999/actions",
+            headers=_auth_headers(access_token),
+            json={"action_idx": 0, "client_version": 1},
+        )
+
+    payload = _assert_error_payload(response=response, expected_status=404)
+    assert payload["code"] == "GAME_NOT_FOUND"
+    assert payload["detail"] == {"game_id": 999999}
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_10_get_settlement_phase_gate() -> None:
+def test_m4_rs_rest_10_get_settlement_phase_gate(live_server: str) -> None:
     """M4-API-10: /settlement phase gate."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m410")
+        response = client.get(
+            f"/api/games/{context['game_id']}/settlement",
+            headers=_auth_headers(context["token_by_seat"][0]),
+        )
+
+    payload = _assert_error_payload(response=response, expected_status=409)
+    assert payload["code"] == "GAME_STATE_CONFLICT"
 
 
 @pytest.mark.skip(reason="M4 scaffold only; test body pending")

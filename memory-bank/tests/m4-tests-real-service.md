@@ -2,7 +2,7 @@
 
 > 目标：在真实启动的后端服务上完成 M4 收口验证（后端-引擎集成与动作接口）。
 > 依据文档：`memory-bank/tests/m4-tests.md`、`memory-bank/implementation-plan.md`（M4/M6）、`memory-bank/interfaces/frontend-backend-interfaces.md`（Games/WS）、`memory-bank/design/backend_design.md`（3.x）。
-> 当前状态：`M4-API-01~05` 已完成 Red->Green（`5 passed`）；其余用例仍为 `skip` 占位。
+> 当前状态：`M4-API-01~05` 已完成 Red->Green（`5 passed`）；`M4-API-06~10` 已完成红测落地并执行（当前结果 `4 passed, 1 failed`，失败点为 API-10）；其余用例仍为 `skip` 占位。
 > 口径声明：本文件是 M4 API/WS/CC 测试ID与执行记录的唯一来源（SSOT）。
 
 ## 0) 测试环境与执行约定（真实服务）
@@ -15,8 +15,8 @@
   - `conda run -n XQB pytest backend/tests/integration/real_service/test_m4_rs_ws_01_06_red.py -q`
   - `conda run -n XQB pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`
 - 本阶段约束：
-  - 当前仅 `M4-API-01~05` 已进入并完成测试体 Red/Green。
-  - 其余测试 ID 暂保留 `pytest.skip` 占位。
+  - 当前 `M4-API-01~10` 已进入测试体阶段（其中 API-10 仍处 Red 失败）。
+  - `M4-API-11~14` 与全部 WS/CC 测试 ID 暂保留 `pytest.skip` 占位。
 
 ## 1) REST 收口测试映射（M4-API-01~14）
 
@@ -68,7 +68,8 @@
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
 | M4-API-01 ~ M4-API-05 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21 | 先执行 Red（`5 failed, 9 skipped`）；补齐后端 `/api/games/{id}/state` 与 `/api/games/{id}/actions` 基础链路（成员鉴权、版本冲突、动作推进）后复测 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q`，结果 `5 passed, 9 skipped`。 |
-| M4-API-06 ~ M4-API-14 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_rest_01_14_red.py`，维持 skip 占位。 |
+| M4-API-06 ~ M4-API-10 | 🔴 Red 已执行（部分通过） | Red 已完成 | 2026-02-21 | 按指定测试ID补齐测试体并执行 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q -k "rest_06 or rest_07 or rest_08 or rest_09 or rest_10"`：结果 `1 failed, 4 passed, 9 deselected`；失败点：`M4-API-10` 期望 `/settlement` 在非结算阶段返回 `409 + GAME_STATE_CONFLICT`，现状返回 `404 Not Found`（路由未实现）。 |
+| M4-API-11 ~ M4-API-14 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_rest_01_14_red.py`，维持 skip 占位。 |
 | M4-WS-01 ~ M4-WS-06 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_ws_01_06_red.py`，每条用例仅保留 skip 占位 |
 | M4-CC-01 ~ M4-CC-03 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_cc_01_03_red.py`，每条用例仅保留 skip 占位 |
 
@@ -83,4 +84,4 @@
   - `backend/tests/integration/real_service/m4_helpers.py`
   - `backend/tests/integration/real_service/m4_ws_helpers.py`
   - `backend/tests/integration/real_service/m4_scenarios.py`
-- 当前阶段约束：`M4-API-01~05` 已完成 Green；其余 real-service 用例保持 skip，占位后续按“人类指定测试ID -> 编写测试体 -> Red/Green”推进。
+- 当前阶段约束：`M4-API-01~09` 已可执行并通过，`M4-API-10` 已定位 Red 失败点；其余 real-service 用例保持 skip，占位后续按“人类指定测试ID -> 编写测试体 -> Red/Green”推进。

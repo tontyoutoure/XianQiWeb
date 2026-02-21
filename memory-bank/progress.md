@@ -9,8 +9,9 @@
 - M4 真实服务收口脚手架已完成（2026-02-21）：新增 `m4-tests-real-service.md` 与 `test_m4_rs_rest/ws/cc` 占位测试文件，当前全部为 skip，待按测试ID逐条落地测试体。
 - M4 测试文档已去重（2026-02-21）：`m4-tests.md` 收敛为 UT + 收口索引，M4 API/WS/CC 清单统一由 `m4-tests-real-service.md` 维护。
 - M4-API-01~05 真实服务收口已完成 Green（2026-02-21）：新增并打通 `/api/games/{id}/state`、`/api/games/{id}/actions` 基础链路，测试结果 `5 passed, 9 skipped`。
+- M4-API-06~10 红测已执行（2026-02-21）：补齐真实服务测试体后结果 `4 passed, 1 failed, 9 deselected`；当前阻塞点为 `M4-API-10`（`GET /api/games/{id}/settlement` 期望 phase gate `409 + GAME_STATE_CONFLICT`，现状 `404 Not Found`）。
 
 ## 当前阶段
-- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~05` 已完成 Green。
+- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~09` 已可执行，`M4-API-10` 处于 Red 阻塞。
 - 取舍：保持 UT 已有结果不扩写，M4 收口优先采用真实服务黑盒（REST/WS/并发）。
-- 下一步重心：继续推进 `M4-API-06~14`（非当前行动位、非法 cover、settlement 门禁与结算后 ready 分支）并补齐 WS/并发收口用例。
+- 下一步重心：先补齐 `M4-API-10` 对应 `/settlement` 路由与 phase gate，再推进 `M4-API-11~14` 与 WS/并发收口用例。
