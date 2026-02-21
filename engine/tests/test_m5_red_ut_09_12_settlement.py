@@ -104,8 +104,8 @@ def test_m5_ut_11_enough_at_reveal_and_final_non_ceramic_wins_no_enough_chips() 
     assert_seat_delta(indexed[2], delta=-1, enough=-1, reveal=0, ceramic=0)
 
 
-def test_m5_ut_12_settle_advances_to_finished_and_returns_contract_payload() -> None:
-    """M5-UT-12: settle should move state to finished and return settlement payload contract."""
+def test_m5_ut_12_settle_keeps_settlement_phase_and_returns_contract_payload() -> None:
+    """M5-UT-12: settle should keep settlement phase and return settlement payload contract."""
 
     Engine = load_engine_class()
     engine = Engine()
@@ -122,8 +122,8 @@ def test_m5_ut_12_settle_advances_to_finished_and_returns_contract_payload() -> 
     output, settlement, indexed = settle_and_index(engine)
     new_state = extract_new_state(output)
 
-    assert new_state["phase"] == "finished"
-    assert int(new_state["version"]) == initial_version + 1
+    assert new_state["phase"] == "settlement"
+    assert int(new_state["version"]) == initial_version
 
     final_state = settlement.get("final_state")
     assert isinstance(final_state, dict)
@@ -131,4 +131,3 @@ def test_m5_ut_12_settle_advances_to_finished_and_returns_contract_payload() -> 
     assert_seat_delta(indexed[0], delta=0, enough=0, reveal=0, ceramic=0)
     assert_seat_delta(indexed[1], delta=0, enough=0, reveal=0, ceramic=0)
     assert_seat_delta(indexed[2], delta=0, enough=0, reveal=0, ceramic=0)
-

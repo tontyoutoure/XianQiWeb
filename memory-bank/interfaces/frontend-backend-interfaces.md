@@ -147,7 +147,7 @@ in_round（非首手）动作约束：
 - 掀棋决策顺序由服务端控制：某玩家在 `buckle_flow` 扣后询问中选择 `REVEAL` 时，本次询问立即结束并切回扣棋方出棋，不再给第三名玩家下发掀棋决策。
 
 #### 1.3.2 settlement / 下一局准备调用时机
-- `/settlement`：仅当 `phase = settlement | finished` 时可调用，且仅限房间成员。
+- `/settlement`：仅当 `phase = settlement` 时可调用，且仅限房间成员。
 - 本协议不提供 `/api/games/{game_id}/continue`。
 - 下一局通过房间 ready 机制触发：结算后重置全员 ready，三人再次调用 `/api/rooms/{room_id}/ready` 且均为 `true` 时创建新局。
 说明：此处 `phase` 指 `public_state.phase`。

@@ -48,7 +48,7 @@ def test_m5_cli_01_settlement_phase_auto_settles_and_prints_settlement_block() -
 
         def settle(self):
             self.settle_calls += 1
-            self.phase = "finished"
+            self.phase = "settlement"
             self.version += 1
             return {
                 "new_state": {"phase": self.phase, "version": self.version},
@@ -100,7 +100,7 @@ def test_m5_cli_02_settlement_rows_include_delta_breakdown() -> None:
             }
 
         def settle(self):
-            self.phase = "finished"
+            self.phase = "settlement"
             self.version += 1
             return {
                 "new_state": {"phase": self.phase, "version": self.version},
@@ -152,7 +152,7 @@ def test_m5_cli_03_settlement_output_prints_sum_delta_invariant() -> None:
             }
 
         def settle(self):
-            self.phase = "finished"
+            self.phase = "settlement"
             self.version += 1
             return {
                 "new_state": {"phase": self.phase, "version": self.version},

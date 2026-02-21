@@ -143,7 +143,7 @@ def reduce_apply_action(
     """Apply action to state in-place and return the mutated state."""
 
     phase = state.get("phase")
-    if phase in {"settlement", "finished"}:
+    if phase == "settlement":
         raise ValueError("ENGINE_INVALID_PHASE")
 
     if client_version is not None and int(client_version) != int(state.get("version", 0)):

@@ -4,6 +4,8 @@
 - M2 房间大厅主链路已完成，剩余少量依赖引擎开局能力的收尾项。
 - M3 逻辑引擎核心规则已实现并通过阶段测试；CLI 可完成一局从开局到结算的基础演示。
 - M5 结算能力已接入 CLI：进入 `settlement` 后可直接输出按 seat 的结算明细。
+- M5 终态语义收敛完成（2026-02-21）：移除引擎 `finished` 阶段，统一以 `settlement` 作为唯一结算终态；同步更新后端 `/settlement` phase gate、WS 触发条件、接口/设计文档与相关测试。
+- M5-BE-01~05 已完成 Green（2026-02-21）：新增并执行 `backend/tests/api/games/test_m5_api_01_05_settlement_red.py`，经历 Red（`2 failed, 3 passed`）后改造收敛为 Green（`5 passed`）。
 - M4/M5/M6 文档已补齐（2026-02-20）：已冻结 Games REST、房间 WS 游戏事件、结算后重新 ready 开局规则与对应测试清单。
 - M4-UT-01~05 已完成 Green（2026-02-20）：后端 game 编排层单测从 Red（`5 failed`）推进到 Green（`5 passed`）。
 - M4 真实服务收口脚手架已完成（2026-02-21）：新增 `m4-tests-real-service.md` 与 `test_m4_rs_rest/ws/cc` 占位测试文件，初始阶段全部为 skip，后续按测试ID逐条落地测试体。
@@ -16,6 +18,6 @@
 - M4-CC-01~03 并发收口已完成 Red 实测（2026-02-21）：补齐 `test_m4_rs_cc_01_03_red.py` 测试体后执行 `pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`，结果 `3 passed`。
 
 ## 当前阶段
-- 结论（2026-02-21）：M4 收口测试已覆盖 REST/WS/并发三类场景，`M4-API-01~14`、`M4-WS-01~06`、`M4-CC-01~03` 均已可执行并通过。
-- 取舍：保持 UT 已有结果不扩写，M4 收口优先采用真实服务黑盒（REST/WS/并发）。
-- 下一步重心：进入下一阶段需求（M5/M6 后续增量）或按人类指定继续扩展收口用例。
+- 结论（2026-02-21）：已完成 M5 结算终态语义收敛（`settlement` 单终态）并打通 `M5-BE-01~05`；M4 收口结果保持有效。
+- 取舍：真实服务（需本地端口）场景继续沿用既有 M4 收口结果，本轮以可在当前环境执行的 API/引擎测试为主完成回归。
+- 下一步重心：推进 `M5-BE-06~10`（重新 ready 开局剩余分支与并发/WS）或按人类指定继续扩展 M5 收口。

@@ -367,7 +367,7 @@ async def _broadcast_game_progress(game_id: int) -> None:
     await _broadcast_game_public_state(room_id=room_id, game_id=game_id)
     await _broadcast_game_private_states(room_id=room_id, game_id=game_id)
 
-    if game.phase in {"settlement", "finished"} or game.status in {"settlement", "finished"}:
+    if game.phase == "settlement":
         await _broadcast_room_changes([room_id])
         await _broadcast_settlement(room_id=room_id, game_id=game_id)
 
@@ -616,7 +616,7 @@ def get_game_settlement(
     game_id: int,
     authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> dict[str, object]:
-    """Return settlement payload for a room member in settlement/finished phases."""
+    """Return settlement payload for a room member in settlement phase."""
     user = _require_current_user(authorization)
     user_id = int(user["id"])
     try:

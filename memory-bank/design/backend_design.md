@@ -339,7 +339,7 @@ backend/
 #### GameSession
 - `game_id: int`
 - `room_id: int`
-- `status: in_progress|settlement|finished|aborted`
+- `status: in_progress|settlement|aborted`
 - `engine: XianQiEngine`（内嵌引擎对象）
 - `seat_to_user_id: dict[int, int]`
 - `user_id_to_seat: dict[int, int]`
@@ -383,7 +383,7 @@ backend/
   - `404 GAME_NOT_FOUND`
 
 #### GET `/api/games/{game_id}/settlement`
-- 仅 `phase in {settlement, finished}` 可调用。
+- 仅 `phase = settlement` 可调用。
 - 返回引擎 settlement 结构（含 `chip_delta_by_seat`）。
 
 ### 3.5 WS 推送策略（M6）

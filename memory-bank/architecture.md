@@ -85,7 +85,6 @@ waiting → playing → settlement →（结算后清空 ready）等待玩家重
 状态映射（建议）：
 - engine.phase = init / buckle_flow / in_round → games.status = in_progress
 - engine.phase = settlement → games.status = settlement
-- engine.phase = finished → games.status = finished
 - rooms.status：当前房间有 `games.status = in_progress` 则为 playing；有 `games.status = settlement` 则为 settlement；否则为 waiting
 
 ### 3.2 引擎规则状态机引用（SSOT）

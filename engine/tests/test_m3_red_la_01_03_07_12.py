@@ -190,7 +190,7 @@ def test_m3_la_09_buckle_flow_reveal_query_only_reveal_and_pass() -> None:
     assert types == ["REVEAL", "PASS_REVEAL"]
 
 
-def test_m3_la_10_settlement_and_finished_have_no_actions() -> None:
+def test_m3_la_10_settlement_has_no_actions() -> None:
     engine = XianqiGameEngine()
 
     settlement_state = _make_state(
@@ -208,25 +208,7 @@ def test_m3_la_10_settlement_and_finished_have_no_actions() -> None:
         "plays": [],
     }
 
-    finished_state = _make_state(
-        phase="finished",
-        current_seat=0,
-        hand_by_seat={0: {"R_SHI": 1}},
-        round_kind=0,
-        last_combo_power=-1,
-    )
-    finished_state["turn"] = {
-        "current_seat": 0,
-        "round_index": 0,
-        "round_kind": 0,
-        "last_combo": None,
-        "plays": [],
-    }
-
     engine.load_state(settlement_state)
-    assert engine.get_legal_actions(0) == {"seat": 0, "actions": []}
-
-    engine.load_state(finished_state)
     assert engine.get_legal_actions(0) == {"seat": 0, "actions": []}
 
 

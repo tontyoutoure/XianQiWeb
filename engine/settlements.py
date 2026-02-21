@@ -104,8 +104,7 @@ def settle_state(state: dict[str, Any] | None) -> dict[str, Any]:
         )
 
     final_state = deepcopy(state)
-    final_state["phase"] = "finished"
-    final_state["version"] = int(final_state.get("version", 0)) + 1
+    final_state["phase"] = "settlement"
 
     return {
         "new_state": final_state,

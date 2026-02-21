@@ -260,20 +260,16 @@ def run_cli(
         public_state = engine.get_public_state()
         phase = str(public_state.get("phase"))
 
-        if phase in {"settlement", "finished"}:
+        if phase == "settlement":
             output_fn(render_state_view(public_state=public_state, acting_seat=0, private_state_by_seat={0: {}}))
-            if phase == "settlement":
-                try:
-                    settle_output = engine.settle()
-                    settlement_payload = (
-                        settle_output.get("settlement", {}) if isinstance(settle_output, dict) else {}
-                    )
-                    output_fn(render_settlement_view(settlement_payload))
-                    continue
-                except NotImplementedError:
-                    output_fn("结算阶段已到达，当前版本未实现 settle，结束演练。")
-            else:
-                output_fn("对局已结束。")
+            try:
+                settle_output = engine.settle()
+                settlement_payload = (
+                    settle_output.get("settlement", {}) if isinstance(settle_output, dict) else {}
+                )
+                output_fn(render_settlement_view(settlement_payload))
+            except NotImplementedError:
+                output_fn("结算阶段已到达，当前版本未实现 settle，结束演练。")
             return 0
 
         acting_seat = _resolve_acting_seat(public_state)

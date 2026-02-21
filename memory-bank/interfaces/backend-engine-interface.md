@@ -11,7 +11,7 @@
 引擎对象建议提供的方法：
 - `init_game(config, rng_seed?) -> output`：初始化新局并返回一次输出快照（见 1.5）。
 - `apply_action(action_idx, cover_list=None, client_version=None) -> output`：按 `legal_actions` 列表序号执行动作并推进状态，返回输出快照（见 1.5）。
-- `settle() -> output`：在 `phase = settlement` 时计算结算并推进到 `finished`，返回输出快照（见 1.5）。
+- `settle() -> output`：在 `phase = settlement` 时计算结算并返回输出快照（见 1.5）。
 - `get_public_state() -> public_state`：获取当前公共状态（脱敏）。
 - `get_private_state(seat) -> private_state`：获取指定 seat 的私有状态。
 - `get_legal_actions(seat) -> legal_actions`：获取指定 seat 的合法动作列表（通常为当前行动玩家）。
@@ -56,7 +56,7 @@
 ```jsonc
 {
   "version": 12, // 状态版本号，单调递增，用于乐观锁与重连校验（每次动作被接受并更新状态后 +1）
-  "phase": "in_round", // 对局阶段（init / buckle_flow / in_round / settlement / finished）
+  "phase": "in_round", // 对局阶段（init / buckle_flow / in_round / settlement）
   "players": [
     {
       "seat": 0, // 座次（0/1/2，逆时针）
@@ -144,7 +144,7 @@
 - public_state（完整公共快照，前端可直接渲染）
 - private_state_by_seat（每个座次的私有快照，仅向本人发送）
 - legal_actions（当前应行动玩家的全部合法动作）
-- settlement（结算结果，仅在 `phase = settlement / finished` 时提供；包含完整状态与每个玩家筹码变更）
+- settlement（结算结果，仅在 `phase = settlement` 时提供；包含完整状态与每个玩家筹码变更）
 
 #### 1.5.1 public_state（脱敏）
 ```jsonc

@@ -1,7 +1,7 @@
 # M5 阶段测试列表（结算与重新准备下一局）
 
 > 依据文档：`memory-bank/implementation-plan.md`（M5）、`memory-bank/design/engine_design.md`（4.3）、`memory-bank/interfaces/backend-engine-interface.md`（1.5.4）、`XianQi_rules.md`（结算筹码）。
-> 当前范围：保留“引擎结算 + engine.cli 结算展示”结果，并补充后端 `/settlement` 与“结算后重新 ready 开局”的接口测试清单（待执行）。
+> 当前范围：保留“引擎结算 + engine.cli 结算展示”结果，并补充后端 `/settlement` 与“结算后重新 ready 开局”的接口测试清单（`M5-BE-01~05` 已完成 Red->Green）。
 
 ## 0) 测试运行环境与执行约定
 
@@ -28,7 +28,7 @@
 | M5-UT-09 | 掀棋惩罚不触发（掀时已够） | `revealer_enough_at_time=true` 时，该关系不产生 `delta_reveal` |
 | M5-UT-10 | 多条掀扣关系累计 | 同一 revealer 多条满足惩罚条件关系时，`delta_reveal` 按条数累加，不丢失 |
 | M5-UT-11 | 特殊规则：已够时掀棋且最终未瓷 | 该玩家不赢够棋筹码（`delta_enough=0`）；对应未够玩家也无需向其支付够棋筹码；掀棋相关筹码仍独立结算 |
-| M5-UT-12 | 结算后状态推进 | `phase=settlement` 成功 `settle` 后，`phase -> finished`、`version += 1`，并返回 `final_state + chip_delta_by_seat` |
+| M5-UT-12 | 结算后状态保持 | `phase=settlement` 成功 `settle` 后，保持 `phase=settlement`、`version` 不变，并返回 `final_state + chip_delta_by_seat` |
 | M5-UT-13 | 黑棋路径结算 | 黑棋直达 `settlement` 后 `settle` 成功；三人 `delta/delta_enough/delta_reveal/delta_ceramic` 全为 0 |
 
 ## 2) engine.cli 结算展示测试
@@ -44,8 +44,8 @@
 
 | 测试ID | 测试描述 | 通过条件 |
 |---|---|---|
-| M5-BE-01 | `GET /api/games/{id}/settlement` 成功 | `phase=settlement|finished` 时返回 200，包含 `chip_delta_by_seat` 与 `final_state` |
-| M5-BE-02 | `/settlement` phase 门禁 | `phase!=settlement|finished` 时返回 `409 + GAME_STATE_CONFLICT` |
+| M5-BE-01 | `GET /api/games/{id}/settlement` 成功 | `phase=settlement` 时返回 200，包含 `chip_delta_by_seat` 与 `final_state` |
+| M5-BE-02 | `/settlement` phase 门禁 | `phase!=settlement` 时返回 `409 + GAME_STATE_CONFLICT` |
 | M5-BE-03 | `/settlement` 成员权限 | 非房间成员访问返回 `403` |
 | M5-BE-04 | `/settlement` 资源不存在 | `game_id` 不存在返回 `404 + GAME_NOT_FOUND` |
 | M5-BE-05 | 结算后 ready 自动清零 | 进入结算后 `room_detail.members[*].ready` 均为 `false` |
@@ -73,13 +73,14 @@
 
 ## 6) TDD 执行记录（进行中）
 
-> 说明：按“人类指定测试ID -> 编写测试 -> 执行 Red/Green”推进；当前已完成 `M5-UT-01~13` 红测落地与执行。
+> 说明：按“人类指定测试ID -> 编写测试 -> 执行 Red/Green”推进；当前已完成 `M5-UT-01~13` 与 `M5-BE-01~05`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
 | M5-UT-01 ~ M5-UT-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：实现 `engine/settlements.py` 结算逻辑并更新 `engine/core.py` 的 `settle` 返回结构后，执行 `pytest engine/tests/test_m5_red_ut_01_04_settlement.py -q`，结果 `4 passed`。 |
 | M5-UT-05 ~ M5-UT-08 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_05_08_settlement.py -q`，结果 `4 passed`。 |
-| M5-UT-09 ~ M5-UT-12 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，结果 `4 passed`。 |
+| M5-UT-09 ~ M5-UT-12 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：首次执行 `pytest engine/tests/test_m5_red_ut_09_12_settlement.py -q`，结果 `4 passed`；2026-02-21：移除 `finished` 终态后复测同命令，结果仍为 `4 passed`。 |
 | M5-UT-13 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，结果 `1 passed`。 |
-| M5-CLI-01 ~ M5-CLI-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-20：在 `engine/cli.py` 接入结算展示（自动触发 `settle`、输出 seat 拆分与守恒提示）后执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `4 passed`。 |
-| M5-BE-01 ~ M5-BE-10 | ⏳ 待执行 | 未开始 | 2026-02-20：仅完成接口用例设计（`/settlement` + 结算后重新 ready），待进入后端联调阶段后按指定测试ID执行 Red/Green。 |
+| M5-CLI-01 ~ M5-CLI-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-20：在 `engine/cli.py` 接入结算展示（自动触发 `settle`、输出 seat 拆分与守恒提示）后执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `4 passed`；2026-02-21：终态收敛后复测同命令，结果仍为 `4 passed`。 |
+| M5-BE-01 ~ M5-BE-05 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：先执行 Red（`2 failed, 3 passed`，失败点为 `/settlement` 相位口径不一致与门禁被 `status` 绕过）；随后实施“移除 finished 终态、仅保留 settlement”改造后复测 `pytest backend/tests/api/games/test_m5_api_01_05_settlement_red.py -q`，结果 `5 passed`。 |
+| M5-BE-06 ~ M5-BE-10 | ⏳ 待执行 | 未开始 | 2026-02-21：尚未按人类指定进入该批次测试编写与 Red/Green 执行。 |

@@ -432,7 +432,7 @@ def test_m4_rs_rest_10_get_settlement_phase_gate(live_server: str) -> None:
 
 
 def test_m4_rs_rest_11_get_settlement_success(live_server: str) -> None:
-    """M4-API-11: /settlement success in settlement/finished phase."""
+    """M4-API-11: /settlement success in settlement phase."""
     with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
         context = _setup_three_players_and_start_game(client=client, username_prefix="m411")
         payload = _advance_game_until_settlement(
@@ -443,7 +443,7 @@ def test_m4_rs_rest_11_get_settlement_success(live_server: str) -> None:
 
     final_state = payload["final_state"]
     assert isinstance(final_state, dict)
-    assert str(final_state["phase"]) in {"settlement", "finished"}
+    assert str(final_state["phase"]) == "settlement"
     assert isinstance(payload["chip_delta_by_seat"], list)
     assert {int(item["seat"]) for item in payload["chip_delta_by_seat"]} == {0, 1, 2}
 

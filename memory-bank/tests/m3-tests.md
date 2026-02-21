@@ -57,7 +57,7 @@
 | M3-LA-07 | `in_round` 压制集合正确性 | 返回的 PLAY 全部可压制且不包含不可压制组合 |
 | M3-LA-08 | 非当前行动 seat 的动作 | `seat != turn.current_seat` 时返回空 `actions` |
 | M3-LA-09 | `buckle_flow` 询问态动作集合 | `pending_order` 非空时仅包含 `REVEAL` 与 `PASS_REVEAL` |
-| M3-LA-10 | `settlement/finished` 无动作 | `get_legal_actions` 返回空 `actions` |
+| M3-LA-10 | `settlement` 无动作 | `get_legal_actions` 返回空 `actions` |
 | M3-LA-11 | `action_idx` 稳定性 | 同一状态多次获取 `actions`，索引含义不漂移 |
 | M3-LA-12 | phase 切换后动作刷新 | `apply_action` 后下一状态的 `actions` 与新 `turn.current_seat` 一致 |
 | M3-LA-13 | `in_round` 首手前态 PLAY 组合全集覆盖 | `round_kind=0` 时 PLAY 必须覆盖单张/对子/狗脚对/三牛全部可出组合 |
@@ -103,7 +103,7 @@
 | M3-CLI-05 | 合法动作列表与索引 | CLI 按 `get_legal_actions` 顺序展示全部动作，`action_idx` 可直接提交 |
 | M3-CLI-06 | COVER 输入链路 | 选择 COVER 后可输入 `cover_list`（计数表），张数/持牌非法时提示并重试 |
 | M3-CLI-07 | 动作执行失败重试 | 非法输入或引擎错误（如 `ENGINE_INVALID_ACTION_INDEX`）不改状态并可重选 |
-| M3-CLI-08 | 对局结束行为 | 到 `settlement/finished` 时能给出明确提示并结束（或触发 `settle` 流程） |
+| M3-CLI-08 | 对局结束行为 | 到 `settlement` 时能给出明确提示并结束（或触发 `settle` 流程） |
 
 ### 4.2 `apply_action` 重构等效性测试（reducer 拆分）
 
@@ -187,7 +187,7 @@
 | M3-LA-07 | `phase=in_round`，`turn.current_seat=1`，`round_kind=2`，`last_combo.power=6`，`seat1.hand={"R_SHI":2,"R_MA":2,"B_NIU":2}` | 返回的 PLAY 全部 `power>6`，且不包含不可压制组合 |
 | M3-LA-08 | 任一可行动状态，但调用 `get_legal_actions(seat!=turn.current_seat)` | 返回 `{"seat":x,"actions":[]}` |
 | M3-LA-09 | `phase=buckle_flow`，`reveal.pending_order=[2,1]`，`turn.current_seat=2` | actions 仅含 `REVEAL` 与 `PASS_REVEAL` |
-| M3-LA-10 | `phase=settlement` 或 `phase=finished` | actions 为空 |
+| M3-LA-10 | `phase=settlement` | actions 为空 |
 | M3-LA-11 | 固定同一状态（建议 LA-04）连续取 `actions` | 每个 `action_idx` 语义不漂移 |
 | M3-LA-12 | 对同一局面先执行一次 `apply_action` 再取 `actions` | 新状态 actions 与新的 `turn.current_seat` 一致 |
 | M3-LA-13 | `phase=in_round`，`round_kind=0`，`last_combo=null`，`turn.current_seat=0`，`seat0.hand={"R_SHI":2,"R_GOU":1,"B_GOU":1,"R_NIU":3}` | PLAY 同时覆盖单张、同型对子、狗脚对、红三牛 |
@@ -226,7 +226,7 @@
 | M3-CLI-05 | 固定局面，获取 legal actions | CLI 列表顺序与 `get_legal_actions` 一致，索引从 0 连续递增 |
 | M3-CLI-06 | 选择 COVER，先输入错误张数，再输入正确 `cover_list`（计数表） | 首次提示错误并重输；第二次成功推进状态 |
 | M3-CLI-07 | 输入越界 `action_idx`（如 99） | 打印 `ENGINE_INVALID_ACTION_INDEX`，状态版本不变，可继续选择 |
-| M3-CLI-08 | 推进到 `settlement` 或 `finished` | CLI 给出终局提示并退出；若 `settle` 可用则可执行结算后退出 |
+| M3-CLI-08 | 推进到 `settlement` | CLI 给出终局提示并退出；若 `settle` 可用则可执行结算后退出 |
 
 ### 6.5 `get_public_state` 脱敏投影（新增需求）
 

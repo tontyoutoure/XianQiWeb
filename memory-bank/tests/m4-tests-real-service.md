@@ -40,7 +40,7 @@
 
 ### 1.1) M4-API-11~14 通过条件补充
 
-- M4-API-11：在对局进入 `phase=settlement|finished` 后，`GET /api/games/{id}/settlement` 返回 `200`，且响应包含 `final_state` 与 `chip_delta_by_seat`。
+- M4-API-11：在对局进入 `phase=settlement` 后，`GET /api/games/{id}/settlement` 返回 `200`，且响应包含 `final_state` 与 `chip_delta_by_seat`。
 - M4-API-12：进入结算后，`GET /api/rooms/{room_id}` 返回 `status=settlement`，且三名成员 `ready=false`。
 - M4-API-13：结算阶段三名成员再次 `ready=true` 后，房间切到 `status=playing`，并创建新 `current_game_id`（与旧局不同）。
 - M4-API-14：结算阶段仅部分成员 `ready=true` 时，不创建新局（`current_game_id` 保持旧局），房态保持 `settlement`。

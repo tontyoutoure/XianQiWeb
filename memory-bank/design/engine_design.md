@@ -4,7 +4,7 @@
 
 ## 0. 范围与基线
 - 文档范围：三人 MVP 掀棋规则；不包含额外规则（掀瓷包瓷、抱头等）。
-- 状态机基线：`init -> buckle_flow -> in_round -> settlement -> finished`。
+- 状态机基线：`init -> buckle_flow -> in_round -> settlement`。
 - 接口基线：`init_game / apply_action / settle / get_public_state / get_private_state / get_legal_actions / dump_state / load_state`。
 - 一致性文档：
   - `memory-bank/architecture.md`
@@ -90,7 +90,7 @@ engine/
 ### 4.2 `apply_action(action_idx, cover_list=None, client_version=None) -> output`
 
 #### 4.2.1 公共校验链路（所有 phase 通用）
-1. `phase` 必须允许动作（`finished/settlement` 禁止）。
+1. `phase` 必须允许动作（`settlement` 禁止）。
 2. 若传 `client_version`，必须等于 `state.version`。
 3. 由当前 `state` 计算 `legal_actions(turn.current_seat)`。
 4. 校验 `action_idx` 在范围内，取出目标动作 `target_action`。
@@ -168,7 +168,7 @@ engine/
 4. 计算 `delta_reveal`：对每条掀扣关系，若 `revealer_enough_at_time=false` 且该 revealer 最终未够，则 revealer 向 buckler 付 1。
 5. `delta = delta_enough + delta_reveal + delta_ceramic`（`delta_ceramic` 可单列或并入 enough 规则实现，但输出需独立字段）。
 6. 生成 `settlement.final_state` 与 `chip_delta_by_seat`。
-7. `phase -> finished`，`version += 1`。
+7. 保持 `phase = settlement`，仅返回结算结果快照。
 
 ### 4.4 `get_public_state() -> public_state`
 - 从内部状态投影公共字段，隐藏他人手牌与垫牌牌面。
@@ -185,7 +185,7 @@ engine/
 
 ### 4.6 `get_legal_actions(seat) -> legal_actions`
 - 若 `seat != turn.current_seat`，固定返回 `{"seat": seat, "actions": []}`（不抛错）。
-- `phase in {settlement,finished}`：返回空动作。
+- `phase = settlement`：返回空动作。
 - `phase=buckle_flow`：
   - `pending_order=[]`：仅 `BUCKLE` 与 `PASS_BUCKLE`。
   - `pending_order!=[]`：仅 `REVEAL` 与 `PASS_REVEAL`。
@@ -227,7 +227,7 @@ engine/
   - `ENGINE_INVALID_ACTION_INDEX` -> HTTP 400
   - `ENGINE_INVALID_COVER_LIST` -> HTTP 400
   - `ENGINE_INVALID_PHASE` -> HTTP 409
-    - 示例 1：`phase in {settlement, finished}` 时调用 `apply_action`。
+    - 示例 1：`phase = settlement` 时调用 `apply_action`。
 - 所有拒绝动作都不得改变状态，也不得增加 `version`。
 
 ## 7. 与后端集成约定（M4 前置）
@@ -289,7 +289,7 @@ engine/
 8. 当 `phase=settlement`：
    - 若 `settle` 已实现，提示执行结算（或默认自动 `settle`）。
    - 若 `settle` 未实现，提示“结算阶段已到达，当前版本未实现 settle”，并结束本次演练。
-9. 当 `phase=finished`，打印结束信息并退出。
+9. 当 `phase=settlement`，打印结算信息并退出。
 
 ### 9.4 显示与隐私口径
 - 默认仅展示当前决策 seat 的私有手牌；其余 seat 只显示公共信息。

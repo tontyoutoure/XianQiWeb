@@ -367,15 +367,14 @@ class RoomRegistry:
         }
 
     def get_game_settlement_for_user(self, game_id: int, user_id: int) -> dict[str, object]:
-        """Return settlement payload for a game member in settlement/finished phase."""
+        """Return settlement payload for a game member in settlement phase."""
         game = self.get_game(game_id)
         seat = game.user_id_to_seat.get(user_id)
         if seat is None:
             raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
 
         phase = str(game.phase)
-        status = str(game.status)
-        if phase not in {"settlement", "finished"} and status not in {"settlement", "finished"}:
+        if phase != "settlement":
             raise GameStateConflictError(f"game_id={game_id} not in settlement phase")
 
         final_state = {

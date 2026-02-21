@@ -20,7 +20,7 @@ def get_legal_actions(state: dict[str, Any] | None, seat: int) -> dict[str, Any]
     if current_seat is None or int(current_seat) != int(seat):
         return {"seat": seat, "actions": []}
 
-    if phase in {"settlement", "finished"}:
+    if phase == "settlement":
         return {"seat": seat, "actions": []}
 
     if phase == "buckle_flow":

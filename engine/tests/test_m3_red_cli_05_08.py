@@ -56,6 +56,7 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
             self.version = 7
             self.phase = "in_round"
             self.apply_calls = 0
+            self.done = False
 
         def init_game(self, _config, rng_seed=None) -> None:  # noqa: ANN001, ANN002
             _ = rng_seed
@@ -64,7 +65,7 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
             return {
                 "version": self.version,
                 "phase": self.phase,
-                "turn": {"current_seat": 0},
+                "turn": {"current_seat": None if self.done else 0},
                 "players": [
                     {"seat": 0, "hand_count": 2},
                     {"seat": 1, "hand_count": 2},
@@ -85,7 +86,7 @@ def test_m3_cli_06_cover_invalid_then_retry_cover_only() -> None:
             self.apply_calls += 1
             if self.apply_calls == 1:
                 raise ValueError("ENGINE_INVALID_COVER_LIST")
-            self.phase = "finished"
+            self.done = True
             self.version += 1
             return {"new_state": {"phase": self.phase, "version": self.version}}
 
@@ -118,6 +119,7 @@ def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
         def __init__(self) -> None:
             self.version = 11
             self.phase = "buckle_flow"
+            self.done = False
 
         def init_game(self, _config, rng_seed=None) -> None:  # noqa: ANN001, ANN002
             _ = rng_seed
@@ -126,7 +128,7 @@ def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
             return {
                 "version": self.version,
                 "phase": self.phase,
-                "turn": {"current_seat": 0},
+                "turn": {"current_seat": None if self.done else 0},
                 "players": [
                     {"seat": 0, "hand_count": 2},
                     {"seat": 1, "hand_count": 2},
@@ -145,7 +147,7 @@ def test_m3_cli_07_invalid_action_index_prints_error_code_prefix() -> None:
             assert action_idx == 0
             assert cover_list is None
             assert client_version == self.version
-            self.phase = "finished"
+            self.done = True
             self.version += 1
             return {"new_state": {"phase": self.phase, "version": self.version}}
 

@@ -156,7 +156,7 @@ def test_m3_log_05_cli_passes_log_path_to_engine_init() -> None:
         def get_public_state():
             return {
                 "version": 1,
-                "phase": "finished",
+                "phase": "in_round",
                 "turn": {"current_seat": None},
                 "players": [
                     {"seat": 0, "hand_count": 0},
