@@ -179,7 +179,11 @@ def test_m2_rs_rest_15_all_ready_behavior_matches_current_stage_contract(live_se
             headers=_to_headers(users[0][1]),
             json={"ready": True},
         )
-        assert repeat_ready.status_code == 200
+        if room_before["status"] == "waiting":
+            assert repeat_ready.status_code == 200
+        else:
+            payload = _assert_error_payload(response=repeat_ready, expected_status=409)
+            assert payload["code"] == "ROOM_NOT_WAITING"
 
         detail_after = client.get("/api/rooms/0", headers=_to_headers(users[0][1]))
         assert detail_after.status_code == 200

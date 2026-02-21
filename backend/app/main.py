@@ -50,16 +50,18 @@ settings = load_settings()
 room_registry = RoomRegistry(room_count=settings.xqweb_room_count)
 _lobby_connections: set[Any] = set()
 _room_connections: dict[int, set[Any]] = {}
+_room_connection_users: dict[Any, int] = {}
 WS_PROTOCOL_VERSION = 1
 
 
 def startup() -> None:
     """Ensure M1 auth tables exist before handling traffic."""
-    global room_registry, _lobby_connections, _room_connections
+    global room_registry, _lobby_connections, _room_connections, _room_connection_users
     startup_auth_schema(settings)
     room_registry = RoomRegistry(room_count=settings.xqweb_room_count)
     _lobby_connections = set()
     _room_connections = {}
+    _room_connection_users = {}
 
 
 @asynccontextmanager
@@ -156,6 +158,66 @@ async def _send_room_snapshot(websocket: Any, room_id: int) -> None:
     await _ws_send_event(websocket, "ROOM_UPDATE", {"room": _room_detail(room)})
 
 
+def _build_game_public_payload(game_id: int) -> dict[str, Any]:
+    game = room_registry.get_game(game_id)
+    if not game.seat_to_user_id:
+        raise GameNotFoundError(f"game_id={game_id} has no players")
+    sample_user_id = next(iter(game.seat_to_user_id.values()))
+    state_payload = room_registry.get_game_state_for_user(game_id=game_id, user_id=sample_user_id)
+    return {
+        "game_id": game_id,
+        "public_state": state_payload["public_state"],
+    }
+
+
+def _build_game_private_payload(*, game_id: int, user_id: int) -> dict[str, Any]:
+    state_payload = room_registry.get_game_state_for_user(game_id=game_id, user_id=user_id)
+    return {
+        "game_id": game_id,
+        "self_seat": state_payload["self_seat"],
+        "private_state": state_payload["private_state"],
+        "legal_actions": state_payload["legal_actions"],
+    }
+
+
+def _build_settlement_payload(*, game_id: int, user_id: int) -> dict[str, Any]:
+    settlement_payload = room_registry.get_game_settlement_for_user(game_id=game_id, user_id=user_id)
+    return {"game_id": game_id, **settlement_payload}
+
+
+async def _send_game_public_state(websocket: Any, game_id: int) -> None:
+    await _ws_send_event(websocket, "GAME_PUBLIC_STATE", _build_game_public_payload(game_id))
+
+
+async def _send_game_private_state(websocket: Any, *, game_id: int, user_id: int) -> None:
+    try:
+        payload = _build_game_private_payload(game_id=game_id, user_id=user_id)
+    except (GameForbiddenError, GameNotFoundError):
+        return
+    await _ws_send_event(websocket, "GAME_PRIVATE_STATE", payload)
+
+
+async def _send_settlement_event(websocket: Any, *, game_id: int, user_id: int) -> None:
+    try:
+        payload = _build_settlement_payload(game_id=game_id, user_id=user_id)
+    except (GameForbiddenError, GameNotFoundError, GameStateConflictError):
+        return
+    await _ws_send_event(websocket, "SETTLEMENT", payload)
+
+
+async def _send_room_initial_snapshot(websocket: Any, *, room_id: int, user_id: int) -> None:
+    await _send_room_snapshot(websocket, room_id)
+    room = room_registry.get_room(room_id)
+    game_id = room.current_game_id
+    if game_id is None:
+        return
+    try:
+        await _send_game_public_state(websocket, game_id)
+    except GameNotFoundError:
+        return
+    await _send_game_private_state(websocket, game_id=game_id, user_id=user_id)
+
+
 async def _send_heartbeat_ping(websocket: Any) -> None:
     await _ws_send_event(websocket, "PING", {})
 
@@ -230,6 +292,84 @@ async def _broadcast_room_changes(room_ids: list[int]) -> None:
         seen.add(room_id)
         await _broadcast_room_update(room_id)
     await _broadcast_lobby_rooms()
+
+
+async def _broadcast_game_public_state(*, room_id: int, game_id: int) -> None:
+    listeners = _room_connections.get(room_id)
+    if not listeners:
+        return
+
+    stale: list[Any] = []
+    for websocket in list(listeners):
+        try:
+            await _send_game_public_state(websocket, game_id)
+        except Exception:
+            stale.append(websocket)
+
+    for websocket in stale:
+        listeners.discard(websocket)
+        _room_connection_users.pop(websocket, None)
+    if not listeners:
+        _room_connections.pop(room_id, None)
+
+
+async def _broadcast_game_private_states(*, room_id: int, game_id: int) -> None:
+    listeners = _room_connections.get(room_id)
+    if not listeners:
+        return
+
+    stale: list[Any] = []
+    for websocket in list(listeners):
+        user_id = _room_connection_users.get(websocket)
+        if user_id is None:
+            continue
+        try:
+            await _send_game_private_state(websocket, game_id=game_id, user_id=user_id)
+        except Exception:
+            stale.append(websocket)
+
+    for websocket in stale:
+        listeners.discard(websocket)
+        _room_connection_users.pop(websocket, None)
+    if not listeners:
+        _room_connections.pop(room_id, None)
+
+
+async def _broadcast_settlement(*, room_id: int, game_id: int) -> None:
+    listeners = _room_connections.get(room_id)
+    if not listeners:
+        return
+
+    stale: list[Any] = []
+    for websocket in list(listeners):
+        user_id = _room_connection_users.get(websocket)
+        if user_id is None:
+            continue
+        try:
+            await _send_settlement_event(websocket, game_id=game_id, user_id=user_id)
+        except Exception:
+            stale.append(websocket)
+
+    for websocket in stale:
+        listeners.discard(websocket)
+        _room_connection_users.pop(websocket, None)
+    if not listeners:
+        _room_connections.pop(room_id, None)
+
+
+async def _broadcast_game_progress(game_id: int) -> None:
+    try:
+        game = room_registry.get_game(game_id)
+    except GameNotFoundError:
+        return
+
+    room_id = int(game.room_id)
+    await _broadcast_game_public_state(room_id=room_id, game_id=game_id)
+    await _broadcast_game_private_states(room_id=room_id, game_id=game_id)
+
+    if game.phase in {"settlement", "finished"} or game.status in {"settlement", "finished"}:
+        await _broadcast_room_changes([room_id])
+        await _broadcast_settlement(room_id=room_id, game_id=game_id)
 
 
 @app.exception_handler(HTTPException)
@@ -468,6 +608,7 @@ def post_game_action(
             message="game action is invalid",
             detail={"game_id": game_id},
         )
+    _dispatch_async(_broadcast_game_progress(game_id))
 
 
 @app.get("/api/games/{game_id}/settlement")
@@ -561,7 +702,7 @@ async def ws_room(websocket: WebSocket, room_id: int) -> None:
         return
 
     try:
-        me(token)
+        user = me(token)
     except HTTPException:
         await _close_ws_unauthorized(websocket)
         return
@@ -576,13 +717,16 @@ async def ws_room(websocket: WebSocket, room_id: int) -> None:
     await websocket.accept()
     listeners = _room_connections.setdefault(room_id, set())
     listeners.add(websocket)
+    user_id = int(user["id"])
+    _room_connection_users[websocket] = user_id
     try:
-        await _send_room_snapshot(websocket, room_id)
+        await _send_room_initial_snapshot(websocket, room_id=room_id, user_id=user_id)
         await _ws_message_loop(websocket)
     except WebSocketDisconnect:
         return
     finally:
         listeners.discard(websocket)
+        _room_connection_users.pop(websocket, None)
         if not listeners:
             _room_connections.pop(room_id, None)
 
