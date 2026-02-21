@@ -13,8 +13,9 @@
 - M4-API-11~14 真实服务收口已完成 Green（2026-02-21）：先完成 Red（`4 failed, 10 deselected`，失败点为 80 步内未进入 settlement），随后补齐后端 settlement 迁移与 ready 重置/再开局链路后复测结果 `4 passed, 10 deselected`。
 - M4-API-01~14 全量 REST 收口回归通过（2026-02-21）：执行 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q`，结果 `14 passed`。
 - M4-WS-01~06 真实服务收口已完成 Green（2026-02-21）：补齐房间 WS 游戏事件推送链路（初始有局快照顺序、动作后 public/private 推送、结算 SETTLEMENT 推送）后执行 `pytest backend/tests/integration/real_service/test_m4_rs_ws_01_06_red.py -q`，结果 `6 passed`。
+- M4-CC-01~03 并发收口已完成 Red 实测（2026-02-21）：补齐 `test_m4_rs_cc_01_03_red.py` 测试体后执行 `pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`，结果 `3 passed`。
 
 ## 当前阶段
-- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~14` 与 `M4-WS-01~06` 均已完成 Green。
+- 结论（2026-02-21）：M4 收口测试已覆盖 REST/WS/并发三类场景，`M4-API-01~14`、`M4-WS-01~06`、`M4-CC-01~03` 均已可执行并通过。
 - 取舍：保持 UT 已有结果不扩写，M4 收口优先采用真实服务黑盒（REST/WS/并发）。
-- 下一步重心：继续推进 M4 收口并发场景（`M4-CC-01~03`），补齐并发动作互斥、结算后并发 ready、一致性开局约束。
+- 下一步重心：进入下一阶段需求（M5/M6 后续增量）或按人类指定继续扩展收口用例。

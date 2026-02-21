@@ -2,7 +2,7 @@
 
 > 目标：在真实启动的后端服务上完成 M4 收口验证（后端-引擎集成与动作接口）。
 > 依据文档：`memory-bank/tests/m4-tests.md`、`memory-bank/implementation-plan.md`（M4/M6）、`memory-bank/interfaces/frontend-backend-interfaces.md`（Games/WS）、`memory-bank/design/backend_design.md`（3.x）。
-> 当前状态：`M4-API-01~14` 已完成 Red->Green（`M4-API-01~05` 结果 `5 passed, 9 skipped`；`M4-API-06~10` 结果 `5 passed, 9 deselected`；`M4-API-11~14` 结果 `4 passed, 10 deselected`；全量回归 `14 passed`）；`M4-WS-01~06` 已完成 Green（`6 passed`）；CC 用例仍为 `skip` 占位。
+> 当前状态：`M4-API-01~14` 已完成 Red->Green（`M4-API-01~05` 结果 `5 passed, 9 skipped`；`M4-API-06~10` 结果 `5 passed, 9 deselected`；`M4-API-11~14` 结果 `4 passed, 10 deselected`；全量回归 `14 passed`）；`M4-WS-01~06` 已完成 Green（`6 passed`）；`M4-CC-01~03` 已完成 Red 实测（`3 passed`）。
 > 口径声明：本文件是 M4 API/WS/CC 测试ID与执行记录的唯一来源（SSOT）。
 
 ## 0) 测试环境与执行约定（真实服务）
@@ -17,7 +17,7 @@
 - 本阶段约束：
   - 当前 `M4-API-01~14` 已完成 Green。
   - 当前 `M4-WS-01~06` 已完成 Green。
-  - 全部 CC 测试 ID 暂保留 `pytest.skip` 占位。
+  - 当前 `M4-CC-01~03` 已移除 `pytest.skip` 并完成 Red 实测通过（`3 passed`）。
 
 ## 1) REST 收口测试映射（M4-API-01~14）
 
@@ -79,7 +79,7 @@
 | M4-API-06 ~ M4-API-10 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21 | 按指定测试ID补齐测试体并修复 `/api/games/{id}/settlement` phase gate 后，执行 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q -k "rest_06 or rest_07 or rest_08 or rest_09 or rest_10"`：结果 `5 passed, 9 deselected`。 |
 | M4-API-11 ~ M4-API-14 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21 | 按指定测试ID补齐测试体后，先执行 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q -k "rest_11 or rest_12 or rest_13 or rest_14"`（`4 failed, 10 deselected`，失败点：80 步内未进入 settlement）；随后补齐后端 settlement 迁移与 ready 重置/再开局链路后复测同命令，结果 `4 passed, 10 deselected`。 |
 | M4-WS-01 ~ M4-WS-06 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21 | 基于 Red 结果补齐房间 WS 游戏事件推送链路（初始有局快照 `ROOM_UPDATE -> GAME_PUBLIC_STATE -> GAME_PRIVATE_STATE`、动作后 public/private 推送、进入结算推送 `SETTLEMENT`）后复测 `pytest backend/tests/integration/real_service/test_m4_rs_ws_01_06_red.py -q`，结果 `6 passed`。 |
-| M4-CC-01 ~ M4-CC-03 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_cc_01_03_red.py`，每条用例仅保留 skip 占位 |
+| M4-CC-01 ~ M4-CC-03 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 按指定测试ID补齐并发测试体后执行 `pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`，结果 `3 passed`（并发动作互斥、结算后并发 ready 单次开局、第三个 ready 临界并发单次开局均满足）。 |
 
 ## 6) Real-service 收口索引（2026-02-21）
 
@@ -92,4 +92,4 @@
   - `backend/tests/integration/real_service/m4_helpers.py`
   - `backend/tests/integration/real_service/m4_ws_helpers.py`
   - `backend/tests/integration/real_service/m4_scenarios.py`
-- 当前阶段约束：`M4-API-01~14` 与 `M4-WS-01~06` 已可执行并通过；其余 real-service 用例保持 skip，占位后续按“人类指定测试ID -> 编写测试体 -> Red/Green”推进。
+- 当前阶段约束：`M4-API-01~14`、`M4-WS-01~06`、`M4-CC-01~03` 已可执行并通过；其余阶段按“人类指定测试ID -> 编写测试体 -> Red/Green”推进。
