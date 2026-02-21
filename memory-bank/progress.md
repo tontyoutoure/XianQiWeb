@@ -12,8 +12,9 @@
 - M4-API-06~10 真实服务收口已完成 Green（2026-02-21）：补齐测试体并修复 `GET /api/games/{id}/settlement` phase gate 后，结果 `5 passed, 9 deselected`。
 - M4-API-11~14 真实服务收口已完成 Green（2026-02-21）：先完成 Red（`4 failed, 10 deselected`，失败点为 80 步内未进入 settlement），随后补齐后端 settlement 迁移与 ready 重置/再开局链路后复测结果 `4 passed, 10 deselected`。
 - M4-API-01~14 全量 REST 收口回归通过（2026-02-21）：执行 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q`，结果 `14 passed`。
+- M4-WS-01~06 红测已执行（2026-02-21）：补齐真实服务 WS 测试体并执行 `pytest backend/tests/integration/real_service/test_m4_rs_ws_01_06_red.py -q`，结果 `4 failed, 2 passed`；当前通过 `WS-01/06`，阻塞点集中在 `WS-02~05`（缺少 `GAME_PUBLIC_STATE / GAME_PRIVATE_STATE / SETTLEMENT` 推送链路）。
 
 ## 当前阶段
-- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~14` 已完成 Green。
+- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~14` 已完成 Green，`M4-WS-01~06` 已完成 Red。
 - 取舍：保持 UT 已有结果不扩写，M4 收口优先采用真实服务黑盒（REST/WS/并发）。
-- 下一步重心：推进 M4-WS 与 M4-CC 收口用例，从 skip 占位逐条落地并完成 Red/Green。
+- 下一步重心：补齐房间 WS 游戏事件链路（初始快照有局顺序、动作后 public/private 推送、进入结算 SETTLEMENT 推送），优先将 `M4-WS-02~05` 从 Red 推进到 Green。
