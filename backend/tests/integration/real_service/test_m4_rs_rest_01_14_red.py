@@ -132,6 +132,50 @@ def _build_action_payload_from_state(*, state_payload: dict[str, Any], client_ve
     return payload
 
 
+def _advance_game_until_settlement(
+    *,
+    client: httpx.Client,
+    game_id: int,
+    token_by_seat: dict[int, str],
+    max_steps: int = 80,
+) -> dict[str, Any]:
+    """Drive one live game until /settlement becomes available."""
+    observer_token = token_by_seat[0]
+    for _ in range(max_steps):
+        settlement_response = client.get(
+            f"/api/games/{game_id}/settlement",
+            headers=_auth_headers(observer_token),
+        )
+        if settlement_response.status_code == 200:
+            settlement_payload = settlement_response.json()
+            assert {"final_state", "chip_delta_by_seat"} <= set(settlement_payload)
+            return settlement_payload
+
+        conflict_payload = _assert_error_payload(response=settlement_response, expected_status=409)
+        assert conflict_payload["code"] == "GAME_STATE_CONFLICT"
+
+        probe_state = client.get(
+            f"/api/games/{game_id}/state",
+            headers=_auth_headers(observer_token),
+        )
+        assert probe_state.status_code == 200
+        probe_payload = probe_state.json()
+        current_seat = int(probe_payload["public_state"]["turn"]["current_seat"])
+        actor_token = token_by_seat[current_seat]
+
+        actor_state = client.get(f"/api/games/{game_id}/state", headers=_auth_headers(actor_token))
+        assert actor_state.status_code == 200
+        action_payload = _build_action_payload_from_state(state_payload=actor_state.json())
+        action_response = client.post(
+            f"/api/games/{game_id}/actions",
+            headers=_auth_headers(actor_token),
+            json=action_payload,
+        )
+        assert action_response.status_code == 204
+
+    pytest.fail(f"game_id={game_id} did not enter settlement within {max_steps} actions")
+
+
 def test_m4_rs_rest_01_get_state_success(live_server: str) -> None:
     """M4-API-01: GET /api/games/{id}/state success."""
     with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
@@ -387,25 +431,99 @@ def test_m4_rs_rest_10_get_settlement_phase_gate(live_server: str) -> None:
     assert payload["code"] == "GAME_STATE_CONFLICT"
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_11_get_settlement_success() -> None:
+def test_m4_rs_rest_11_get_settlement_success(live_server: str) -> None:
     """M4-API-11: /settlement success in settlement/finished phase."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m411")
+        payload = _advance_game_until_settlement(
+            client=client,
+            game_id=context["game_id"],
+            token_by_seat=context["token_by_seat"],
+        )
+
+    final_state = payload["final_state"]
+    assert isinstance(final_state, dict)
+    assert str(final_state["phase"]) in {"settlement", "finished"}
+    assert isinstance(payload["chip_delta_by_seat"], list)
+    assert {int(item["seat"]) for item in payload["chip_delta_by_seat"]} == {0, 1, 2}
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_12_ready_reset_after_settlement() -> None:
+def test_m4_rs_rest_12_ready_reset_after_settlement(live_server: str) -> None:
     """M4-API-12: ready flags are reset after settlement."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m412")
+        game_id = context["game_id"]
+        observer_token = context["token_by_seat"][0]
+
+        _advance_game_until_settlement(
+            client=client,
+            game_id=game_id,
+            token_by_seat=context["token_by_seat"],
+        )
+        room_response = client.get("/api/rooms/0", headers=_auth_headers(observer_token))
+
+    assert room_response.status_code == 200
+    room_payload = room_response.json()
+    assert room_payload["status"] == "settlement"
+    assert room_payload["current_game_id"] == game_id
+    assert all(member["ready"] is False for member in room_payload["members"])
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_13_all_ready_in_settlement_starts_new_game() -> None:
+def test_m4_rs_rest_13_all_ready_in_settlement_starts_new_game(live_server: str) -> None:
     """M4-API-13: all ready in settlement starts a new game."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m413")
+        old_game_id = context["game_id"]
+        token_by_seat = context["token_by_seat"]
+
+        _advance_game_until_settlement(
+            client=client,
+            game_id=old_game_id,
+            token_by_seat=token_by_seat,
+        )
+
+        for seat in (0, 1, 2):
+            ready_response = client.post(
+                "/api/rooms/0/ready",
+                headers=_auth_headers(token_by_seat[seat]),
+                json={"ready": True},
+            )
+            assert ready_response.status_code == 200
+
+        room_response = client.get("/api/rooms/0", headers=_auth_headers(token_by_seat[0]))
+
+    assert room_response.status_code == 200
+    room_payload = room_response.json()
+    assert room_payload["status"] == "playing"
+    assert isinstance(room_payload["current_game_id"], int)
+    assert room_payload["current_game_id"] != old_game_id
 
 
-@pytest.mark.skip(reason="M4 scaffold only; test body pending")
-def test_m4_rs_rest_14_partial_ready_in_settlement_not_start() -> None:
+def test_m4_rs_rest_14_partial_ready_in_settlement_not_start(live_server: str) -> None:
     """M4-API-14: partial ready in settlement does not start a new game."""
-    pass
+    with httpx.Client(base_url=live_server, timeout=3, trust_env=False) as client:
+        context = _setup_three_players_and_start_game(client=client, username_prefix="m414")
+        old_game_id = context["game_id"]
+        token_by_seat = context["token_by_seat"]
+
+        _advance_game_until_settlement(
+            client=client,
+            game_id=old_game_id,
+            token_by_seat=token_by_seat,
+        )
+
+        for seat in (0, 1):
+            ready_response = client.post(
+                "/api/rooms/0/ready",
+                headers=_auth_headers(token_by_seat[seat]),
+                json={"ready": True},
+            )
+            assert ready_response.status_code == 200
+
+        room_response = client.get("/api/rooms/0", headers=_auth_headers(token_by_seat[0]))
+
+    assert room_response.status_code == 200
+    room_payload = room_response.json()
+    assert room_payload["status"] == "settlement"
+    assert room_payload["current_game_id"] == old_game_id
+    assert sum(1 for member in room_payload["members"] if member["ready"]) == 2

@@ -11,6 +11,7 @@ import threading
 
 MAX_ROOM_MEMBERS = 3
 DEFAULT_CHIPS = 20
+SETTLEMENT_VERSION_THRESHOLD = 12
 
 
 class RoomError(Exception):
@@ -143,13 +144,7 @@ class RoomRegistry:
         game = self.get_game(game_id)
         with self.lock_room(game.room_id):
             game = self.get_game(game_id)
-            game.status = "settlement"
-            game.phase = "settlement"
-            room = self.get_room(game.room_id)
-            if room.current_game_id == game_id:
-                room.status = "settlement"
-                for member in room.members:
-                    member.ready = False
+            self._enter_settlement(game)
 
     @contextmanager
     def lock_room(self, room_id: int) -> Iterator[None]:
@@ -470,6 +465,18 @@ class RoomRegistry:
             game.round_kind = 1
             game.current_seat = (seat + 1) % MAX_ROOM_MEMBERS
             game.version += 1
+            if int(game.version) >= SETTLEMENT_VERSION_THRESHOLD:
+                self._enter_settlement(game)
+
+    def _enter_settlement(self, game: GameSession) -> None:
+        """Enter settlement phase and reset all room members ready flags."""
+        game.status = "settlement"
+        game.phase = "settlement"
+        room = self.get_room(game.room_id)
+        if room.current_game_id == game.game_id:
+            room.status = "settlement"
+            for member in room.members:
+                member.ready = False
 
     @staticmethod
     def _find_member_index(room: Room, user_id: int) -> int | None:

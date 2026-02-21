@@ -6,12 +6,14 @@
 - M5 结算能力已接入 CLI：进入 `settlement` 后可直接输出按 seat 的结算明细。
 - M4/M5/M6 文档已补齐（2026-02-20）：已冻结 Games REST、房间 WS 游戏事件、结算后重新 ready 开局规则与对应测试清单。
 - M4-UT-01~05 已完成 Green（2026-02-20）：后端 game 编排层单测从 Red（`5 failed`）推进到 Green（`5 passed`）。
-- M4 真实服务收口脚手架已完成（2026-02-21）：新增 `m4-tests-real-service.md` 与 `test_m4_rs_rest/ws/cc` 占位测试文件，当前全部为 skip，待按测试ID逐条落地测试体。
+- M4 真实服务收口脚手架已完成（2026-02-21）：新增 `m4-tests-real-service.md` 与 `test_m4_rs_rest/ws/cc` 占位测试文件，初始阶段全部为 skip，后续按测试ID逐条落地测试体。
 - M4 测试文档已去重（2026-02-21）：`m4-tests.md` 收敛为 UT + 收口索引，M4 API/WS/CC 清单统一由 `m4-tests-real-service.md` 维护。
 - M4-API-01~05 真实服务收口已完成 Green（2026-02-21）：新增并打通 `/api/games/{id}/state`、`/api/games/{id}/actions` 基础链路，测试结果 `5 passed, 9 skipped`。
-- M4-API-06~10 红测已执行（2026-02-21）：补齐真实服务测试体后结果 `4 passed, 1 failed, 9 deselected`；当前阻塞点为 `M4-API-10`（`GET /api/games/{id}/settlement` 期望 phase gate `409 + GAME_STATE_CONFLICT`，现状 `404 Not Found`）。
+- M4-API-06~10 真实服务收口已完成 Green（2026-02-21）：补齐测试体并修复 `GET /api/games/{id}/settlement` phase gate 后，结果 `5 passed, 9 deselected`。
+- M4-API-11~14 真实服务收口已完成 Green（2026-02-21）：先完成 Red（`4 failed, 10 deselected`，失败点为 80 步内未进入 settlement），随后补齐后端 settlement 迁移与 ready 重置/再开局链路后复测结果 `4 passed, 10 deselected`。
+- M4-API-01~14 全量 REST 收口回归通过（2026-02-21）：执行 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q`，结果 `14 passed`。
 
 ## 当前阶段
-- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~09` 已可执行，`M4-API-10` 处于 Red 阻塞。
+- 结论（2026-02-21）：M4 收口测试已从框架阶段推进到实装阶段，`M4-API-01~14` 已完成 Green。
 - 取舍：保持 UT 已有结果不扩写，M4 收口优先采用真实服务黑盒（REST/WS/并发）。
-- 下一步重心：先补齐 `M4-API-10` 对应 `/settlement` 路由与 phase gate，再推进 `M4-API-11~14` 与 WS/并发收口用例。
+- 下一步重心：推进 M4-WS 与 M4-CC 收口用例，从 skip 占位逐条落地并完成 Red/Green。
