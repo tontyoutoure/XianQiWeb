@@ -6,7 +6,10 @@
 - M5 结算能力已接入 CLI：进入 `settlement` 后可直接输出按 seat 的结算明细。
 - M5 终态语义收敛完成（2026-02-21）：移除引擎 `finished` 阶段，统一以 `settlement` 作为唯一结算终态；同步更新后端 `/settlement` phase gate、WS 触发条件、接口/设计文档与相关测试。
 - M5-BE-01~05 已完成 Green（2026-02-21）：新增并执行 `backend/tests/api/games/test_m5_api_01_05_settlement_red.py`，经历 Red（`2 failed, 3 passed`）后改造收敛为 Green（`5 passed`）。
-- M5-BE-06~10 已完成首轮拉红（2026-02-21）：新增 `backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py` 并执行，结果 `4 passed, 1 failed`；`M5-BE-06~09` 为 Green，`M5-BE-10` Red 暴露“结算后再开局缺少 WS 新局首帧推送”缺口。
+- M5-BE-06~10 已完成 Green（2026-02-21）：新增 `backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py` 并完成 Red->Green；最终复测 `pytest backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py -q` 结果 `5 passed`，并补齐“结算后重新 ready 开局时 WS 推送新局 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE` 首帧”。
+- M5 真实服务收口文档已建立（2026-02-21）：新增 `memory-bank/tests/m5-tests-real-service.md`，从 `M5-BE-01~10` 提炼 `M5-RS-REST-01~08`、`M5-RS-CC-01`、`M5-RS-WS-01` 以供后续按测试ID落地。
+- M5-RS-REST-01~05 已完成首轮 Red 实测（2026-02-21）：新增并执行 `backend/tests/integration/real_service/test_m5_rs_rest_01_08_red.py`，结果 `5 passed`；并将执行记录回填到 `memory-bank/tests/m5-tests-real-service.md`。
+- M5-RS-REST-06~08 + CC/WS 已完成首轮 Red 实测（2026-02-21）：补齐并执行 `test_m5_rs_rest_01_08_red.py`（新增 06~08）、`test_m5_rs_cc_01_red.py`、`test_m5_rs_ws_01_red.py`，合并结果 `10 passed`。
 - M4/M5/M6 文档已补齐（2026-02-20）：已冻结 Games REST、房间 WS 游戏事件、结算后重新 ready 开局规则与对应测试清单。
 - M4-UT-01~05 已完成 Green（2026-02-20）：后端 game 编排层单测从 Red（`5 failed`）推进到 Green（`5 passed`）。
 - M4 真实服务收口脚手架已完成（2026-02-21）：新增 `m4-tests-real-service.md` 与 `test_m4_rs_rest/ws/cc` 占位测试文件，初始阶段全部为 skip，后续按测试ID逐条落地测试体。
@@ -19,6 +22,6 @@
 - M4-CC-01~03 并发收口已完成 Red 实测（2026-02-21）：补齐 `test_m4_rs_cc_01_03_red.py` 测试体后执行 `pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`，结果 `3 passed`。
 
 ## 当前阶段
-- 结论（2026-02-21）：已完成 M5 结算终态语义收敛（`settlement` 单终态）并打通 `M5-BE-01~09`；`M5-BE-10` 已进入 Red 并定位到 WS 新局首帧补推缺口；M4 收口结果保持有效。
+- 结论（2026-02-21）：已完成 M5 结算终态语义收敛（`settlement` 单终态）并打通 `M5-BE-01~10`；M4 收口结果保持有效。
 - 取舍：真实服务（需本地端口）场景继续沿用既有 M4 收口结果，本轮以可在当前环境执行的 API/引擎测试为主完成回归。
-- 下一步重心：修复 `M5-BE-10`（结算后重新 ready 开局时补发 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE`），并将 `M5-BE-06~10` 收敛为全 Green。
+- 下一步重心：推进 M5 下一批收口（如 `M5` 真实服务口径补充）或按人类指定进入 M6 实时推送/重连深化。

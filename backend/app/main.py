@@ -372,6 +372,12 @@ async def _broadcast_game_progress(game_id: int) -> None:
         await _broadcast_settlement(room_id=room_id, game_id=game_id)
 
 
+async def _broadcast_room_changes_then_game_progress(*, room_id: int, game_id: int) -> None:
+    """Keep room snapshot and fresh game frames in one ordered push."""
+    await _broadcast_room_changes([room_id])
+    await _broadcast_game_progress(game_id)
+
+
 @app.exception_handler(HTTPException)
 async def handle_http_exception_route(request: Request, exc: HTTPException) -> JSONResponse:
     """Adapter used by FastAPI exception handling."""
@@ -500,10 +506,12 @@ def set_room_ready(
     user = _require_current_user(authorization)
     user_id = int(user["id"])
     was_all_ready = False
+    previous_game_id: int | None = None
 
     try:
         with room_registry.lock_room(room_id):
             room_before = room_registry.get_room(room_id)
+            previous_game_id = room_before.current_game_id
             was_all_ready = (
                 len(room_before.members) == MAX_ROOM_MEMBERS
                 and all(member.ready for member in room_before.members)
@@ -531,9 +539,15 @@ def set_room_ready(
             detail={"room_id": room_id},
         )
     is_all_ready = len(room.members) == MAX_ROOM_MEMBERS and all(member.ready for member in room.members)
+    started_game_id: int | None = None
     if is_all_ready and not was_all_ready:
         _start_game_hook_if_all_ready(room)
-    _dispatch_async(_broadcast_room_changes([room_id]))
+        if room.status == "playing" and room.current_game_id is not None and room.current_game_id != previous_game_id:
+            started_game_id = int(room.current_game_id)
+    if started_game_id is None:
+        _dispatch_async(_broadcast_room_changes([room_id]))
+    else:
+        _dispatch_async(_broadcast_room_changes_then_game_progress(room_id=room_id, game_id=started_game_id))
     return _room_detail(room)
 
 

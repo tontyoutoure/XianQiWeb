@@ -1,7 +1,8 @@
 # M5 阶段测试列表（结算与重新准备下一局）
 
 > 依据文档：`memory-bank/implementation-plan.md`（M5）、`memory-bank/design/engine_design.md`（4.3）、`memory-bank/interfaces/backend-engine-interface.md`（1.5.4）、`XianQi_rules.md`（结算筹码）。
-> 当前范围：保留“引擎结算 + engine.cli 结算展示”结果，并补充后端 `/settlement` 与“结算后重新 ready 开局”的接口测试清单（`M5-BE-01~05` 已完成 Red->Green）。
+> 当前范围：保留“引擎结算 + engine.cli 结算展示”结果，并补充后端 `/settlement` 与“结算后重新 ready 开局”的接口测试清单（`M5-BE-01~10` 已完成 Red->Green）。
+> 真实服务收口索引：`memory-bank/tests/m5-tests-real-service.md`（面向未来实现 `M5-RS-REST/WS/CC`）。
 
 ## 0) 测试运行环境与执行约定
 
@@ -73,7 +74,7 @@
 
 ## 6) TDD 执行记录（进行中）
 
-> 说明：按“人类指定测试ID -> 编写测试 -> 执行 Red/Green”推进；当前已完成 `M5-UT-01~13`、`M5-BE-01~09`，`M5-BE-10` 已进入 Red。
+> 说明：按“人类指定测试ID -> 编写测试 -> 执行 Red/Green”推进；当前已完成 `M5-UT-01~13` 与 `M5-BE-01~10`。
 
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
@@ -83,8 +84,8 @@
 | M5-UT-13 | 🟢 Green 已执行 | Green 已完成 | 2026-02-17：执行 `pytest engine/tests/test_m5_red_ut_13_settlement.py -q`，结果 `1 passed`。 |
 | M5-CLI-01 ~ M5-CLI-04 | 🟢 Green 已执行 | Green 已完成 | 2026-02-20：在 `engine/cli.py` 接入结算展示（自动触发 `settle`、输出 seat 拆分与守恒提示）后执行 `pytest engine/tests/test_m5_red_cli_01_04_settlement.py -q`，结果 `4 passed`；2026-02-21：终态收敛后复测同命令，结果仍为 `4 passed`。 |
 | M5-BE-01 ~ M5-BE-05 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：先执行 Red（`2 failed, 3 passed`，失败点为 `/settlement` 相位口径不一致与门禁被 `status` 绕过）；随后实施“移除 finished 终态、仅保留 settlement”改造后复测 `pytest backend/tests/api/games/test_m5_api_01_05_settlement_red.py -q`，结果 `5 passed`。 |
-| M5-BE-06 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：新增 `backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py` 后执行 `pytest backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py -q`（结果 `4 passed, 1 failed`）；其中 `M5-BE-06` 断言通过，结算后三人 ready 会触发新局创建并回到 `playing`。 |
+| M5-BE-06 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：新增 `backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py` 后执行首轮 `pytest backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py -q`（结果 `4 passed, 1 failed`）；其中 `M5-BE-06` 断言通过，结算后三人 ready 会触发新局创建并回到 `playing`；补齐 `M5-BE-10` 后全文件复测结果 `5 passed`。 |
 | M5-BE-07 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：同批次执行中通过；仅部分成员 ready 时保持 `settlement`，未提前开新局。 |
 | M5-BE-08 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：同批次执行中通过；非成员在结算后调用 `/api/rooms/{room_id}/ready` 返回 `403 + ROOM_NOT_MEMBER`。 |
 | M5-BE-09 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：同批次执行中通过；并发 ready 仅创建一次新局（`current_game_id` 从旧局递增一次）。 |
-| M5-BE-10 | 🔴 Red 已执行 | Red 已完成 | 2026-02-21：同批次执行中失败点为“结算后重新 ready 开局后未向房间 WS 主动推送新局 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE` 首帧”；当前仅观测到 `ROOM_UPDATE`。 |
+| M5-BE-10 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21：先 Red（缺少“重新开局后 WS 新局 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE` 首帧推送”），后在 `set_room_ready` 开局分支补齐“`ROOM_UPDATE` 后串行推送新局 public/private”广播并复测 `pytest backend/tests/api/games/test_m5_api_06_10_ready_reopen_red.py -q`，结果 `5 passed`。 |
