@@ -2,7 +2,7 @@
 
 > 目标：在真实启动的后端服务上完成 M4 收口验证（后端-引擎集成与动作接口）。
 > 依据文档：`memory-bank/tests/m4-tests.md`、`memory-bank/implementation-plan.md`（M4/M6）、`memory-bank/interfaces/frontend-backend-interfaces.md`（Games/WS）、`memory-bank/design/backend_design.md`（3.x）。
-> 当前状态：仅完成测试框架脚手架；本文件对应测试函数全部为 `skip` 占位，尚未进入具体用例撰写。
+> 当前状态：`M4-API-01~05` 已完成 Red->Green（`5 passed`）；其余用例仍为 `skip` 占位。
 > 口径声明：本文件是 M4 API/WS/CC 测试ID与执行记录的唯一来源（SSOT）。
 
 ## 0) 测试环境与执行约定（真实服务）
@@ -15,8 +15,8 @@
   - `conda run -n XQB pytest backend/tests/integration/real_service/test_m4_rs_ws_01_06_red.py -q`
   - `conda run -n XQB pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`
 - 本阶段约束：
-  - 本次仅创建脚手架，不编写真实断言/驱动逻辑。
-  - 每个测试 ID 对应一个 `pytest` 函数，统一 `skip`。
+  - 当前仅 `M4-API-01~05` 已进入并完成测试体 Red/Green。
+  - 其余测试 ID 暂保留 `pytest.skip` 占位。
 
 ## 1) REST 收口测试映射（M4-API-01~14）
 
@@ -67,7 +67,8 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M4-API-01 ~ M4-API-14 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_rest_01_14_red.py`，每条用例仅保留 skip 占位 |
+| M4-API-01 ~ M4-API-05 | 🟢 Green 已执行 | Green 已完成 | 2026-02-21 | 先执行 Red（`5 failed, 9 skipped`）；补齐后端 `/api/games/{id}/state` 与 `/api/games/{id}/actions` 基础链路（成员鉴权、版本冲突、动作推进）后复测 `pytest backend/tests/integration/real_service/test_m4_rs_rest_01_14_red.py -q`，结果 `5 passed, 9 skipped`。 |
+| M4-API-06 ~ M4-API-14 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_rest_01_14_red.py`，维持 skip 占位。 |
 | M4-WS-01 ~ M4-WS-06 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_ws_01_06_red.py`，每条用例仅保留 skip 占位 |
 | M4-CC-01 ~ M4-CC-03 | ⏳ 未开始 | 框架已建（skip） | 2026-02-21 | 对应文件 `test_m4_rs_cc_01_03_red.py`，每条用例仅保留 skip 占位 |
 
@@ -82,4 +83,4 @@
   - `backend/tests/integration/real_service/m4_helpers.py`
   - `backend/tests/integration/real_service/m4_ws_helpers.py`
   - `backend/tests/integration/real_service/m4_scenarios.py`
-- 当前阶段约束：所有 real-service 用例均为 skip 占位，后续按“人类指定测试ID -> 编写测试体 -> Red/Green”推进。
+- 当前阶段约束：`M4-API-01~05` 已完成 Green；其余 real-service 用例保持 skip，占位后续按“人类指定测试ID -> 编写测试体 -> Red/Green”推进。

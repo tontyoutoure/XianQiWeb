@@ -32,4 +32,4 @@
 | 测试ID | 当前状态 | TDD阶段 | 备注 |
 |---|---|---|---|
 | M4-UT-01 ~ M4-UT-05 | 🟢 Green 已执行 | Green 已完成 | 2026-02-20：先执行 Red（`5 failed`）；随后在 `app.rooms.registry` 实现 game session 编排（全员 ready 开局、seat 映射、leave 冷结束标记 aborted、进入 settlement 清空 ready、settlement 再 ready 仅开一局）后，执行 `pytest backend/tests/unit/test_m4_red_ut_01_05_room_game_orchestration.py -q`，结果 `5 passed`。 |
-| M4-RS-API/WS/CC（收口） | ⏳ 待执行 | 框架已建（skip） | 2026-02-21：详见 `memory-bank/tests/m4-tests-real-service.md`；当前每条用例仅保留 skip 占位，未进入测试体撰写。 |
+| M4-RS-API/WS/CC（收口） | 🔄 进行中 | API 01~05 Green 已完成 | 2026-02-21：`M4-API-01~05` 已完成 Red->Green（`5 passed, 9 skipped`）；其余 RS 用例仍为 skip，占位详情见 `memory-bank/tests/m4-tests-real-service.md`。 |

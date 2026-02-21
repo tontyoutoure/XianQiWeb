@@ -31,7 +31,12 @@ from app.auth.service import startup_auth_schema
 from app.core.config import Settings
 from app.core.config import load_settings
 from app.rooms.models import ReadyRequest
+from app.rooms.models import GameActionRequest
 from app.rooms.registry import MAX_ROOM_MEMBERS
+from app.rooms.registry import GameForbiddenError
+from app.rooms.registry import GameInvalidActionError
+from app.rooms.registry import GameNotFoundError
+from app.rooms.registry import GameVersionConflictError
 from app.rooms.registry import Room
 from app.rooms.registry import RoomFullError
 from app.rooms.registry import RoomMember
@@ -389,6 +394,79 @@ def set_room_ready(
         _start_game_hook_if_all_ready(room)
     _dispatch_async(_broadcast_room_changes([room_id]))
     return _room_detail(room)
+
+
+@app.get("/api/games/{game_id}/state")
+def get_game_state(
+    game_id: int,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict[str, object]:
+    """Return one game snapshot for a room member."""
+    user = _require_current_user(authorization)
+    user_id = int(user["id"])
+    try:
+        return room_registry.get_game_state_for_user(game_id=game_id, user_id=user_id)
+    except GameNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="GAME_NOT_FOUND",
+            message="game not found",
+            detail={"game_id": game_id},
+        )
+    except GameForbiddenError:
+        _raise_room_error(
+            status_code=403,
+            code="GAME_FORBIDDEN",
+            message="user is not a game member",
+            detail={"game_id": game_id, "user_id": user_id},
+        )
+
+
+@app.post("/api/games/{game_id}/actions", status_code=204)
+def post_game_action(
+    game_id: int,
+    payload: GameActionRequest,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> None:
+    """Apply one action to an in-progress game."""
+    user = _require_current_user(authorization)
+    user_id = int(user["id"])
+    try:
+        room_registry.apply_game_action(
+            game_id=game_id,
+            user_id=user_id,
+            action_idx=int(payload.action_idx),
+            client_version=payload.client_version,
+            cover_list=payload.cover_list,
+        )
+    except GameNotFoundError:
+        _raise_room_error(
+            status_code=404,
+            code="GAME_NOT_FOUND",
+            message="game not found",
+            detail={"game_id": game_id},
+        )
+    except GameForbiddenError:
+        _raise_room_error(
+            status_code=403,
+            code="GAME_FORBIDDEN",
+            message="user is not a game member",
+            detail={"game_id": game_id, "user_id": user_id},
+        )
+    except GameVersionConflictError:
+        _raise_room_error(
+            status_code=409,
+            code="GAME_VERSION_CONFLICT",
+            message="game version conflict",
+            detail={"game_id": game_id},
+        )
+    except GameInvalidActionError:
+        _raise_room_error(
+            status_code=409,
+            code="GAME_INVALID_ACTION",
+            message="game action is invalid",
+            detail={"game_id": game_id},
+        )
 
 
 async def _close_ws_unauthorized(websocket: WebSocket) -> None:

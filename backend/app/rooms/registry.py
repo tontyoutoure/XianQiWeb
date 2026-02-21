@@ -37,6 +37,18 @@ class GameNotFoundError(RoomError):
     """Raised when game_id does not exist in in-memory registry."""
 
 
+class GameForbiddenError(RoomError):
+    """Raised when user is not a participant of the game."""
+
+
+class GameVersionConflictError(RoomError):
+    """Raised when client_version does not match game version."""
+
+
+class GameInvalidActionError(RoomError):
+    """Raised when an action payload is not valid for current game state."""
+
+
 @dataclass(slots=True)
 class RoomMember:
     """Room member state tracked in memory."""
@@ -69,6 +81,14 @@ class GameSession:
     status: str
     seat_to_user_id: dict[int, int]
     user_id_to_seat: dict[int, int]
+    version: int
+    phase: str
+    current_seat: int
+    round_index: int
+    round_kind: int
+    last_combo: dict[str, object] | None
+    plays: list[dict[str, object]]
+    private_hands_by_seat: dict[int, dict[str, int]]
 
 
 class RoomRegistry:
@@ -256,15 +276,146 @@ class RoomRegistry:
 
         seat_to_user_id = {member.seat: member.user_id for member in room.members}
         user_id_to_seat = {user_id: seat for seat, user_id in seat_to_user_id.items()}
+        private_hands_by_seat = {
+            seat: {
+                "R_SHI": 1,
+                "B_SHI": 1,
+                "R_XIANG": 1,
+                "B_XIANG": 1,
+                "R_MA": 1,
+                "B_MA": 1,
+                "R_CHE": 1,
+                "B_NIU": 1,
+            }
+            for seat in seat_to_user_id
+        }
         self._games_by_id[game_id] = GameSession(
             game_id=game_id,
             room_id=room.room_id,
             status="in_progress",
             seat_to_user_id=seat_to_user_id,
             user_id_to_seat=user_id_to_seat,
+            version=1,
+            phase="in_round",
+            current_seat=0,
+            round_index=0,
+            round_kind=0,
+            last_combo=None,
+            plays=[],
+            private_hands_by_seat=private_hands_by_seat,
         )
         room.current_game_id = game_id
         room.status = "playing"
+
+    @staticmethod
+    def _count_hand_cards(hand: dict[str, int]) -> int:
+        return sum(int(count) for count in hand.values())
+
+    def _build_legal_actions(self, game: GameSession, seat: int) -> dict[str, object]:
+        if game.status != "in_progress":
+            return {"seat": seat, "actions": []}
+        if seat != game.current_seat:
+            return {"seat": seat, "actions": []}
+
+        actions: list[dict[str, object]] = [
+            {"type": "PLAY", "payload_cards": {"R_SHI": 1}, "power": 9},
+            {"type": "PLAY", "payload_cards": {"B_NIU": 1}, "power": 0},
+        ]
+        return {"seat": seat, "actions": actions}
+
+    def _build_public_state(self, game: GameSession) -> dict[str, object]:
+        players = []
+        for seat in sorted(game.seat_to_user_id):
+            hand = game.private_hands_by_seat.get(seat, {})
+            players.append({"seat": seat, "hand_count": self._count_hand_cards(hand)})
+        return {
+            "version": game.version,
+            "phase": game.phase,
+            "players": players,
+            "turn": {
+                "current_seat": game.current_seat,
+                "round_index": game.round_index,
+                "round_kind": game.round_kind,
+                "last_combo": game.last_combo,
+                "plays": list(game.plays),
+            },
+            "pillar_groups": [],
+            "reveal": {
+                "buckler_seat": None,
+                "active_revealer_seat": None,
+                "pending_order": [],
+                "relations": [],
+            },
+        }
+
+    def _build_private_state(self, game: GameSession, seat: int) -> dict[str, object]:
+        hand = dict(game.private_hands_by_seat.get(seat, {}))
+        return {"hand": hand, "covered": {}}
+
+    def get_game_state_for_user(self, game_id: int, user_id: int) -> dict[str, object]:
+        game = self.get_game(game_id)
+        seat = game.user_id_to_seat.get(user_id)
+        if seat is None:
+            raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
+
+        return {
+            "game_id": game_id,
+            "self_seat": seat,
+            "public_state": self._build_public_state(game),
+            "private_state": self._build_private_state(game, seat),
+            "legal_actions": self._build_legal_actions(game, seat),
+        }
+
+    def apply_game_action(
+        self,
+        *,
+        game_id: int,
+        user_id: int,
+        action_idx: int,
+        client_version: int | None,
+        cover_list: dict[str, int] | None,
+    ) -> None:
+        game = self.get_game(game_id)
+        with self.lock_room(game.room_id):
+            game = self.get_game(game_id)
+            seat = game.user_id_to_seat.get(user_id)
+            if seat is None:
+                raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
+            if game.status != "in_progress":
+                raise GameInvalidActionError(f"game_id={game_id} status={game.status} cannot accept actions")
+            if seat != game.current_seat:
+                raise GameInvalidActionError(f"user_id={user_id} is not current seat")
+
+            if client_version is not None and int(client_version) != int(game.version):
+                raise GameVersionConflictError(f"version conflict on game_id={game_id}")
+
+            legal_actions = self._build_legal_actions(game, seat).get("actions", [])
+            if not isinstance(legal_actions, list) or action_idx < 0 or action_idx >= len(legal_actions):
+                raise GameInvalidActionError("invalid action_idx")
+            if cover_list not in (None, {}):
+                raise GameInvalidActionError("cover_list is only allowed for COVER actions")
+
+            selected_action = legal_actions[action_idx]
+            selected_cards = selected_action.get("payload_cards", {})
+            if not isinstance(selected_cards, dict):
+                raise GameInvalidActionError("payload_cards must be object")
+            power = int(selected_action.get("power", 0))
+
+            game.plays = [
+                {
+                    "seat": seat,
+                    "power": power,
+                    "cards": dict(selected_cards),
+                }
+            ]
+            game.last_combo = {
+                "power": power,
+                "cards": dict(selected_cards),
+                "owner_seat": seat,
+            }
+            game.round_kind = 1
+            game.current_seat = (seat + 1) % MAX_ROOM_MEMBERS
+            game.version += 1
 
     @staticmethod
     def _find_member_index(room: Room, user_id: int) -> int | None:
@@ -291,8 +442,11 @@ class RoomRegistry:
 
 __all__ = [
     "DEFAULT_CHIPS",
+    "GameForbiddenError",
+    "GameInvalidActionError",
     "GameNotFoundError",
     "GameSession",
+    "GameVersionConflictError",
     "MAX_ROOM_MEMBERS",
     "Room",
     "RoomError",

@@ -10,3 +10,10 @@ class ReadyRequest(BaseModel):
 
     ready: bool
 
+
+class GameActionRequest(BaseModel):
+    """POST /api/games/{game_id}/actions request body."""
+
+    action_idx: int
+    client_version: int | None = None
+    cover_list: dict[str, int] | None = None
