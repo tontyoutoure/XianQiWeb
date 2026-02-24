@@ -397,6 +397,29 @@ backend/
   3. 如房态变化（例如进入结算/回 waiting），补发 `ROOM_UPDATE`
   4. 若本次进入结算，追加 `SETTLEMENT`
 - 重连策略：客户端优先调 `GET /state`，WS 只做增量与首帧同步。
+- 事件一致性约束：
+  - 同一 `game_id` 下 `public_state.version` 必须严格单调递增，不允许回退或跳回旧值。
+  - `GAME_PRIVATE_STATE` 的 `game_id/version` 必须与同轮次最近的 `GAME_PUBLIC_STATE` 对齐。
+  - 私有态仅按连接所属 `user_id` 单播，不允许跨 seat 泄露手牌/legal_actions。
+- 连接关闭语义（M6 约定）：
+  - 鉴权失败/token 失效：`4401 UNAUTHORIZED`。
+  - 房间不存在：`4404 ROOM_NOT_FOUND`。
+  - 心跳超时：建议 `4408 HEARTBEAT_TIMEOUT`（至少保证可观测断连）。
+
+### 3.5.1 心跳与保活细化（M6-HB）
+- 参数口径：
+  - 服务端固定每 30s 发送一次 `PING`。
+  - 客户端须在 10s 内应答 `PONG`。
+  - 连续 2 次未按时收到 `PONG`，服务端主动关闭连接。
+- 连接级状态（建议）：
+  - `last_ping_at`
+  - `last_pong_at`
+  - `missed_pong_count`
+- 状态迁移：
+  1. 发送 `PING` 时记录 `last_ping_at`。
+  2. 超过 10s 仍未收到对应 `PONG`：`missed_pong_count += 1`。
+  3. 收到有效 `PONG`：刷新 `last_pong_at` 且 `missed_pong_count = 0`。
+  4. `missed_pong_count >= 2`：关闭连接并清理连接索引（lobby/room 监听集合、user 映射）。
 
 ### 3.6 错误码补充（Games）
 - `GAME_NOT_FOUND`（404）
@@ -423,6 +446,36 @@ backend/
   - 同一 game 并发动作仅接受一个（其余版本冲突或非法动作）
   - 结算后并发 ready 只触发一次开局
 
+### 3.8 M6 断线重连与并发一致性细化
+
+#### 3.8.1 断线重连恢复口径（M6-RC）
+- 恢复基线：`GET /api/games/{game_id}/state` 为恢复真源（public/private/legal_actions 同步返回）。
+- WS 重连首帧：
+  - 房间无局：仅 `ROOM_UPDATE`。
+  - 房间有局：`ROOM_UPDATE -> GAME_PUBLIC_STATE -> GAME_PRIVATE_STATE`。
+  - 首帧 `version` 必须 `>=` 客户端断线前最后已确认版本。
+- phase 恢复约束：
+  - 先判定是否“轮到当前连接对应 seat 决策”（`self_seat == turn.current_seat`）：仅当成立时返回 `legal_actions`；否则 `legal_actions = null`（或省略）。
+  - `buckle_flow`：在“轮到我行动”前提下，恢复当前决策 seat 的 `BUCKLE/PASS` 或 `REVEAL/PASS` 合法动作集合。
+  - `in_round`：在“轮到我行动”前提下，恢复 `PLAY/COVER` 语义与稳定 `action_idx`（同一状态下索引不漂移）。
+  - `settlement`：恢复 `phase=settlement`；`GET /settlement` 返回结构与 WS `SETTLEMENT` 一致。
+- token 过期重连：
+  - WS 因过期被 `4401` 关闭后，客户端 refresh 成功可重新连接并恢复同房状态。
+- 服务重启边界（非恢复）：
+  - 旧内存态不保证恢复；旧 `game_id` 查询返回 `404/409` 视具体接口语义。
+  - 房间以重启后内存态为准（无跨重启恢复承诺）。
+
+#### 3.8.2 并发一致性不变量（M6-CC）
+- 动作并发互斥：同 `game_id + client_version` 并发动作最多 1 个成功。
+- 无重复应用：同一客户端意图在竞态下最多被引擎接受 1 次，禁止版本回退。
+- 重连并发收敛：重连与他人动作并发时，允许短暂“先旧后新”观察，但最终需收敛到同一 `game_id/version`。
+- 多连接同账号：
+  - 同账号可有多个 WS 连接。
+  - 每个连接仅接收其所属 room 的私有态，不跨房间串流。
+- 结算后并发 ready：
+  - 从“非全员 ready”到“全员 ready”的迁移只能触发 1 次新局创建。
+  - 其余并发请求返回最新房间态，不得重复创建 game。
+
 ## 4. M1-M2-M4-M6 交付检查清单
 - [ ] 代码结构与配置文件落地。
 - [ ] DB 建表与索引落地。
@@ -441,6 +494,10 @@ backend/
 - [ ] 结算后 ready 清零，且三人重新 ready 仅触发一次新局创建。
 - [ ] playing 中 leave 冷结束行为在 game 与 room 侧均一致。
 - [ ] 统一错误响应与关键日志字段可观测。
+- [ ] 心跳超时断连机制可观测（30s PING / 10s PONG / 连续2次超时断开）。
+- [ ] 断线重连恢复覆盖 `buckle_flow/in_round/settlement` 三阶段。
+- [ ] 重连与动作并发竞态下，无重复应用动作、无版本回退。
+- [ ] 服务重启边界行为固定（无跨重启恢复承诺，错误码口径一致）。
 
 ## 5. 已知风险与决策
 - 风险：refresh token 无限增长。
@@ -457,6 +514,10 @@ backend/
   - 决策：统一事件顺序（public -> private -> room_update），并在文档固定首帧/增量策略。
 - 风险：结算后并发 ready 触发重复开局。
   - 决策：沿用同房间写锁；当 `status=settlement` 且“从非全员 ready -> 全员 ready”仅允许一次 start_game 迁移。
+- 风险：心跳抖动导致误断连，影响弱网体验。
+  - 决策：按“连续 2 次超时再断连”降低误杀；客户端断连后走 refresh + 重连恢复链路。
+- 风险：重连与动作并发造成短时视图抖动。
+  - 决策：以 `version` 单调为收敛标准，HTTP `/state` 作为兜底真源。
 
 ## 6. 变更记录
 - 2026-02-13：创建文档骨架。
@@ -469,3 +530,4 @@ backend/
 - 2026-02-13：补充共识约束：`client_version` 冲突返回 409 且前端 REST 拉态、WS token 过期主动断开、username 大小写敏感、MVP 允许空密码、冷结束前端提示“对局结束”。
 - 2026-02-13：补充 username 归一化口径：注册/登录统一 NFC 归一化后再校验与匹配。
 - 2026-02-20：补充 M4-M6 后端引擎集成设计：GameSession 内存模型、Games REST、房间 WS 游戏事件、结算后重新 ready 开局与并发约束。
+- 2026-02-21：补充 M6 细化设计：心跳超时断连口径、断线重连 phase 恢复规则、并发一致性不变量与服务重启边界。

@@ -3,7 +3,7 @@
 > 目标：按“全量后端服务测试”标准完成 M6 收口，覆盖 M1~M5 回归门禁 + M6 增量能力（实时推送一致性、心跳保活、断线重连恢复、并发一致性）。
 > 依据文档：`memory-bank/implementation-plan.md`（M6）、`memory-bank/design/backend_design.md`（3.5/3.7）、`memory-bank/interfaces/frontend-backend-interfaces.md`（2.x）、`memory-bank/tests/m4-tests-real-service.md`、`memory-bank/tests/m5-tests-real-service.md`。
 > 口径声明：本文件是 M6 真实服务测试 ID 与执行记录的 SSOT。
-> 当前状态：`M6-RS-WS-01~08` 已完成首轮 Red 实测（`8 passed`）。
+> 当前状态：`M6-RS-WS-01~08` 已完成首轮 Red 实测（`8 passed`）；`M6-RS-RC-01~08` 已完成首轮 Red 实测（`7 failed, 1 passed`）。
 
 ## 0) 测试环境与执行约定（真实服务）
 
@@ -85,7 +85,7 @@
   - 安全隔离：私有态不泄露，鉴权失败可观测（401/403/4401）。
   - 并发稳态：无重复开局、无重复动作应用、无版本倒退。
 
-## 7) TDD 执行记录（待启动）
+## 7) TDD 执行记录（执行中）
 
 > 约定：按“人类指定测试 ID -> 编写测试 -> 执行 Red/Green”推进；每条用例先记录 Red，再记录 Green。
 
@@ -100,6 +100,13 @@
 | M6-RS-WS-06 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 同批次执行通过（playing 中 leave 冷结束无 `SETTLEMENT`）。 |
 | M6-RS-WS-07 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 同批次执行通过（`ROOM_LIST` 与 `ROOM_UPDATE` 的 status/player_count/ready_count 一致）。 |
 | M6-RS-WS-08 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 同批次执行通过（多连接公共态流 `game_id/version` 序列一致）。 |
-| M6-RS-RC-01 ~ M6-RS-RC-08 | ⏳ 待执行 | Pending | - | 重点优先 `RC-01/02/03/07`（恢复主链路）。 |
+| M6-RS-RC-01 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 新增 `backend/tests/integration/real_service/test_m6_rs_rc_01_08_red.py` 后执行 `pytest backend/tests/integration/real_service/test_m6_rs_rc_01_08_red.py -q`，失败点：非当前 seat 仍返回 `legal_actions`（当前为 `{seat, actions:[]}`，未隐藏）。 |
+| M6-RS-RC-02 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 同批次失败：重连首帧中，非当前 seat 的 `GAME_PRIVATE_STATE.legal_actions` 未隐藏。 |
+| M6-RS-RC-03 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 同批次失败：跨步恢复后，非当前 seat 的 `legal_actions` 未隐藏。 |
+| M6-RS-RC-04 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 同批次失败：当前实现 phase 为 `in_round`，未进入/恢复 `buckle_flow`。 |
+| M6-RS-RC-05 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 同批次失败：`in_round` 下非当前 seat 的 `legal_actions` 未隐藏。 |
+| M6-RS-RC-06 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 同批次失败：`settlement` 重连首帧里 `legal_actions` 仍以空动作数组返回，未隐藏。 |
+| M6-RS-RC-07 | ❌ 未通过 | Red（实测失败） | 2026-02-24 | 同批次失败：access token 过期后连接未被 `4401` 主动关闭（`wait_closed` 超时）。 |
+| M6-RS-RC-08 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 同批次通过：服务重启后旧 `game_id` 查询返回 `404/409`，房间重置为 `waiting + current_game_id=null`。 |
 | M6-RS-HB-01 ~ M6-RS-HB-03 | ⏳ 待执行 | Pending | - | 先验证 PING/PONG 正常与超时断连，再做多连接压力。 |
 | M6-RS-CC-01 ~ M6-RS-CC-05 | ⏳ 待执行 | Pending | - | 并发用例放在主链路稳定后执行。 |
