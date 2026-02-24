@@ -108,5 +108,7 @@
 | M6-RS-RC-06 | ✅ 已通过 | Green（修复通过） | 2026-02-24 | 同批次通过：`settlement` 重连首帧已隐藏 `legal_actions`，且 `/settlement` 与 WS 版本一致。 |
 | M6-RS-RC-07 | ✅ 已通过 | Green（修复通过） | 2026-02-24 | 同批次通过：access token 过期后 WS 被 `4401 UNAUTHORIZED` 主动断连，refresh 后可重连。 |
 | M6-RS-RC-08 | ✅ 已通过 | Green（回归通过） | 2026-02-24 | 同批次回归通过：服务重启边界行为保持正确（旧 `game_id` 不可恢复，房间重置）。 |
-| M6-RS-HB-01 ~ M6-RS-HB-03 | ⏳ 待执行 | Pending | - | 先验证 PING/PONG 正常与超时断连，再做多连接压力。 |
+| M6-RS-HB-01 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 新增 `backend/tests/integration/real_service/test_m6_rs_hb_01_03_red.py` 后执行 `pytest backend/tests/integration/real_service/test_m6_rs_hb_01_03_red.py -q`，HB-01 通过（同批次 `1 failed, 2 passed`）。 |
+| M6-RS-HB-02 | ❌ 未通过 | Red（失败） | 2026-02-24 | 同批次失败：未回 `PONG` 两轮后连接未断开（等待 12s 超时），当前实现未满足“连续 2 次超时断连”。 |
+| M6-RS-HB-03 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 同批次通过：多连接首轮心跳可回 `PONG` 且 room 事件无串房（同批次 `1 failed, 2 passed`）。 |
 | M6-RS-CC-01 ~ M6-RS-CC-05 | ⏳ 待执行 | Pending | - | 并发用例放在主链路稳定后执行。 |
