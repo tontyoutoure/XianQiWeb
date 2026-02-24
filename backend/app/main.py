@@ -227,6 +227,53 @@ async def _send_heartbeat_ping(websocket: Any) -> None:
     await _ws_send_event(websocket, "PING", {})
 
 
+class _HeartbeatState:
+    """Track one websocket heartbeat ping/pong lifecycle."""
+
+    def __init__(self) -> None:
+        self.last_ping_at: float | None = None
+        self.last_pong_at: float | None = None
+        self.missed_pong_count = 0
+        self._awaiting_pong = False
+        self._pong_event = asyncio.Event()
+
+    def mark_ping_sent(self) -> None:
+        self.last_ping_at = datetime.now(timezone.utc).timestamp()
+        self._awaiting_pong = True
+        self._pong_event.clear()
+
+    def mark_pong_received(self) -> None:
+        self.last_pong_at = datetime.now(timezone.utc).timestamp()
+        if not self._awaiting_pong:
+            return
+        self._awaiting_pong = False
+        self.missed_pong_count = 0
+        self._pong_event.set()
+
+    async def wait_for_pong(self, *, timeout_seconds: float) -> bool:
+        if not self._awaiting_pong:
+            return True
+        try:
+            await asyncio.wait_for(self._pong_event.wait(), timeout=timeout_seconds)
+        except TimeoutError:
+            self._awaiting_pong = False
+            self.missed_pong_count += 1
+            return False
+        return True
+
+
+def _is_pong_message(message: str) -> bool:
+    if message == "PONG":
+        return True
+    try:
+        payload = json.loads(message)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(payload, dict):
+        return False
+    return payload.get("type") == "PONG"
+
+
 def _token_expiry_epoch(access_token: str) -> int | None:
     now = datetime.now(timezone.utc)
     try:
@@ -239,11 +286,36 @@ def _token_expiry_epoch(access_token: str) -> int | None:
     return exp
 
 
-async def _heartbeat_loop(websocket: Any, interval_seconds: float = 30.0) -> None:
-    await _send_heartbeat_ping(websocket)
+async def _heartbeat_loop(
+    websocket: Any,
+    *,
+    heartbeat_state: _HeartbeatState,
+    interval_seconds: float = 30.0,
+    pong_timeout_seconds: float = 10.0,
+    max_missed_pongs: int = 2,
+) -> None:
+    sleep_after_probe = max(interval_seconds - pong_timeout_seconds, 0.0)
     while True:
-        await asyncio.sleep(interval_seconds)
         await _send_heartbeat_ping(websocket)
+        heartbeat_state.mark_ping_sent()
+        pong_received = await heartbeat_state.wait_for_pong(timeout_seconds=pong_timeout_seconds)
+        if (not pong_received) and heartbeat_state.missed_pong_count >= max_missed_pongs:
+            await websocket.close(code=4408, reason="HEARTBEAT_TIMEOUT")
+            return
+        if sleep_after_probe > 0:
+            await asyncio.sleep(sleep_after_probe)
+
+
+async def _reply_with_pong(websocket: Any) -> None:
+    await _ws_send_event(websocket, "PONG", {})
+
+
+async def _handle_ws_message(*, websocket: Any, heartbeat_state: _HeartbeatState, message: str) -> None:
+    if message == "PING":
+        await _reply_with_pong(websocket)
+        return
+    if _is_pong_message(message):
+        heartbeat_state.mark_pong_received()
 
 
 async def _close_ws_on_token_expire(websocket: Any, *, expire_epoch: int) -> None:
@@ -257,7 +329,8 @@ async def _close_ws_on_token_expire(websocket: Any, *, expire_epoch: int) -> Non
 
 
 async def _ws_message_loop(websocket: Any, *, token_expire_epoch: int | None = None) -> None:
-    heartbeat_task = asyncio.create_task(_heartbeat_loop(websocket))
+    heartbeat_state = _HeartbeatState()
+    heartbeat_task = asyncio.create_task(_heartbeat_loop(websocket, heartbeat_state=heartbeat_state))
     token_expiry_task: asyncio.Task[Any] | None = None
     if token_expire_epoch is not None:
         token_expiry_task = asyncio.create_task(
@@ -266,8 +339,7 @@ async def _ws_message_loop(websocket: Any, *, token_expire_epoch: int | None = N
     try:
         while True:
             message = await websocket.receive_text()
-            if message == "PING":
-                await _ws_send_event(websocket, "PONG", {})
+            await _handle_ws_message(websocket=websocket, heartbeat_state=heartbeat_state, message=message)
     except WebSocketDisconnect:
         return
     finally:

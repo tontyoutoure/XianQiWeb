@@ -14,6 +14,7 @@
 - M6-RS-WS-01~08 已完成首轮 Red 实测（2026-02-21）：新增并执行 `backend/tests/integration/real_service/test_m6_rs_ws_01_08_red.py`，结果 `8 passed`；执行记录已回填 `memory-bank/tests/m6-tests-real-service.md`。
 - M6-RS-RC-01~08 已完成首轮 Red 实测（2026-02-24）：新增并执行 `backend/tests/integration/real_service/test_m6_rs_rc_01_08_red.py`，结果 `7 failed, 1 passed`；失败集中在“非当前 seat legal_actions 隐藏语义”、“`buckle_flow` 恢复”与“token 过期 `4401` 主动断连”。
 - M6-RS-RC-01~08 已完成 Green 修复（2026-02-24）：修复 legal_actions 隐藏口径、开局 `buckle_flow` 恢复语义与 WS token 过期主动断连后，复测 `pytest backend/tests/integration/real_service/test_m6_rs_rc_01_08_red.py -q` 结果 `8 passed`。
+- M6-RS-HB-01~03 已完成 Green（2026-02-24）：新增并执行 `backend/tests/integration/real_service/test_m6_rs_hb_01_03_red.py`，先 Red 暴露“未回 PONG 两轮未断连”，修复心跳超时断连（`4408 HEARTBEAT_TIMEOUT`）后复测 `3 passed`。
 - M6 后端设计细化已补充（2026-02-21）：更新 `memory-bank/design/backend_design.md`，新增心跳超时断连口径、断线重连 phase 恢复规则、并发一致性不变量与服务重启边界约束。
 - M4/M5/M6 文档已补齐（2026-02-20）：已冻结 Games REST、房间 WS 游戏事件、结算后重新 ready 开局规则与对应测试清单。
 - M4-UT-01~05 已完成 Green（2026-02-20）：后端 game 编排层单测从 Red（`5 failed`）推进到 Green（`5 passed`）。
@@ -27,6 +28,6 @@
 - M4-CC-01~03 并发收口已完成 Red 实测（2026-02-21）：补齐 `test_m4_rs_cc_01_03_red.py` 测试体后执行 `pytest backend/tests/integration/real_service/test_m4_rs_cc_01_03_red.py -q`，结果 `3 passed`。
 
 ## 当前阶段
-- 结论（2026-02-24）：`M6-RS-RC-01~08` 已完成 Green，重连恢复主链路已达标。
-- 取舍：优先保持 RC 语义稳定（legal_actions 隐藏、`buckle_flow` 首帧、token 过期断连），再进入心跳与并发收口。
-- 下一步重心：执行 `M6-RS-HB-01~03` 与 `M6-RS-CC-01~05`，并回补 `M6-GATE-01~04` 全量门禁回归记录。
+- 结论（2026-02-24）：`M6-RS-RC-01~08`、`M6-RS-HB-01~03` 已完成 Green，重连恢复与心跳保活主链路达标。
+- 取舍：优先保持 RC/HB 语义稳定（legal_actions 隐藏、`buckle_flow` 首帧、token 过期/心跳超时断连）。
+- 下一步重心：执行 `M6-RS-CC-01~05`，并回补 `M6-GATE-01~04` 全量门禁回归记录。
