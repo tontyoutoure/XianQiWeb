@@ -18,39 +18,54 @@
 - 完成 `users + refresh_tokens` 持久化模型。
 - 完成 Access/Refresh 双 token 鉴权闭环（REST + WS）。
 
-### 1.2 后端目录建议
+### 1.2 当前后端文件结构（实现现状）
+> 说明：以下为当前仓库中的后端结构（省略 `__pycache__`、`.pytest_cache` 等生成文件）。
+
 ```text
 backend/
   app/
-    main.py
+    main.py                          # 应用入口：lifespan + include_router + 兼容导出
+    runtime.py                       # 进程级运行态（settings/room_registry/ws连接集合）
     core/
-      config.py
-      security.py
-      logging.py
-      errors.py
-      db.py
-    models/
-      user.py
-      refresh_token.py
-    repositories/
-      user_repo.py
-      refresh_token_repo.py
-    schemas/
-      auth.py
-      common.py
-    services/
-      auth_service.py
-      token_service.py
-    api/
-      deps.py
-      auth.py
-      rooms.py
-      games.py
-    ws/
-      auth.py
-      manager.py
-  tests/
+      config.py                      # 环境变量与配置校验
+      db.py                          # SQLite 连接与基础约束
+      password.py                    # 密码哈希与校验
+      refresh_tokens.py              # refresh token 生成/哈希辅助
+      tokens.py                      # access token 编解码与校验
+      username.py                    # 用户名规则（长度/NFC 等）
     auth/
+      models.py                      # 鉴权请求模型
+      errors.py                      # 鉴权异常映射
+      http.py                        # 统一 HTTP 错误响应
+      repository.py                  # users/refresh_tokens 持久化访问
+      schema.py                      # 鉴权表结构初始化
+      session.py                     # token 会话编排
+      service.py                     # register/login/me/refresh/logout 服务
+    rooms/
+      models.py                      # 房间/对局 API 请求模型
+      registry.py                    # 房间与对局内存态聚合根（含并发锁）
+    api/
+      deps.py                        # HTTP 依赖（Authorization -> current_user）
+      errors.py                      # API 统一错误抛出辅助
+      room_views.py                  # room_summary/room_detail 视图构造
+      routers/
+        auth.py                      # /api/auth/*
+        rooms.py                     # /api/rooms/*
+        games.py                     # /api/games/*
+    ws/
+      protocol.py                    # WS 消息封装（v/type/payload）
+      heartbeat.py                   # PING/PONG、token 过期断连、消息循环
+      broadcast.py                   # lobby/room/game 快照与广播编排
+      routers.py                     # /ws/lobby 与 /ws/rooms/{room_id}
+
+  tests/
+    unit/                            # 单元测试（core/auth/registry）
+    api/                             # API 契约测试（M1/M2/M5）
+    integration/
+      ws/                            # 进程内 WS 集成测试
+      concurrency/                   # 并发一致性测试
+      real_service/                  # uvicorn 真实服务测试（M1~M6）
+    conftest.py                      # 测试夹具与共享配置
 ```
 
 ### 1.3 配置与环境变量
