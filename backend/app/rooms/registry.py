@@ -296,7 +296,7 @@ class RoomRegistry:
             seat_to_user_id=seat_to_user_id,
             user_id_to_seat=user_id_to_seat,
             version=1,
-            phase="in_round",
+            phase="buckle_flow",
             current_seat=0,
             round_index=0,
             round_kind=0,
@@ -311,11 +311,20 @@ class RoomRegistry:
     def _count_hand_cards(hand: dict[str, int]) -> int:
         return sum(int(count) for count in hand.values())
 
-    def _build_legal_actions(self, game: GameSession, seat: int) -> dict[str, object]:
+    def _build_legal_actions(self, game: GameSession, seat: int) -> dict[str, object] | None:
         if game.status != "in_progress":
-            return {"seat": seat, "actions": []}
+            return None
         if seat != game.current_seat:
-            return {"seat": seat, "actions": []}
+            return None
+
+        if game.phase == "buckle_flow":
+            return {
+                "seat": seat,
+                "actions": [
+                    {"type": "BUCKLE"},
+                    {"type": "PASS_BUCKLE"},
+                ],
+            }
 
         actions: list[dict[str, object]] = [
             {"type": "PLAY", "payload_cards": {"R_SHI": 1}, "power": 9},
@@ -437,13 +446,32 @@ class RoomRegistry:
             if client_version is not None and int(client_version) != int(game.version):
                 raise GameVersionConflictError(f"version conflict on game_id={game_id}")
 
-            legal_actions = self._build_legal_actions(game, seat).get("actions", [])
-            if not isinstance(legal_actions, list) or action_idx < 0 or action_idx >= len(legal_actions):
+            legal_actions = self._build_legal_actions(game, seat)
+            if not isinstance(legal_actions, dict):
+                raise GameInvalidActionError("seat has no legal actions")
+            legal_action_items = legal_actions.get("actions", [])
+            if (
+                not isinstance(legal_action_items, list)
+                or action_idx < 0
+                or action_idx >= len(legal_action_items)
+            ):
                 raise GameInvalidActionError("invalid action_idx")
-            if cover_list not in (None, {}):
+            selected_action = legal_action_items[action_idx]
+            action_type = str(selected_action.get("type", ""))
+            if action_type == "COVER":
+                if not isinstance(cover_list, dict):
+                    raise GameInvalidActionError("cover_list is required for COVER actions")
+            elif cover_list not in (None, {}):
                 raise GameInvalidActionError("cover_list is only allowed for COVER actions")
 
-            selected_action = legal_actions[action_idx]
+            if game.phase == "buckle_flow":
+                game.phase = "in_round"
+                game.current_seat = (seat + 1) % MAX_ROOM_MEMBERS
+                game.version += 1
+                if int(game.version) >= SETTLEMENT_VERSION_THRESHOLD:
+                    self._enter_settlement(game)
+                return
+
             selected_cards = selected_action.get("payload_cards", {})
             if not isinstance(selected_cards, dict):
                 raise GameInvalidActionError("payload_cards must be object")

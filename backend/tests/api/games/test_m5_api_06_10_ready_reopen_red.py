@@ -157,7 +157,7 @@ def test_m5_be_06_all_members_ready_in_settlement_starts_next_game(
         authorization=_auth_header(context["token_by_seat"][0]),
     )
     assert state_payload["game_id"] == new_game_id
-    assert state_payload["public_state"]["phase"] == "in_round"
+    assert state_payload["public_state"]["phase"] in {"buckle_flow", "in_round"}
 
 
 def test_m5_be_07_partial_ready_in_settlement_does_not_start_next_game(

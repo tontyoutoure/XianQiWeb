@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime
+from datetime import timezone
 import json
 from typing import Any
 
@@ -30,6 +32,9 @@ from app.auth.service import register_user
 from app.auth.service import startup_auth_schema
 from app.core.config import Settings
 from app.core.config import load_settings
+from app.core.tokens import AccessTokenExpiredError
+from app.core.tokens import AccessTokenInvalidError
+from app.core.tokens import decode_access_token
 from app.rooms.models import ReadyRequest
 from app.rooms.models import GameActionRequest
 from app.rooms.registry import MAX_ROOM_MEMBERS
@@ -222,6 +227,18 @@ async def _send_heartbeat_ping(websocket: Any) -> None:
     await _ws_send_event(websocket, "PING", {})
 
 
+def _token_expiry_epoch(access_token: str) -> int | None:
+    now = datetime.now(timezone.utc)
+    try:
+        payload = decode_access_token(access_token, now=now)
+    except (AccessTokenInvalidError, AccessTokenExpiredError):
+        return None
+    exp = payload.get("exp")
+    if not isinstance(exp, int):
+        return None
+    return exp
+
+
 async def _heartbeat_loop(websocket: Any, interval_seconds: float = 30.0) -> None:
     await _send_heartbeat_ping(websocket)
     while True:
@@ -229,8 +246,23 @@ async def _heartbeat_loop(websocket: Any, interval_seconds: float = 30.0) -> Non
         await _send_heartbeat_ping(websocket)
 
 
-async def _ws_message_loop(websocket: Any) -> None:
+async def _close_ws_on_token_expire(websocket: Any, *, expire_epoch: int) -> None:
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    delay_seconds = max(float(expire_epoch - now_ts), 0.0)
+    await asyncio.sleep(delay_seconds)
+    try:
+        await websocket.close(code=4401, reason="UNAUTHORIZED")
+    except Exception:
+        return
+
+
+async def _ws_message_loop(websocket: Any, *, token_expire_epoch: int | None = None) -> None:
     heartbeat_task = asyncio.create_task(_heartbeat_loop(websocket))
+    token_expiry_task: asyncio.Task[Any] | None = None
+    if token_expire_epoch is not None:
+        token_expiry_task = asyncio.create_task(
+            _close_ws_on_token_expire(websocket, expire_epoch=token_expire_epoch)
+        )
     try:
         while True:
             message = await websocket.receive_text()
@@ -240,10 +272,17 @@ async def _ws_message_loop(websocket: Any) -> None:
         return
     finally:
         heartbeat_task.cancel()
+        if token_expiry_task is not None:
+            token_expiry_task.cancel()
         try:
             await heartbeat_task
         except asyncio.CancelledError:
             pass
+        if token_expiry_task is not None:
+            try:
+                await token_expiry_task
+            except asyncio.CancelledError:
+                pass
 
 
 def _dispatch_async(coro: Any) -> None:
@@ -695,12 +734,16 @@ async def ws_lobby(websocket: WebSocket) -> None:
     except HTTPException:
         await _close_ws_unauthorized(websocket)
         return
+    token_expire_epoch = _token_expiry_epoch(token)
+    if token_expire_epoch is None:
+        await _close_ws_unauthorized(websocket)
+        return
 
     await websocket.accept()
     _lobby_connections.add(websocket)
     try:
         await _send_lobby_snapshot(websocket)
-        await _ws_message_loop(websocket)
+        await _ws_message_loop(websocket, token_expire_epoch=token_expire_epoch)
     except WebSocketDisconnect:
         return
     finally:
@@ -720,6 +763,10 @@ async def ws_room(websocket: WebSocket, room_id: int) -> None:
     except HTTPException:
         await _close_ws_unauthorized(websocket)
         return
+    token_expire_epoch = _token_expiry_epoch(token)
+    if token_expire_epoch is None:
+        await _close_ws_unauthorized(websocket)
+        return
 
     try:
         room_registry.get_room(room_id)
@@ -735,7 +782,7 @@ async def ws_room(websocket: WebSocket, room_id: int) -> None:
     _room_connection_users[websocket] = user_id
     try:
         await _send_room_initial_snapshot(websocket, room_id=room_id, user_id=user_id)
-        await _ws_message_loop(websocket)
+        await _ws_message_loop(websocket, token_expire_epoch=token_expire_epoch)
     except WebSocketDisconnect:
         return
     finally:
