@@ -3,7 +3,7 @@
 > 目标：按“全量后端服务测试”标准完成 M6 收口，覆盖 M1~M5 回归门禁 + M6 增量能力（实时推送一致性、心跳保活、断线重连恢复、并发一致性）。
 > 依据文档：`memory-bank/implementation-plan.md`（M6）、`memory-bank/design/backend_design.md`（3.5/3.7）、`memory-bank/interfaces/frontend-backend-interfaces.md`（2.x）、`memory-bank/tests/m4-tests-real-service.md`、`memory-bank/tests/m5-tests-real-service.md`。
 > 口径声明：本文件是 M6 真实服务测试 ID 与执行记录的 SSOT。
-> 当前状态：`M6-RS-WS-01~08` 已完成首轮 Red 实测（`8 passed`）；`M6-RS-RC-01~08` 已完成 Green 修复回归（`8 passed`）。
+> 当前状态：`M6-GATE-01~04` 已完成全量门禁回归（`86 passed`）；`M6-RS-WS-01~08` 已完成首轮 Red 实测（`8 passed`）；`M6-RS-RC-01~08` 已完成 Green 修复回归（`8 passed`）；`M6-RS-HB-01~03` 已完成 Green 回归（`3 passed`）；`M6-RS-CC-01~05` 已完成首轮 Red 实测（`5 passed`）。
 
 ## 0) 测试环境与执行约定（真实服务）
 
@@ -91,7 +91,7 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M6-GATE-01 ~ M6-GATE-04 | ⏳ 待执行 | Pending | - | 先做全量回归门禁，失败即阻断 M6 增量测试。 |
+| M6-GATE-01 ~ M6-GATE-04 | ✅ 已通过 | Gate 回归通过 | 2026-02-25 | 执行 M1~M5 真实服务门禁聚合命令（覆盖 `test_m1_rs_*`、`test_m2_rs_*`、`test_m4_rs_*`、`test_m5_rs_*`），`pytest -q ...` 结果 `86 passed`。 |
 | M6-RS-WS-01 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 新增 `backend/tests/integration/real_service/test_m6_rs_ws_01_08_red.py` 后执行 `pytest backend/tests/integration/real_service/test_m6_rs_ws_01_08_red.py -q`，结果 `8 passed`（同批次）。 |
 | M6-RS-WS-02 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 同批次执行通过（无局房间初始快照仅 `ROOM_UPDATE`）。 |
 | M6-RS-WS-03 | ✅ 已通过 | Red（实测通过） | 2026-02-21 | 同批次执行通过（动作后 `GAME_PUBLIC_STATE -> GAME_PRIVATE_STATE`，版本单调递增）。 |
@@ -111,4 +111,8 @@
 | M6-RS-HB-01 | ✅ 已通过 | Green（回归通过） | 2026-02-24 | 心跳超时断连修复后回归执行 `pytest backend/tests/integration/real_service/test_m6_rs_hb_01_03_red.py -q`，同批次 `3 passed`。 |
 | M6-RS-HB-02 | ✅ 已通过 | Green（修复通过） | 2026-02-24 | 修复 WS 心跳“连续 2 次未回 PONG 主动断连（4408）”后，同批次复测 `3 passed`。 |
 | M6-RS-HB-03 | ✅ 已通过 | Green（回归通过） | 2026-02-24 | 同批次回归通过：多连接心跳保活稳定，且 room 事件无串房（`3 passed`）。 |
-| M6-RS-CC-01 ~ M6-RS-CC-05 | ⏳ 待执行 | Pending | - | 并发用例放在主链路稳定后执行。 |
+| M6-RS-CC-01 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 新增 `backend/tests/integration/real_service/test_m6_rs_cc_01_05_red.py` 后执行 `pytest backend/tests/integration/real_service/test_m6_rs_cc_01_05_red.py -q`，结果 `5 passed`（同批次）。 |
+| M6-RS-CC-02 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 同批次执行通过（重连与动作并发下无重复应用、无版本回退）。 |
+| M6-RS-CC-03 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 同批次执行通过（同账号多连接私有态一致且无串流污染）。 |
+| M6-RS-CC-04 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 同批次执行通过（结算后并发 ready 仅触发 1 局新 game，重连首帧可获取新 `current_game_id`）。 |
+| M6-RS-CC-05 | ✅ 已通过 | Red（实测通过） | 2026-02-24 | 同批次执行通过（长局 + 中途断连重连后三端 `public_state.version/phase` 最终一致）。 |
