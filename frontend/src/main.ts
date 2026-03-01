@@ -1,17 +1,24 @@
-import { createApp, h } from 'vue'
+import { createApp, defineComponent, h } from 'vue'
+import { RouterView } from 'vue-router'
 
+import { createAppRouter } from '@/app/router'
+import { createAuthStoreForTest } from '@/stores/auth'
 import './style.css'
 
-const App = {
-  render: () =>
-    h('main', { class: 'min-h-screen bg-slate-100 p-6 text-slate-900' }, [
-      h('h1', { class: 'text-2xl font-bold' }, 'XianQiWeb Frontend Scaffold'),
-      h(
-        'p',
-        { class: 'mt-2 text-sm text-slate-600' },
-        'M7 配置文件已就绪，可在 src/pages 中继续实现业务页面。',
-      ),
-    ]),
-}
+const authStore = createAuthStoreForTest()
+authStore.hydrateFromStorage()
 
-createApp(App).mount('#app')
+const router = createAppRouter({ authStore, history: 'web' })
+
+const AppRoot = defineComponent({
+  name: 'AppRoot',
+  components: { RouterView },
+  render: () => h(RouterView),
+})
+
+const app = createApp(AppRoot)
+app.use(router)
+
+void router.isReady().finally(() => {
+  app.mount('#app')
+})

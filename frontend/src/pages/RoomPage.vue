@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { useLobbyStore } from '@/stores/lobby'
 import { useRoomStore } from '@/stores/room'
 
 const router = useRouter()
+const lobbyStore = useLobbyStore()
 const roomStore = useRoomStore()
+const FORCE_SERVICE_RESET_KEY = 'xianqi.force_service_reset'
 
 const readyCountText = computed(() => {
   const members = roomStore.roomDetail?.members ?? []
   const readyCount = members.filter((member) => member.ready).length
   return `ready ${readyCount}/${members.length}`
+})
+
+onMounted(() => {
+  const shouldForceReset =
+    typeof window !== 'undefined' && window.sessionStorage.getItem(FORCE_SERVICE_RESET_KEY) === '1'
+  if (!shouldForceReset) {
+    return
+  }
+
+  window.sessionStorage.removeItem(FORCE_SERVICE_RESET_KEY)
+  lobbyStore.error = '服务已重置，请重新入房'
+  void router.replace('/lobby')
 })
 
 function onToggleReady() {

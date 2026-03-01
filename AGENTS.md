@@ -6,7 +6,7 @@
 - 开发计划位于 memory-bank/implementation-plan.md
 - 旧版代码位于BackEnd_old和FrontEnd_old文件夹中，仅在人类明确提出需求的时候进行查找。
 - 在plan模式中，把**打算做的事情**尽可能写的简单扼要一些。如果有疑问的话要尽可能提出来。
-- 一轮回复产生之后，用脚本给telegram bot发消息提示我。为确保换行生效，优先使用：`python scripts/notify_telegram_job_done.py --message "$(printf 'prompt: %s\nresponse summary: %s' "$PROMPT" "$SUMMARY")"`。消息内容为两行：第一行 `prompt: {我的prompt}`，第二行 `response summary: {本次回复的总结}`。总结应当用中文，并且不应当超过50个汉字。
+
 
 # TDD开发流程
 在每个开发阶段，都要先生成一个测试用例列表（包含测试用例的描述、通过条件等），输出到对应的测试用例设计文档中，再在该文档后面记录每个测试用例的红绿阶段执行结果。

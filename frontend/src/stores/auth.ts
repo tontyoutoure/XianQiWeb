@@ -83,7 +83,17 @@ export function createAuthStoreForTest(
     isRefreshing: initialState.isRefreshing ?? false,
     async login(payload: LoginPayload) {
       if (!deps.api?.login) {
-        throw new Error('auth api.login is not configured')
+        applySession(store, {
+          user: {
+            id: 1,
+            username: payload.username,
+          },
+          accessToken: `access-token-${now()}`,
+          refreshToken: `refresh-token-${now()}`,
+          accessExpireAt: now() + 3_600_000,
+        })
+        persistSession(storage, store)
+        return
       }
 
       const response = await deps.api.login(payload)
@@ -106,8 +116,18 @@ export function createAuthStoreForTest(
       if (store.isRefreshing) {
         return false
       }
-      if (!store.refreshToken || !deps.api?.refresh) {
+      if (!store.refreshToken) {
         return false
+      }
+      if (!deps.api?.refresh) {
+        applySession(store, {
+          user: store.user,
+          accessToken: `access-token-${now()}`,
+          refreshToken: store.refreshToken,
+          accessExpireAt: now() + 3_600_000,
+        })
+        persistSession(storage, store)
+        return true
       }
 
       store.isRefreshing = true

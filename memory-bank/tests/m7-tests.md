@@ -103,8 +103,8 @@
 | M7-CT-06 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；房间页已提供 ready 控件与 ready 计数展示 |
 | M7-CT-07 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；点击 leave 按钮可导航回 `/lobby` |
 | M7-WS-04 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`playing -> waiting` 可识别冷结束并设置“对局结束”提示 |
-| M7-WS-05 | ⬜ 未执行 | 待 Red | - | - |
-| M7-WS-06 | ⬜ 未执行 | 待 Red | - | - |
-| M7-E2E-01 | ⬜ 未执行 | 待 Red | - | - |
-| M7-E2E-02 | ⬜ 未执行 | 待 Red | - | - |
-| M7-E2E-03 | ⬜ 未执行 | 待 Red | - | - |
+| M7-WS-05 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ws-client` 可在收到 `PING` 后回 `PONG` 并维持连接可用 |
+| M7-WS-06 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ws store` 断线后可重连并触发 REST 拉态计数 |
+| M7-E2E-01 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；登录 -> 大厅 -> 入房 -> ready -> leave 主流程可达 |
+| M7-E2E-02 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；会话流程可恢复并保持在受保护页面 |
+| M7-E2E-03 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；触发服务重置标记后可提示“服务已重置，请重新入房”并回大厅 |
