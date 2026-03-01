@@ -15,6 +15,9 @@
 - 推荐命令（以最终 `package.json` 脚本为准）：
   - 单元/组件：`pnpm vitest`
   - E2E：`pnpm playwright test`
+- M7 E2E（`M7-E2E-01~03`）补充约束：
+  - 需先启动后端（默认 `http://127.0.0.1:18080`）。
+  - 用例内应自准备测试账号，不依赖预置账号（如 `alice/secret`）。
 - TDD 流程约束：
   1. 人类先指定测试ID。
   2. 先写测试并执行 Red（失败符合预期）。
@@ -105,6 +108,6 @@
 | M7-WS-04 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`playing -> waiting` 可识别冷结束并设置“对局结束”提示 |
 | M7-WS-05 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ws-client` 可在收到 `PING` 后回 `PONG` 并维持连接可用 |
 | M7-WS-06 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ws store` 断线后可重连并触发 REST 拉态计数 |
-| M7-E2E-01 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；登录 -> 大厅 -> 入房 -> ready -> leave 主流程可达 |
-| M7-E2E-02 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；会话流程可恢复并保持在受保护页面 |
-| M7-E2E-03 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；触发服务重置标记后可提示“服务已重置，请重新入房”并回大厅 |
+| M7-E2E-01 | ✅ Green通过 | Red→Green（回归修复） | 2026-03-01 | 回归 Red：`m7-stage-1-5-red.spec.ts` 使用硬编码 `alice/secret` 导致登录失败；改为用例内注册唯一账号后复测 Green（`cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-stage-1-5-red.spec.ts`）。 |
+| M7-E2E-02 | ✅ Green通过 | Red→Green（回归修复） | 2026-03-01 | 同批次回归修复：移除预置账号依赖，改为测试内自注册后登录，复测通过。 |
+| M7-E2E-03 | ✅ Green通过 | Red→Green（回归修复） | 2026-03-01 | 同批次回归修复：移除预置账号依赖，服务重置提示与回大厅引导断言通过。 |

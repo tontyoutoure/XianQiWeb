@@ -10,11 +10,15 @@
 - 建议环境：
   - 后端：conda `XQB`
   - 前端：Node.js `22.x`
-- 后端启动（示例）：
+- 后端启动（推荐：测试模式，自动临时 sqlite 隔离）：
   - `XQWEB_APP_HOST=127.0.0.1`
   - `XQWEB_APP_PORT=18080`
-  - `XQWEB_SQLITE_PATH=/tmp/xqweb-m7-real-service.sqlite3`
+  - `XQWEB_TEST_DB_DIR=/tmp/xqweb-test`（可选，默认该目录）
+  - `XQWEB_TEST_KEEP_DB=1`（可选，调试时保留 sqlite）
   - `XQWEB_JWT_SECRET=<at-least-32-byte-secret>`
+  - `bash scripts/start-backend-test.sh`
+- 后端启动（兼容旧模式，固定 sqlite）：
+  - `XQWEB_SQLITE_PATH=/tmp/xqweb-m7-real-service.sqlite3`
   - `bash scripts/start-backend.sh`
 - 前端环境变量（`frontend/.env.test` 或命令行覆盖）：
   - `VITE_API_BASE_URL=http://127.0.0.1:18080`
@@ -23,7 +27,7 @@
   - `cd frontend && npm run test:e2e -- --project=chromium`
 - 账号与数据隔离约定：
   - 每次执行使用唯一前缀账号（如 `m7rs_a_001`）。
-  - 每轮执行清理 sqlite 文件，避免跨轮污染。
+  - 使用 `start-backend-test.sh` 时每轮自动生成独立 sqlite，默认退出自动清理。
 
 ## 1) 进入收口前门禁（M7-GATE）
 

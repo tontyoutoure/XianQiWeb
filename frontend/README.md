@@ -228,6 +228,16 @@ npm run preview
 
 ## 6.3 E2E 测试（Playwright）
 
+真实后端联调时，建议先在仓库根目录使用测试模式启动后端：
+
+```bash
+XQWEB_APP_PORT=18080 bash scripts/start-backend-test.sh
+```
+
+说明：
+- 该脚本会默认创建本轮唯一 sqlite（目录默认 `/tmp/xqweb-test`）。
+- 进程退出时默认自动清理 sqlite；若需保留调试数据，可加 `XQWEB_TEST_KEEP_DB=1`。
+
 主流程场景：
 1. 登录 -> 进入大厅 -> 可见房间列表
 2. 加入房间 -> ready -> 取消 ready -> leave

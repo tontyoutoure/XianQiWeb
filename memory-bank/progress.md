@@ -27,6 +27,8 @@
 - M7 真实后端收口测试设计（2026-03-01）：新增 `memory-bank/tests/m7-tests-real-service.md`，固化 `M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 联调用例、执行约定与收口标准，待人类指定测试 ID 进入 Red/Green。
 - M7 收口门禁实现与通过（2026-03-01）：新增 `M7-GATE-01~03` 自动化用例（`backend/tests/integration/real_service/test_m7_rs_gate_01_red.py`、`frontend/tests/e2e/m7-gate-02.spec.ts`、`frontend/tests/unit/m7-gate-03.test.ts`），并完成执行通过（各 `1 passed`）。
 - M7 真实后端联调首批闭环（2026-03-01）：完成 `M7-RS-E2E-01~03`（登录闭环、注册并登录闭环、登录失败提示）先 Red 后 Green；新增 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts`，并补齐真实 API 接线（`auth-api`、`rooms-api`、`main`、`LobbyPage`）与 Vite `/api` `/ws` 代理，执行结果 `3 passed`。
+- M7 E2E 回归修复（2026-03-01）：修复 `frontend/tests/e2e/m7-stage-1-5-red.spec.ts` 对预置账号 `alice/secret` 的隐式依赖，改为用例内自注册唯一账号；在真实后端启动条件下回归 `M7-E2E-01~03` 通过，避免空库环境下误报失败。
+- M7 测试模式启动落地（2026-03-01）：新增 `scripts/start-backend-test.sh`，默认使用每轮唯一临时 sqlite（`/tmp/xqweb-test`）并在退出时自动清理，可通过 `XQWEB_TEST_KEEP_DB=1` 保留调试库；并回归 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts` 结果 `3 passed`。
 
 ## 当前阶段
 - 结论（2026-03-01）：M7 非对局范围（登录/大厅/房间 + WS 异常恢复）已完成测试级红绿闭环。
