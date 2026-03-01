@@ -3,3 +3,15 @@ tmp/
 __pycache__/
 *.sqlite3
 log/
+
+# frontend dependencies and build outputs
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# frontend test outputs and caches
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.vite/
+frontend/.cache/

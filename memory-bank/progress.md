@@ -14,7 +14,9 @@
 - M7 文档阶段（2026-02-27）：新增 `memory-bank/design/frontend_design.md` 的 Phase A（非对局）设计，覆盖登录/大厅/房间、REST/WS 基础设施与异常恢复。
 - 计划调整（2026-02-27）：`implementation-plan.md` 已将前端对局/结算实现明确归入 M8，M7 仅覆盖非对局范围。
 - M7 测试设计（2026-02-27）：新增 `memory-bank/tests/m7-tests.md`，按 M7 实施顺序固化 TDD 用例清单与红绿记录模板。
+- M7 文档落地（2026-02-28）：新增 `frontend/README.md`，沉淀前端配置与测试方法（面向前端经验较少同学，覆盖环境准备、工具链职责、npm 命令、Vitest/Playwright 测试流程与常见问题排查）。
+- M7 工程配置基线（2026-02-28）：补齐 `frontend` 工程关键配置（`index.html`、Vite/TS/Vitest/Playwright、ESLint/Prettier、Tailwind/PostCSS），并新增基础 smoke 测试（unit + e2e）。
 
 ## 当前阶段
 - 结论（2026-02-27）：前端设计已先完成“对局之外”范围，后续待补对局需求后再扩展对局与结算细节设计。
-- 下一步：补齐对局新增需求，扩展 `frontend_design.md` 对局章节，并进入 M7 前端实现与测试文档落地。
+- 下一步：在现有基线之上实现 M7 非对局页面与状态管理（登录/大厅/房间），并按测试文档扩展业务用例；E2E 需先执行 `npx playwright install` 安装浏览器。
