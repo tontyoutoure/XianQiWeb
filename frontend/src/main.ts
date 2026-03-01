@@ -2,10 +2,16 @@ import { createApp, defineComponent, h } from 'vue'
 import { RouterView } from 'vue-router'
 
 import { createAppRouter } from '@/app/router'
+import { createAuthApi } from '@/services/auth-api'
 import { createAuthStoreForTest } from '@/stores/auth'
 import './style.css'
 
-const authStore = createAuthStoreForTest()
+const authStore = createAuthStoreForTest(
+  {},
+  {
+    api: createAuthApi(),
+  },
+)
 authStore.hydrateFromStorage()
 
 const router = createAppRouter({ authStore, history: 'web' })

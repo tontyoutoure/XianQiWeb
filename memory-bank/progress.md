@@ -24,7 +24,10 @@
 - M7 1.4 测试拉红（2026-03-01）：新增并执行 `WS03/CT06/CT07/WS04`（房间 WS 初始快照、ready 切换、leave 回大厅、冷结束提示）测试，当前按预期 Red（`room store` 与 `RoomPage` 尚未实现）。
 - M7 1.4 房间阶段红绿闭环（2026-03-01）：`WS03/CT06/CT07/WS04` 已完成先 Red 后 Green；补齐 `room store` 与 `RoomPage` 最小实现，并将路由切换到真实房间页，当前 `frontend` 单测结果 `19 passed`。
 - M7 1.5 异常恢复阶段红绿闭环（2026-03-01）：`WS05/WS06/E2E01~03` 已完成先 Red 后 Green；补齐 `ws-client` 心跳、`ws store` 重连兜底、前端入口路由化与服务重置提示引导，`m7-stage-1-5-red.test.ts` 与 `m7-stage-1-5-red.spec.ts` 均通过。
+- M7 真实后端收口测试设计（2026-03-01）：新增 `memory-bank/tests/m7-tests-real-service.md`，固化 `M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 联调用例、执行约定与收口标准，待人类指定测试 ID 进入 Red/Green。
+- M7 收口门禁实现与通过（2026-03-01）：新增 `M7-GATE-01~03` 自动化用例（`backend/tests/integration/real_service/test_m7_rs_gate_01_red.py`、`frontend/tests/e2e/m7-gate-02.spec.ts`、`frontend/tests/unit/m7-gate-03.test.ts`），并完成执行通过（各 `1 passed`）。
+- M7 真实后端联调首批闭环（2026-03-01）：完成 `M7-RS-E2E-01~03`（登录闭环、注册并登录闭环、登录失败提示）先 Red 后 Green；新增 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts`，并补齐真实 API 接线（`auth-api`、`rooms-api`、`main`、`LobbyPage`）与 Vite `/api` `/ws` 代理，执行结果 `3 passed`。
 
 ## 当前阶段
 - 结论（2026-03-01）：M7 非对局范围（登录/大厅/房间 + WS 异常恢复）已完成测试级红绿闭环。
-- 下一步：在真实后端联调环境执行 M7 收口用例（真实服务版），随后进入 M8 对局与结算前端实现。
+- 下一步：按 `memory-bank/tests/m7-tests-real-service.md` 继续执行 `M7-RS-E2E-04~12`（真实后端联调），完成 M7 收口后进入 M8 对局与结算前端实现。

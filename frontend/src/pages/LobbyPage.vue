@@ -1,16 +1,52 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { createRoomsApi } from '@/services/rooms-api'
+import { useAuthStore } from '@/stores/auth'
 import { useLobbyStore } from '@/stores/lobby'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const lobbyStore = useLobbyStore()
+const roomsApi = createRoomsApi()
 
 const rooms = computed(() => lobbyStore.rooms)
 
+onMounted(() => {
+  if (import.meta.env.MODE === 'test') {
+    return
+  }
+  void loadRooms()
+})
+
+async function loadRooms() {
+  if (!authStore.accessToken) {
+    lobbyStore.error = '未登录或会话已失效'
+    return
+  }
+
+  lobbyStore.loading = true
+  lobbyStore.error = null
+  try {
+    lobbyStore.rooms = await roomsApi.listRooms(authStore.accessToken)
+    lobbyStore.lastSyncAt = Date.now()
+  } catch (error) {
+    lobbyStore.error = resolveErrorMessage(error)
+  } finally {
+    lobbyStore.loading = false
+  }
+}
+
 async function onJoinRoom(roomId: number) {
   await router.push(`/rooms/${roomId}`)
+}
+
+function resolveErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+  return '房间列表加载失败'
 }
 </script>
 
