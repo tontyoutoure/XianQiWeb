@@ -1,6 +1,8 @@
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
+import LobbyPage from '@/pages/LobbyPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
+import RoomPage from '@/pages/RoomPage.vue'
 import { createAuthStoreForTest, setActiveAuthStore, type AuthStoreLike } from '@/stores/auth'
 
 interface CreateRouterOptions {
@@ -18,10 +20,10 @@ export function createAppRouter(options: CreateRouterOptions = {}): Router {
     routes: [
       { path: '/', redirect: '/login' },
       { path: '/login', component: LoginPage },
-      { path: '/lobby', component: { template: '<div>lobby</div>' }, meta: { requiresAuth: true } },
+      { path: '/lobby', component: LobbyPage, meta: { requiresAuth: true } },
       {
         path: '/rooms/:roomId',
-        component: { template: '<div>room</div>' },
+        component: RoomPage,
         meta: { requiresAuth: true },
       },
     ],

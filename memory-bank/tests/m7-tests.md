@@ -95,14 +95,14 @@
 | M7-CT-01 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；登录提交成功后可导航到 `/lobby` |
 | M7-CT-02 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；登录失败会展示错误信息并停留 `/login` |
 | M7-CT-03 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；注册入口可完成会话写入并跳转 `/lobby` |
-| M7-CT-04 | ⬜ 未执行 | 待 Red | - | - |
-| M7-WS-01 | ⬜ 未执行 | 待 Red | - | - |
-| M7-WS-02 | ⬜ 未执行 | 待 Red | - | - |
-| M7-CT-05 | ⬜ 未执行 | 待 Red | - | - |
-| M7-WS-03 | ⬜ 未执行 | 待 Red | - | - |
-| M7-CT-06 | ⬜ 未执行 | 待 Red | - | - |
-| M7-CT-07 | ⬜ 未执行 | 待 Red | - | - |
-| M7-WS-04 | ⬜ 未执行 | 待 Red | - | - |
+| M7-CT-04 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；大厅页已渲染列表容器与空态/错误态节点 |
+| M7-WS-01 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ROOM_LIST` 可覆盖写入 `store.rooms` |
+| M7-WS-02 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ROOM_UPDATE` 可按 `room_id` 增量更新摘要 |
+| M7-CT-05 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；点击房间 join 按钮可导航到 `/rooms/:roomId` |
+| M7-WS-03 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`ROOM_UPDATE` 初始快照可同步到 `roomDetail` |
+| M7-CT-06 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；房间页已提供 ready 控件与 ready 计数展示 |
+| M7-CT-07 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；点击 leave 按钮可导航回 `/lobby` |
+| M7-WS-04 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`playing -> waiting` 可识别冷结束并设置“对局结束”提示 |
 | M7-WS-05 | ⬜ 未执行 | 待 Red | - | - |
 | M7-WS-06 | ⬜ 未执行 | 待 Red | - | - |
 | M7-E2E-01 | ⬜ 未执行 | 待 Red | - | - |
