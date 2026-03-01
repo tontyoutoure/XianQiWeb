@@ -3,7 +3,7 @@
 > 目标：在真实启动的后端服务上完成 M7 非对局前端收口，验证“登录 -> 大厅 -> 房间（join/ready/leave）”主链路与异常恢复链路在真实 REST/WS 协议下可用。
 > 依据文档：`memory-bank/tests/m7-tests.md`、`memory-bank/implementation-plan.md`（M7/M8）、`memory-bank/design/frontend_design.md`、`memory-bank/interfaces/frontend-backend-interfaces.md`。
 > 口径声明：本文件是 M7 真实后端联调用例 ID 与执行记录来源（SSOT）。
-> 当前状态：`M7-GATE-01~03`、`M7-RS-E2E-01~03` 已完成并通过；`M7-RS-E2E-04~12` 待执行。
+> 当前状态：`M7-GATE-01~03`、`M7-RS-E2E-01~03` 已完成并通过；`M7-RS-E2E-04~08` 已完成 Red 拉红（待 Green）；`M7-RS-E2E-09~12` 待执行。
 
 ## 0) 测试环境与执行约定（真实服务）
 
@@ -76,11 +76,11 @@
 | M7-RS-E2E-01 | ✅ Green通过 | Red→Green 完成 | 2026-03-01 | 新增 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts`；首轮 Red：执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-01-03.spec.ts` 结果 `3 failed`（前端仍为测试桩，且跨域预检 `OPTIONS` 405）；补齐真实 API 接线（`auth-api`/`rooms-api`/`main`/`LobbyPage`）并增加 Vite 代理后复测，结果 `3 passed`。 |
 | M7-RS-E2E-02 | ✅ Green通过 | Red→Green 完成 | 2026-03-01 | 同上，覆盖注册并登录后进入大厅、刷新后会话恢复。 |
 | M7-RS-E2E-03 | ✅ Green通过 | Red→Green 完成 | 2026-03-01 | 同上，覆盖错误密码返回后端错误消息并停留 `/login`。 |
-| M7-RS-E2E-04 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-05 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-06 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-07 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-08 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
+| M7-RS-E2E-04 | ❌ Red失败 | Red完成 | 2026-03-01 | 新增 `frontend/tests/e2e/m7-rs-e2e-04-08.spec.ts`；执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts`，`M7-RS-E2E-04` 失败：入房后断言当前用户应出现在后端 `room_detail.members`，实际 `members.some(user_id==self)` 为 `false`。 |
+| M7-RS-E2E-05 | ❌ Red失败 | Red完成 | 2026-03-01 | 执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts --grep "M7-RS-E2E-05"`；失败：点击 ready 后房间页 `room-ready-count` 期望 `ready 1/1`，实际保持 `ready 0/1`。 |
+| M7-RS-E2E-06 | ❌ Red失败 | Red完成 | 2026-03-01 | 执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts --grep "M7-RS-E2E-06"`；失败：点击 leave 返回大厅后，后端 `/api/rooms` 中该房间 `player_count` 期望回落到 `beforeCount`，实际仍为 `1`。 |
+| M7-RS-E2E-07 | ❌ Red失败 | Red完成 | 2026-03-01 | 执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts --grep "M7-RS-E2E-07"`；失败：A 端 join 后，B 端大厅计数未同步，`playerCount` 期望 `before+1`，实际仍 `before`。 |
+| M7-RS-E2E-08 | ❌ Red失败 | Red完成 | 2026-03-01 | 执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts --grep "M7-RS-E2E-08"`；失败：A 端切换 ready 后，B 端房间 `room-ready-count` 未变化，`expect changed` 实际 `unchanged`。 |
 | M7-RS-E2E-09 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
 | M7-RS-E2E-10 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
 | M7-RS-E2E-11 | ⏳ 待执行 | 待启动 | - | 待人类指定 |

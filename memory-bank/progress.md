@@ -29,6 +29,7 @@
 - M7 真实后端联调首批闭环（2026-03-01）：完成 `M7-RS-E2E-01~03`（登录闭环、注册并登录闭环、登录失败提示）先 Red 后 Green；新增 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts`，并补齐真实 API 接线（`auth-api`、`rooms-api`、`main`、`LobbyPage`）与 Vite `/api` `/ws` 代理，执行结果 `3 passed`。
 - M7 E2E 回归修复（2026-03-01）：修复 `frontend/tests/e2e/m7-stage-1-5-red.spec.ts` 对预置账号 `alice/secret` 的隐式依赖，改为用例内自注册唯一账号；在真实后端启动条件下回归 `M7-E2E-01~03` 通过，避免空库环境下误报失败。
 - M7 测试模式启动落地（2026-03-01）：新增 `scripts/start-backend-test.sh`，默认使用每轮唯一临时 sqlite（`/tmp/xqweb-test`）并在退出时自动清理，可通过 `XQWEB_TEST_KEEP_DB=1` 保留调试库；并回归 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts` 结果 `3 passed`。
+- M7 真实后端联调第二批拉红（2026-03-01）：新增 `frontend/tests/e2e/m7-rs-e2e-04-08.spec.ts`，覆盖 `M7-RS-E2E-04~08`（入房、ready 持久、leave、大厅双端同步、房间双端同步）；按用例逐条执行均为 Red，失败点已回填 `memory-bank/tests/m7-tests-real-service.md`。
 
 ## 当前阶段
 - 结论（2026-03-01）：M7 非对局范围（登录/大厅/房间 + WS 异常恢复）已完成测试级红绿闭环。
