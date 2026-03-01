@@ -1,14 +1,6 @@
 #!/usr/bin/env python3
-"""Send a Telegram message for manual calls or Codex notify hooks.
+"""Send sys.argv[1] to Telegram."""
 
-Required environment variables:
-- CODEX_JOB_DONE_BOT_TOKEN
-- CODEX_JOB_DONE_CHAT_ID
-"""
-
-from __future__ import annotations
-
-import argparse
 import json
 import os
 import sys
@@ -18,10 +10,7 @@ import urllib.request
 BOT_TOKEN_ENV = "CODEX_JOB_DONE_BOT_TOKEN"
 CHAT_ID_ENV = "CODEX_JOB_DONE_CHAT_ID"
 PROXY_URL = "http://127.0.0.1:17890"
-DEFAULT_MESSAGE = "Job done"
 REQUEST_TIMEOUT_SECONDS = 10
-DEFAULT_PROMPT_PLACEHOLDER = "(from codex notify)"
-DEFAULT_SUMMARY_PLACEHOLDER = "(no assistant summary)"
 
 
 def _get_required_env(name: str) -> str:
@@ -72,103 +61,60 @@ def send_message(bot_token: str, chat_id: str, message: str) -> None:
         raise RuntimeError(f"Telegram API rejected request: {description}")
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Send a Telegram notification for job completion or Codex notify events"
-    )
-    parser.add_argument(
-        "--message",
-        default=None,
-        help="Message text to send directly. If omitted, tries Codex notify JSON payload.",
-    )
-    parser.add_argument(
-        "payload",
-        nargs="?",
-        default=None,
-        help="Codex notify JSON payload (usually passed automatically by Codex as argv[1]).",
-    )
-    return parser.parse_args()
+def _format_input_messages(input_messages: object) -> str:
+    if isinstance(input_messages, list):
+        for item in reversed(input_messages):
+            text = str(item).strip()
+            if text:
+                return text
+        return "(empty)"
+    if input_messages is None:
+        return "(empty)"
+
+    text = str(input_messages).strip()
+    return text or "(empty)"
 
 
-def _coerce_to_str(value: object) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value
-    return str(value)
-
-
-def _truncate_text(text: str, max_len: int = 80) -> str:
-    clean = " ".join(text.strip().split())
-    if len(clean) <= max_len:
-        return clean
-    return clean[: max_len - 3] + "..."
-
-
-def _build_message_from_payload(payload_text: str) -> str:
+def _extract_input_output_message(raw_message: str) -> str:
     try:
-        payload = json.loads(payload_text)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("Invalid Codex notify JSON payload") from exc
+        payload = json.loads(raw_message)
+    except json.JSONDecodeError:
+        return raw_message
 
     if not isinstance(payload, dict):
-        raise RuntimeError("Codex notify payload must be a JSON object")
-
-    event_type = _coerce_to_str(payload.get("type"))
-    if event_type and event_type != "agent-turn-complete":
-        return ""
+        return raw_message
 
     input_messages = payload.get("input-messages")
-    if input_messages is None:
-        input_messages = payload.get("input_messages")
-    prompt_text = ""
-    if isinstance(input_messages, list):
-        prompt_text = _coerce_to_str(input_messages[-1]) if input_messages else ""
-    if not prompt_text:
-        prompt_text = _coerce_to_str(payload.get("prompt"))
-    if not prompt_text:
-        prompt_text = DEFAULT_PROMPT_PLACEHOLDER
+    output_message = payload.get("last-assistant-message")
 
-    summary_text = _coerce_to_str(payload.get("last-assistant-message"))
-    if not summary_text:
-        summary_text = _coerce_to_str(payload.get("last_assistant_message"))
-    if not summary_text:
-        summary_text = DEFAULT_SUMMARY_PLACEHOLDER
+    if input_messages is None and output_message is None:
+        return raw_message
 
-    return (
-        f"prompt: {_truncate_text(prompt_text, max_len=120)}\n"
-        f"response summary: {_truncate_text(summary_text, max_len=45)}"
-    )
+    input_text = _format_input_messages(input_messages)
+    output_text = str(output_message).strip() if output_message is not None else "(empty)"
+    if not output_text:
+        output_text = "(empty)"
+
+    return f"输入:\n{input_text}\n\n输出:\n{output_text}"
 
 
 def main() -> int:
-    with open("telegram.log", "w+") as f:
-        f.write(sys.argv[1])
+    if len(sys.argv) < 2:
+        print("Usage: notify_telegram_job_done.py <message>", file=sys.stderr)
+        return 1
 
-    # try:
-    #     bot_token = _get_required_env(BOT_TOKEN_ENV)
-    #     chat_id = _get_required_env(CHAT_ID_ENV)
-    #     if args.message:
-    #         message = args.message
-    #     elif args.payload:
-    #         message = _build_message_from_payload(args.payload)
-    #     elif not sys.stdin.isatty():
-    #         stdin_text = sys.stdin.read().strip()
-    #         message = _build_message_from_payload(stdin_text) if stdin_text else DEFAULT_MESSAGE
-    #     else:
-    #         message = DEFAULT_MESSAGE
+    raw_message = sys.argv[1]
+    message = _extract_input_output_message(raw_message)
 
-    #     if not message:
-    #         print("[notify_telegram_job_done] skipped: unsupported notify event type")
-    #         return 0
+    try:
+        bot_token = _get_required_env(BOT_TOKEN_ENV)
+        chat_id = _get_required_env(CHAT_ID_ENV)
+        send_message(bot_token=bot_token, chat_id=chat_id, message=message)
+    except RuntimeError as exc:
+        print(f"[notify_telegram_job_done] {exc}", file=sys.stderr)
+        return 1
 
-    #     send_message(bot_token=bot_token, chat_id=chat_id, message=message)
-    # except RuntimeError as exc:
-    #     print(f"[notify_telegram_job_done] {exc}", file=sys.stderr)
-    #     return 1
-
-    # print("[notify_telegram_job_done] message sent")
-    # return 0
+    return 0
 
 
 if __name__ == "__main__":
