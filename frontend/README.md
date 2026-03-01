@@ -1,4 +1,4 @@
-# 前端配置与测试方法（M7 非对局阶段）
+# 前端配置与测试方法
 
 本文面向前端经验较少的同学，目标是帮助你按统一方式完成：
 - 本地开发环境准备
@@ -11,21 +11,15 @@
 - `memory-bank/product-requirements.md`
 - `memory-bank/design/frontend_design.md`
 - `memory-bank/interfaces/frontend-backend-interfaces.md`
+- `memory-bank/implementation-plan.md`
+- `memory-bank/progress.md`
 
-## 1. 当前项目状态（先看这个）
+## 1. 文档边界
 
-截至当前仓库状态，`frontend/` 目录只有 `src/` 骨架文件，尚未看到以下配置文件：
-- `frontend/package.json`
-- `frontend/vite.config.ts`
-- `frontend/tsconfig*.json`
-- `frontend/vitest.config.ts`
-- `frontend/playwright.config.ts`
-- `frontend/eslint` / `prettier` 配置
-
-这意味着：
-1. 本文先提供一份“推荐配置基线 + 测试方法”作为落地标准。
-2. 配置文件补齐后，命令可以直接执行。
-3. M7 先聚焦“登录 -> 大厅 -> 房间（ready/leave）”的非对局能力，M8 再扩展对局与结算。
+本文仅包含可复用的前端配置与测试方法，不记录当前阶段进度、里程碑状态或临时推进信息。  
+相关进度请统一查看：
+1. `memory-bank/implementation-plan.md`
+2. `memory-bank/progress.md`
 
 ## 2. 环境准备
 
@@ -194,9 +188,9 @@ npm run build
 npm run preview
 ```
 
-## 6. 测试方法（M7 范围）
+## 6. 测试方法（非对局流程示例）
 
-M7 只测非对局闭环：登录、鉴权、房间、大厅、连接恢复。
+本节聚焦非对局闭环：登录、鉴权、房间、大厅、连接恢复。
 
 ## 6.1 单元测试（Vitest）
 
@@ -300,11 +294,6 @@ npm run test:e2e
 5. 执行 `npm run type-check` 和 `npm run lint`。
 6. 执行 `npm run test`，确认单元/组件测试可跑。
 7. 执行 `npm run test:e2e`，确认主流程可跑。
-
-## 10. 与 M7/M8 的边界说明
-
-- M7：完成非对局功能闭环和测试基线（本文重点）。
-- M8：补充对局操作与结算交互测试（`legal_actions`、`action_idx + cover_list`、冲突恢复等）。
 
 ---
 

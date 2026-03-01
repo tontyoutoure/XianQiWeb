@@ -79,22 +79,22 @@
 - 断线重连、token 过期、服务端重启三类恢复场景可用。
 - 不包含对局操作 UI 与结算详情（归 M8）。
 
-## 3) TDD 执行记录（初始化）
+## 3) TDD 执行记录
 
-> 说明：当前仅完成用例设计，尚未进入具体 Red/Green 执行。后续每个测试ID通过后请更新状态与备注。
+> 说明：`UT01~UT07` 与 `CT01~CT03` 已完成 Red/Green；其余测试项待后续阶段继续执行并回填。
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M7-UT-01 | ⬜ 未执行 | 待 Red | - | - |
-| M7-UT-02 | ⬜ 未执行 | 待 Red | - | - |
-| M7-UT-03 | ⬜ 未执行 | 待 Red | - | - |
-| M7-UT-04 | ⬜ 未执行 | 待 Red | - | - |
-| M7-UT-05 | ⬜ 未执行 | 待 Red | - | - |
-| M7-UT-06 | ⬜ 未执行 | 待 Red | - | - |
-| M7-UT-07 | ⬜ 未执行 | 待 Red | - | - |
-| M7-CT-01 | ⬜ 未执行 | 待 Red | - | - |
-| M7-CT-02 | ⬜ 未执行 | 待 Red | - | - |
-| M7-CT-03 | ⬜ 未执行 | 待 Red | - | - |
+| M7-UT-01 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；未登录访问受保护路由会跳转 `/login` |
+| M7-UT-02 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；临期 token 触发 refresh 后可放行 |
+| M7-UT-03 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；请求拦截器自动注入 Bearer token |
+| M7-UT-04 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；401 触发 refresh 并重放原请求 |
+| M7-UT-05 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；refresh 失败触发统一登出 |
+| M7-UT-06 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`login` 成功写入会话态 |
+| M7-UT-07 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；`hydrateFromStorage` 可恢复会话 |
+| M7-CT-01 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；登录提交成功后可导航到 `/lobby` |
+| M7-CT-02 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；登录失败会展示错误信息并停留 `/login` |
+| M7-CT-03 | ✅ Green通过 | Green完成 | 2026-03-01 | 已先 Red 后 Green；注册入口可完成会话写入并跳转 `/lobby` |
 | M7-CT-04 | ⬜ 未执行 | 待 Red | - | - |
 | M7-WS-01 | ⬜ 未执行 | 待 Red | - | - |
 | M7-WS-02 | ⬜ 未执行 | 待 Red | - | - |
