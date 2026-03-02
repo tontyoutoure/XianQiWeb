@@ -1,11 +1,34 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { RouterView } from 'vue-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAppRouter } from '@/app/router'
 import { createAuthStoreForTest } from '@/stores/auth'
 import * as roomModule from '@/stores/room'
+
+const { roomsApiMock } = vi.hoisted(() => {
+  return {
+    roomsApiMock: {
+      listRooms: vi.fn(),
+      getRoomDetail: vi.fn(),
+      joinRoom: vi.fn(),
+      leaveRoom: vi.fn(),
+      setReady: vi.fn(),
+    },
+  }
+})
+
+vi.mock('@/services/rooms-api', () => ({
+  createRoomsApi: () => roomsApiMock,
+}))
+
+vi.mock('@/ws/room-channel', () => ({
+  createRoomChannel: () => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  }),
+}))
 
 const HostWithRouterView = defineComponent({
   components: { RouterView },
@@ -23,6 +46,26 @@ function createAuthedRouter() {
 }
 
 describe('M7 Stage 1.4 Red', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    roomsApiMock.getRoomDetail.mockResolvedValue({
+      room_id: 1,
+      status: 'waiting',
+      owner_id: 1,
+      current_game_id: null,
+      members: [{ user_id: 1, username: 'alice', seat: 0, ready: false, chips: 20 }],
+    })
+    roomsApiMock.leaveRoom.mockResolvedValue({ ok: true })
+    roomsApiMock.setReady.mockResolvedValue({
+      room_id: 1,
+      status: 'waiting',
+      owner_id: 1,
+      current_game_id: null,
+      members: [{ user_id: 1, username: 'alice', seat: 0, ready: true, chips: 20 }],
+    })
+  })
+
   it('M7-WS-03 房间 WS 建连后接收 ROOM_UPDATE 初始快照', () => {
     expect(typeof roomModule.createRoomStoreForTest).toBe('function')
 

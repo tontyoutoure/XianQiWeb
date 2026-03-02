@@ -1,11 +1,34 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { RouterView } from 'vue-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAppRouter } from '@/app/router'
 import { createAuthStoreForTest } from '@/stores/auth'
 import * as lobbyModule from '@/stores/lobby'
+
+const { roomsApiMock } = vi.hoisted(() => {
+  return {
+    roomsApiMock: {
+      listRooms: vi.fn(),
+      getRoomDetail: vi.fn(),
+      joinRoom: vi.fn(),
+      leaveRoom: vi.fn(),
+      setReady: vi.fn(),
+    },
+  }
+})
+
+vi.mock('@/services/rooms-api', () => ({
+  createRoomsApi: () => roomsApiMock,
+}))
+
+vi.mock('@/ws/lobby-channel', () => ({
+  createLobbyChannel: () => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  }),
+}))
 
 const HostWithRouterView = defineComponent({
   components: { RouterView },
@@ -23,6 +46,21 @@ function createAuthedRouter() {
 }
 
 describe('M7 Stage 1.3 Red', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    roomsApiMock.listRooms.mockResolvedValue([
+      { room_id: 1, status: 'waiting', player_count: 1, ready_count: 0 },
+    ])
+    roomsApiMock.joinRoom.mockResolvedValue({
+      room_id: 1,
+      status: 'waiting',
+      owner_id: 1,
+      current_game_id: null,
+      members: [{ user_id: 1, username: 'alice', seat: 0, ready: false, chips: 20 }],
+    })
+  })
+
   it('M7-CT-04 大厅页渲染房间列表与空态/错误态', async () => {
     const router = createAuthedRouter()
     await router.push('/lobby')
