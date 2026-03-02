@@ -10,6 +10,7 @@ interface CreateRoomChannelOptions {
   roomId: number
   accessToken: string
   baseURL?: string
+  reconnectDelayMs?: number
   onOpen?: () => void
   onClose?: () => void
   onRoomUpdate?: (room: RoomDetail) => void
@@ -24,38 +25,82 @@ const ENV_WS_BASE_URL = (import.meta.env.VITE_WS_BASE_URL as string | undefined)
 
 export function createRoomChannel(options: CreateRoomChannelOptions): RoomChannel {
   let socket: WebSocket | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let manuallyDisconnected = false
 
-  const connect = () => {
+  const reconnectDelayMs = options.reconnectDelayMs ?? 300
+
+  const clearReconnectTimer = () => {
+    if (reconnectTimer === null) {
+      return
+    }
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
+  const scheduleReconnect = () => {
+    if (manuallyDisconnected || reconnectTimer !== null) {
+      return
+    }
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      if (manuallyDisconnected) {
+        return
+      }
+      connectSocket()
+    }, reconnectDelayMs)
+  }
+
+  const connectSocket = () => {
     const url = buildRoomWsUrl(baseURLOrDefault(options.baseURL), options.roomId, options.accessToken)
-    socket = new WebSocket(url)
+    const nextSocket = new WebSocket(url)
+    socket = nextSocket
 
-    socket.onopen = () => {
+    nextSocket.onopen = () => {
       options.onOpen?.()
     }
 
-    socket.onclose = () => {
+    nextSocket.onclose = () => {
+      if (socket === nextSocket) {
+        socket = null
+      }
       options.onClose?.()
+      scheduleReconnect()
     }
 
-    socket.onerror = () => {
-      options.onClose?.()
+    nextSocket.onerror = () => {
+      // Let onclose handle reconnect scheduling and state transition.
     }
 
-    socket.onmessage = (event) => {
-      handleRoomMessage(event.data, socket, options)
+    nextSocket.onmessage = (event) => {
+      handleRoomMessage(event.data, nextSocket, options)
     }
   }
 
+  const connect = () => {
+    manuallyDisconnected = false
+    clearReconnectTimer()
+    if (socket) {
+      return
+    }
+    connectSocket()
+  }
+
   const disconnect = () => {
+    manuallyDisconnected = true
+    clearReconnectTimer()
+
     if (!socket) {
       return
     }
-    socket.onopen = null
-    socket.onmessage = null
-    socket.onclose = null
-    socket.onerror = null
-    socket.close()
+
+    const currentSocket = socket
     socket = null
+    currentSocket.onopen = null
+    currentSocket.onmessage = null
+    currentSocket.onclose = null
+    currentSocket.onerror = null
+    currentSocket.close()
   }
 
   return {

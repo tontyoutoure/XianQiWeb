@@ -3,7 +3,7 @@
 > 目标：在真实启动的后端服务上完成 M7 非对局前端收口，验证“登录 -> 大厅 -> 房间（join/ready/leave）”主链路与异常恢复链路在真实 REST/WS 协议下可用。
 > 依据文档：`memory-bank/tests/m7-tests.md`、`memory-bank/implementation-plan.md`（M7/M8）、`memory-bank/design/frontend_design.md`、`memory-bank/interfaces/frontend-backend-interfaces.md`。
 > 口径声明：本文件是 M7 真实后端联调用例 ID 与执行记录来源（SSOT）。
-> 当前状态：`M7-GATE-01~03`、`M7-RS-E2E-01~08` 已完成并通过；`M7-RS-E2E-09~12` 待执行。
+> 当前状态：`M7-GATE-01~03`、`M7-RS-E2E-01~12` 已完成并通过。
 
 ## 0) 测试环境与执行约定（真实服务）
 
@@ -64,6 +64,15 @@
 | M7-RS-E2E-07 | A/B 双端均登录并停留大厅 | A 端执行 join -> ready -> leave；B 端观察同一房间行 | B 端 `player_count` 与 `ready_count` 随 A 端动作实时变化并最终回到初始值 |
 | M7-RS-E2E-08 | A/B 双端均已加入同一房间并停留房间页 | A 端点击 `room-ready-toggle` | B 端 `room-ready-count` 在轮询窗口内发生变化（可观测到实时同步） |
 
+### 2.2) M7-RS-E2E-09~12 详细测试清单（本轮拉红范围）
+
+| 测试ID | 前置条件 | 操作步骤 | 通过条件 |
+|---|---|---|---|
+| M7-RS-E2E-09 | 用户已登录并在 `/rooms/{id}`，本地会话含有效 `refresh_token` | 人为将本地 `access_token` 置为无效后触发受保护请求（如 `ready`） | 前端自动触发 refresh，原请求成功重放；页面停留在受保护页且状态更新成功 |
+| M7-RS-E2E-10 | A/B 双端均已加入同一房间，A 端在房间页 | 主动中断 A 端房间 WS；B 端修改房态（如切 ready）；观察 A 端 | A 端自动重连 WS，并通过 REST 兜底拉态；最终与后端房态一致 |
+| M7-RS-E2E-11 | 用户在 `/rooms/{id}`，服务端发生重启（内存态清空） | 重启后触发页面恢复路径（刷新或继续交互） | 前端出现“服务已重置，请重新入房”提示，并引导回 `/lobby` |
+| M7-RS-E2E-12 | 三名玩家已在同房并开局（`status=playing`） | 其中一名玩家离房触发冷结束；观察其余玩家房间页 | 其余玩家收到 `playing -> waiting`，并出现“对局结束”提示 |
+
 ## 3) 收口通过标准（M7 Exit Criteria, Real Backend）
 
 - `M7-GATE-01~03` 全部通过。
@@ -91,7 +100,7 @@
 | M7-RS-E2E-06 | ✅ Green通过 | Red→Green 完成 | 2026-03-01 | 先前 Red 失败点：leave 后后端 `player_count` 未回落；补齐房间页真实 `/leave` 调用并回大厅后，在同批次执行中通过。 |
 | M7-RS-E2E-07 | ✅ Green通过 | Red→Green 完成 | 2026-03-01 | 先前 Red 失败点：大厅双端计数未同步；补齐大厅 `/ws/lobby` 订阅与 `ROOM_LIST/ROOM_UPDATE` 应用后，在同批次执行中通过。 |
 | M7-RS-E2E-08 | ✅ Green通过 | Red→Green 完成 | 2026-03-01 | 先前 Red 失败点：房间双端 ready 状态未同步；补齐房间 `/ws/rooms/{id}` 订阅与 `ROOM_UPDATE` 应用后，在同批次执行中通过。 |
-| M7-RS-E2E-09 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-10 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-11 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
-| M7-RS-E2E-12 | ⏳ 待执行 | 待启动 | - | 待人类指定 |
+| M7-RS-E2E-09 | ✅ Green通过 | Red→Green 完成 | 2026-03-02 | 修复前端 `rooms-api` 401 自动 refresh + 原请求重放链路（接入统一 HTTP 拦截器）；在全新测试后端实例执行 `cd frontend && npm run test:e2e -- --project=chromium --workers=1 --grep "M7-RS-E2E-09" tests/e2e/m7-rs-e2e-09-12.spec.ts`，结果 `4 passed`（同批次含 `09~12`）。 |
+| M7-RS-E2E-10 | ✅ Green通过 | Red→Green 完成 | 2026-03-02 | 修复房间 WS 自动重连，并在重连开链后追加 REST 房态拉取兜底；同批次执行结果 `4 passed`，A 端在断链后可恢复并与后端房态一致。 |
+| M7-RS-E2E-11 | ✅ Green通过 | Red→Green 完成 | 2026-03-02 | 修复房间上下文失效边界（成员不在房间/房间状态失效）统一引导回大厅，并展示“服务已重置，请重新入房”提示（含跨刷新 notice 保留）；同批次执行结果 `4 passed`。 |
+| M7-RS-E2E-12 | ✅ Green通过 | Red 已执行（意外全绿） | 2026-03-02 | 执行 `cd frontend && npm run test:e2e -- --project=chromium --workers=1 --grep "M7-RS-E2E-12" tests/e2e/m7-rs-e2e-09-12.spec.ts`，结果 `1 passed`；现有实现已可在 `playing -> waiting` 时展示“对局结束”提示。 |

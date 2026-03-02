@@ -12,11 +12,23 @@ const authStore = useAuthStore()
 const lobbyStore = useLobbyStore()
 const roomsApi = createRoomsApi()
 const SERVICE_RESET_MESSAGE = '服务已重置，请重新入房'
+const FORCE_SERVICE_RESET_KEY = 'xianqi.force_service_reset'
+const SERVICE_RESET_NOTICE_KEY = 'xianqi.lobby_service_reset_notice'
 let cleanupLobbyChannel: (() => void) | null = null
 
 const rooms = computed(() => lobbyStore.rooms)
 
 onMounted(() => {
+  const shouldShowServiceResetMessage =
+    typeof window !== 'undefined' &&
+    (window.sessionStorage.getItem(FORCE_SERVICE_RESET_KEY) === '1' ||
+      window.sessionStorage.getItem(SERVICE_RESET_NOTICE_KEY) === '1')
+  if (shouldShowServiceResetMessage && typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(FORCE_SERVICE_RESET_KEY)
+    window.sessionStorage.setItem(SERVICE_RESET_NOTICE_KEY, '1')
+    lobbyStore.error = SERVICE_RESET_MESSAGE
+  }
+
   if (!authStore.accessToken) {
     lobbyStore.error = '未登录或会话已失效'
     return
@@ -65,6 +77,9 @@ async function onJoinRoom(roomId: number) {
 
   try {
     await roomsApi.joinRoom(authStore.accessToken, roomId)
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(SERVICE_RESET_NOTICE_KEY)
+    }
     await router.push(`/rooms/${roomId}`)
   } catch (error) {
     lobbyStore.error = resolveErrorMessage(error)

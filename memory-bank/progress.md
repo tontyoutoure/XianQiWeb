@@ -32,7 +32,9 @@
 - M7 真实后端联调第二批拉红（2026-03-01）：新增 `frontend/tests/e2e/m7-rs-e2e-04-08.spec.ts`，覆盖 `M7-RS-E2E-04~08`（入房、ready 持久、leave、大厅双端同步、房间双端同步）；按用例逐条执行均为 Red，失败点已回填 `memory-bank/tests/m7-tests-real-service.md`。
 - M7 真实后端联调第二批闭环（2026-03-01）：补齐前端真实房间链路（`/join`、`/ready`、`/leave`）与大厅/房间 WS 接线（`/ws/lobby`、`/ws/rooms/{id}`），并修复 `lobby/room store` 响应式更新路径；在全新测试后端实例下执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts`，结果 `5 passed`。
 - M7 测试分支清理与回归（2026-03-01）：移除前端页面中的 `import.meta.env.MODE === 'test'` 业务分支（`LobbyPage`/`RoomPage`），统一走真实 REST/WS 链路；为保持“服务已重置”提示语义，调整大厅加载时保留该提示。回归执行 `cd frontend && npm run test:e2e -- --project=chromium --workers=1`，结果 `13 passed`。
+- M7 真实后端联调第三批拉红（2026-03-02）：新增 `frontend/tests/e2e/m7-rs-e2e-09-12.spec.ts` 并执行 `M7-RS-E2E-09~12` Red。结果：`E2E-09/10/11` 按预期 Red（分别暴露“refresh+请求重放未生效”“房间 WS 断线后未重连/未REST兜底”“服务重置边界提示未触发”）；`E2E-12` 意外全绿（冷结束提示已可用）。
+- M7 真实后端联调第三批闭环（2026-03-02）：完成 `M7-RS-E2E-09~11` Green 修复并与 `E2E-12` 同批回归通过（`4 passed`）。本轮补齐前端 `rooms-api` 401 refresh+重放链路、房间 WS 自动重连与 REST 拉态兜底，以及房间上下文失效后的“服务已重置，请重新入房”提示引导（含跨刷新提示保留）。
 
 ## 当前阶段
-- 结论（2026-03-01）：M7 非对局范围（登录/大厅/房间 + WS 异常恢复）已完成测试级红绿闭环。
-- 下一步：按 `memory-bank/tests/m7-tests-real-service.md` 继续执行 `M7-RS-E2E-09~12`（真实后端联调），完成 M7 收口后进入 M8 对局与结算前端实现。
+- 结论（2026-03-02）：M7 非对局范围真实后端收口已完成（`M7-GATE-01~03`、`M7-RS-E2E-01~12` 全绿）。
+- 下一步：进入 M8，对局操作区与结算展示前端实现及全链路回归。

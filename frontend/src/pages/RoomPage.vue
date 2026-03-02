@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { createRoomsApi } from '@/services/rooms-api'
+import { createRoomsApi, isRoomsApiError } from '@/services/rooms-api'
 import { useAuthStore } from '@/stores/auth'
 import { useLobbyStore } from '@/stores/lobby'
 import { useRoomStore } from '@/stores/room'
@@ -15,6 +15,8 @@ const lobbyStore = useLobbyStore()
 const roomStore = useRoomStore()
 const roomsApi = createRoomsApi()
 const FORCE_SERVICE_RESET_KEY = 'xianqi.force_service_reset'
+const SERVICE_RESET_NOTICE_KEY = 'xianqi.lobby_service_reset_notice'
+const SERVICE_RESET_MESSAGE = '服务已重置，请重新入房'
 let cleanupRoomChannel: (() => void) | null = null
 
 const readyCountText = computed(() => {
@@ -37,7 +39,8 @@ onMounted(() => {
   }
 
   window.sessionStorage.removeItem(FORCE_SERVICE_RESET_KEY)
-  lobbyStore.error = '服务已重置，请重新入房'
+  window.sessionStorage.setItem(SERVICE_RESET_NOTICE_KEY, '1')
+  lobbyStore.error = SERVICE_RESET_MESSAGE
   void router.replace('/lobby')
 })
 
@@ -77,6 +80,10 @@ async function onToggleReady() {
       },
     })
   } catch (error) {
+    if (isServiceResetBoundaryError(error)) {
+      triggerServiceResetBoundary()
+      return
+    }
     roomStore.error = resolveErrorMessage(error)
   } finally {
     roomStore.loading = false
@@ -116,6 +123,10 @@ async function hydrateRoomDetail() {
   roomStore.error = null
   try {
     const detail = await roomsApi.getRoomDetail(authStore.accessToken, roomId)
+    if (!isCurrentUserInRoom(detail)) {
+      triggerServiceResetBoundary()
+      return
+    }
     roomStore.applyRoomUpdateEvent({
       type: 'ROOM_UPDATE',
       payload: {
@@ -124,6 +135,10 @@ async function hydrateRoomDetail() {
     })
     connectRoomChannel(roomId, authStore.accessToken)
   } catch (error) {
+    if (isServiceResetBoundaryError(error)) {
+      triggerServiceResetBoundary()
+      return
+    }
     roomStore.error = resolveErrorMessage(error)
   } finally {
     roomStore.loading = false
@@ -139,11 +154,16 @@ function connectRoomChannel(roomId: number, accessToken: string) {
     accessToken,
     onOpen: () => {
       roomStore.roomWsConnected = true
+      void resyncRoomDetail(roomId)
     },
     onClose: () => {
       roomStore.roomWsConnected = false
     },
     onRoomUpdate: (room) => {
+      if (!isCurrentUserInRoom(room)) {
+        triggerServiceResetBoundary()
+        return
+      }
       roomStore.applyRoomUpdateEvent({
         type: 'ROOM_UPDATE',
         payload: { room },
@@ -154,6 +174,32 @@ function connectRoomChannel(roomId: number, accessToken: string) {
   cleanupRoomChannel = () => {
     channel.disconnect()
     roomStore.roomWsConnected = false
+  }
+}
+
+async function resyncRoomDetail(roomId: number) {
+  if (!authStore.accessToken) {
+    return
+  }
+
+  try {
+    const detail = await roomsApi.getRoomDetail(authStore.accessToken, roomId)
+    if (!isCurrentUserInRoom(detail)) {
+      triggerServiceResetBoundary()
+      return
+    }
+    roomStore.applyRoomUpdateEvent({
+      type: 'ROOM_UPDATE',
+      payload: {
+        room: detail,
+      },
+    })
+  } catch (error) {
+    if (isServiceResetBoundaryError(error)) {
+      triggerServiceResetBoundary()
+      return
+    }
+    roomStore.error = resolveErrorMessage(error)
   }
 }
 
@@ -171,6 +217,38 @@ function resolveErrorMessage(error: unknown): string {
     return error.message
   }
   return '房间操作失败'
+}
+
+function isServiceResetBoundaryError(error: unknown): boolean {
+  if (isRoomsApiError(error) && (error.status === 403 || error.status === 404)) {
+    return true
+  }
+
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  return error.message.includes('不在房间') || error.message.includes('房间不存在')
+}
+
+function isCurrentUserInRoom(room: { members: Array<{ user_id: number }> }): boolean {
+  const selfId = authStore.user?.id
+  if (!selfId) {
+    return false
+  }
+  return room.members.some((member) => member.user_id === selfId)
+}
+
+function triggerServiceResetBoundary() {
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem(FORCE_SERVICE_RESET_KEY, '1')
+    window.sessionStorage.setItem(SERVICE_RESET_NOTICE_KEY, '1')
+  }
+  lobbyStore.error = SERVICE_RESET_MESSAGE
+  cleanupRoomChannel?.()
+  cleanupRoomChannel = null
+  roomStore.roomWsConnected = false
+  void router.replace('/lobby')
 }
 </script>
 

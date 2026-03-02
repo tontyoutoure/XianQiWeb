@@ -21,6 +21,7 @@ const { roomsApiMock } = vi.hoisted(() => {
 
 vi.mock('@/services/rooms-api', () => ({
   createRoomsApi: () => roomsApiMock,
+  isRoomsApiError: () => false,
 }))
 
 vi.mock('@/ws/room-channel', () => ({
