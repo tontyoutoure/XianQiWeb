@@ -73,6 +73,13 @@
 | M7-RS-E2E-11 | 用户在 `/rooms/{id}`，服务端发生重启（内存态清空） | 重启后触发页面恢复路径（刷新或继续交互） | 前端出现“服务已重置，请重新入房”提示，并引导回 `/lobby` |
 | M7-RS-E2E-12 | 三名玩家已在同房并开局（`status=playing`） | 其中一名玩家离房触发冷结束；观察其余玩家房间页 | 其余玩家收到 `playing -> waiting`，并出现“对局结束”提示 |
 
+### 2.3) M7 E2E 稳定性收敛（workers=1）
+
+| 测试ID | 前置条件 | 操作步骤 | 通过条件 |
+|---|---|---|---|
+| M7-RS-STAB-01 | 使用真实后端执行 `npm run test:e2e`，Playwright 允许并行 worker | 运行全量 E2E 并观察 `M7-RS-E2E-07` | 可复现偶发失败：`Expected "0/0"`、`Received "2/0"`，定位为跨用例共享房间状态污染 |
+| M7-RS-STAB-02 | `frontend/playwright.config.ts` 已设置 `workers=1` | 每轮使用全新 `scripts/start-backend-test.sh`，执行 `cd frontend && npm run test:e2e -- --project=chromium` | 连续 2 轮全量 E2E 均通过（`17 passed`），且 `M7-RS-E2E-07` 通过 |
+
 ## 3) 收口通过标准（M7 Exit Criteria, Real Backend）
 
 - `M7-GATE-01~03` 全部通过。
@@ -104,3 +111,5 @@
 | M7-RS-E2E-10 | ✅ Green通过 | Red→Green 完成 | 2026-03-02 | 修复房间 WS 自动重连，并在重连开链后追加 REST 房态拉取兜底；同批次执行结果 `4 passed`，A 端在断链后可恢复并与后端房态一致。 |
 | M7-RS-E2E-11 | ✅ Green通过 | Red→Green 完成 | 2026-03-02 | 修复房间上下文失效边界（成员不在房间/房间状态失效）统一引导回大厅，并展示“服务已重置，请重新入房”提示（含跨刷新 notice 保留）；同批次执行结果 `4 passed`。 |
 | M7-RS-E2E-12 | ✅ Green通过 | Red 已执行（意外全绿） | 2026-03-02 | 执行 `cd frontend && npm run test:e2e -- --project=chromium --workers=1 --grep "M7-RS-E2E-12" tests/e2e/m7-rs-e2e-09-12.spec.ts`，结果 `1 passed`；现有实现已可在 `playing -> waiting` 时展示“对局结束”提示。 |
+| M7-RS-STAB-01 | ✅ Green通过 | Red→Green 完成 | 2026-03-02 | Red 现象来自全量 E2E 偶发失败日志：`M7-RS-E2E-07` 在离房后断言超时，期望 `0/0` 实际为 `2/0`；定位为并行 worker 下共享后端房间状态导致的跨用例污染。Green 修复：`frontend/playwright.config.ts` 固定 `workers=1`。 |
+| M7-RS-STAB-02 | ✅ Green通过 | Green完成 | 2026-03-02 | 以“每轮全新后端实例”回归 2 轮：`cd frontend && npm run test:e2e -- --project=chromium`，两轮均 `17 passed`；其中 `M7-RS-E2E-07` 稳定通过。 |

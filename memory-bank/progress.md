@@ -1,40 +1,22 @@
-## 当前进度（精简版）
-- M0 已完成：架构、接口、计划与设计文档基线已冻结并持续维护。
-- M1 已完成：鉴权链路（REST + WS）可用。
-- M2 已完成：大厅/房间主链路可用（加入、离开、ready、房态流转）。
-- M3 已完成：引擎核心规则与 CLI 演示已打通。
-- M4 已完成：后端-引擎集成、`/api/games/*` 与房间 WS 游戏事件链路已收口。
-- M5 已完成：结算与“结算后重置 ready -> 再次 ready 开新局”流程已收口。
-- M6 增量能力已完成：
-  - WS 推送 `M6-RS-WS-01~08`（`8 passed`）
-  - 断线重连 `M6-RS-RC-01~08`（`8 passed`）
-  - 心跳保活 `M6-RS-HB-01~03`（`3 passed`）
-  - 并发一致性 `M6-RS-CC-01~05`（`5 passed`）
-- M6 全量门禁已通过（2026-02-25）：执行 M1~M5 真实服务回归聚合用例，结果 `86 passed`。
-- M7 文档阶段（2026-02-27）：新增 `memory-bank/design/frontend_design.md` 的 Phase A（非对局）设计，覆盖登录/大厅/房间、REST/WS 基础设施与异常恢复。
-- 计划调整（2026-02-27）：`implementation-plan.md` 已将前端对局/结算实现明确归入 M8，M7 仅覆盖非对局范围。
-- M7 测试设计（2026-02-27）：新增 `memory-bank/tests/m7-tests.md`，按 M7 实施顺序固化 TDD 用例清单与红绿记录模板。
-- M7 文档落地（2026-02-28）：新增 `frontend/README.md`，沉淀前端配置与测试方法（面向前端经验较少同学，覆盖环境准备、工具链职责、npm 命令、Vitest/Playwright 测试流程与常见问题排查）。
-- M7 工程配置基线（2026-02-28）：补齐 `frontend` 工程关键配置（`index.html`、Vite/TS/Vitest/Playwright、ESLint/Prettier、Tailwind/PostCSS），并新增基础 smoke 测试（unit + e2e）。
-- M7 UT 基础设施红绿闭环（2026-03-01）：`UT01~UT07` 已完成先 Red 后 Green，覆盖路由守卫、会话刷新、HTTP 拦截器、登录会话落库与本地会话恢复；当前 `frontend` 单测结果 `8 passed`。
-- M7 1.2 组件测试拉红（2026-03-01）：新增并执行 `CT01~CT03`（登录成功跳大厅、登录失败错误提示、注册并登录闭环）组件测试，当前按预期 Red（登录页仍为占位视图）。
-- M7 1.2 组件测试红绿闭环（2026-03-01）：`CT01~CT03` 已完成先 Red 后 Green；登录页已接入基础交互（登录、注册并登录、失败提示），当前 `frontend` 单测结果 `11 passed`。
-- M7 1.3 测试拉红（2026-03-01）：新增并执行 `CT04/WS01/WS02/CT05`（大厅列表渲染、大厅 WS 全量/增量同步、join 跳房间）测试，当前按预期 Red（大厅页与 lobby store 尚未实现）。
-- M7 1.3 大厅阶段红绿闭环（2026-03-01）：`CT04/WS01/WS02/CT05` 已完成先 Red 后 Green；补齐 `LobbyPage` 与 `lobby store` 最小实现，并将路由切换到大厅页面，当前 `frontend` 单测结果 `15 passed`。
-- M7 1.4 测试拉红（2026-03-01）：新增并执行 `WS03/CT06/CT07/WS04`（房间 WS 初始快照、ready 切换、leave 回大厅、冷结束提示）测试，当前按预期 Red（`room store` 与 `RoomPage` 尚未实现）。
-- M7 1.4 房间阶段红绿闭环（2026-03-01）：`WS03/CT06/CT07/WS04` 已完成先 Red 后 Green；补齐 `room store` 与 `RoomPage` 最小实现，并将路由切换到真实房间页，当前 `frontend` 单测结果 `19 passed`。
-- M7 1.5 异常恢复阶段红绿闭环（2026-03-01）：`WS05/WS06/E2E01~03` 已完成先 Red 后 Green；补齐 `ws-client` 心跳、`ws store` 重连兜底、前端入口路由化与服务重置提示引导，`m7-stage-1-5-red.test.ts` 与 `m7-stage-1-5-red.spec.ts` 均通过。
-- M7 真实后端收口测试设计（2026-03-01）：新增 `memory-bank/tests/m7-tests-real-service.md`，固化 `M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 联调用例、执行约定与收口标准，待人类指定测试 ID 进入 Red/Green。
-- M7 收口门禁实现与通过（2026-03-01）：新增 `M7-GATE-01~03` 自动化用例（`backend/tests/integration/real_service/test_m7_rs_gate_01_red.py`、`frontend/tests/e2e/m7-gate-02.spec.ts`、`frontend/tests/unit/m7-gate-03.test.ts`），并完成执行通过（各 `1 passed`）。
-- M7 真实后端联调首批闭环（2026-03-01）：完成 `M7-RS-E2E-01~03`（登录闭环、注册并登录闭环、登录失败提示）先 Red 后 Green；新增 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts`，并补齐真实 API 接线（`auth-api`、`rooms-api`、`main`、`LobbyPage`）与 Vite `/api` `/ws` 代理，执行结果 `3 passed`。
-- M7 E2E 回归修复（2026-03-01）：修复 `frontend/tests/e2e/m7-stage-1-5-red.spec.ts` 对预置账号 `alice/secret` 的隐式依赖，改为用例内自注册唯一账号；在真实后端启动条件下回归 `M7-E2E-01~03` 通过，避免空库环境下误报失败。
-- M7 测试模式启动落地（2026-03-01）：新增 `scripts/start-backend-test.sh`，默认使用每轮唯一临时 sqlite（`/tmp/xqweb-test`）并在退出时自动清理，可通过 `XQWEB_TEST_KEEP_DB=1` 保留调试库；并回归 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts` 结果 `3 passed`。
-- M7 真实后端联调第二批拉红（2026-03-01）：新增 `frontend/tests/e2e/m7-rs-e2e-04-08.spec.ts`，覆盖 `M7-RS-E2E-04~08`（入房、ready 持久、leave、大厅双端同步、房间双端同步）；按用例逐条执行均为 Red，失败点已回填 `memory-bank/tests/m7-tests-real-service.md`。
-- M7 真实后端联调第二批闭环（2026-03-01）：补齐前端真实房间链路（`/join`、`/ready`、`/leave`）与大厅/房间 WS 接线（`/ws/lobby`、`/ws/rooms/{id}`），并修复 `lobby/room store` 响应式更新路径；在全新测试后端实例下执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts`，结果 `5 passed`。
-- M7 测试分支清理与回归（2026-03-01）：移除前端页面中的 `import.meta.env.MODE === 'test'` 业务分支（`LobbyPage`/`RoomPage`），统一走真实 REST/WS 链路；为保持“服务已重置”提示语义，调整大厅加载时保留该提示。回归执行 `cd frontend && npm run test:e2e -- --project=chromium --workers=1`，结果 `13 passed`。
-- M7 真实后端联调第三批拉红（2026-03-02）：新增 `frontend/tests/e2e/m7-rs-e2e-09-12.spec.ts` 并执行 `M7-RS-E2E-09~12` Red。结果：`E2E-09/10/11` 按预期 Red（分别暴露“refresh+请求重放未生效”“房间 WS 断线后未重连/未REST兜底”“服务重置边界提示未触发”）；`E2E-12` 意外全绿（冷结束提示已可用）。
-- M7 真实后端联调第三批闭环（2026-03-02）：完成 `M7-RS-E2E-09~11` Green 修复并与 `E2E-12` 同批回归通过（`4 passed`）。本轮补齐前端 `rooms-api` 401 refresh+重放链路、房间 WS 自动重连与 REST 拉态兜底，以及房间上下文失效后的“服务已重置，请重新入房”提示引导（含跨刷新提示保留）。
+## 一级进度（Milestone 级，每个 Milestone 仅一条）
+| Milestone | 状态 | 最新更新 | 一句话进度 |
+| --- | --- | --- | --- |
+| M0 | 已完成 | 2026-03-02 | 架构、接口、计划与设计文档基线已冻结并持续维护。 |
+| M1 | 已完成 | 2026-03-02 | 鉴权链路（REST + WS）可用。 |
+| M2 | 已完成 | 2026-03-02 | 大厅/房间主链路可用（加入、离开、ready、房态流转）。 |
+| M3 | 已完成 | 2026-03-02 | 引擎核心规则与 CLI 演示已打通。 |
+| M4 | 已完成 | 2026-03-02 | 后端-引擎集成、`/api/games/*` 与房间 WS 游戏事件链路已收口。 |
+| M5 | 已完成 | 2026-03-02 | 结算与“结算后重置 ready -> 再次 ready 开新局”流程已收口。 |
+| M6 | 已完成 | 2026-03-02 | 增量能力（WS/重连/心跳/并发）与全量门禁通过（M1~M5 真实服务回归 `86 passed`）。 |
+| M7 | 已完成 | 2026-03-02 | 前端非对局范围已收口，`M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 全绿（`17 passed`）。 |
+| M8 | 进行中 | 2026-03-02 | 已进入 M8：对局操作区与结算展示前端实现及全链路回归。 |
 
-## 当前阶段
-- 结论（2026-03-02）：M7 非对局范围真实后端收口已完成（`M7-GATE-01~03`、`M7-RS-E2E-01~12` 全绿）。
-- 下一步：进入 M8，对局操作区与结算展示前端实现及全链路回归。
+## 二级进度（当前 Milestone 内部，Milestone 完结时清零）
+- 当前 Milestone：`M8`
+- 内部进度记录：
+  - （待更新）M8 刚启动，内部任务尚未登记。
+
+## 维护规则（执行口径）
+- 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。
+- 二级进度：只记录“当前 Milestone”的内部推进，随推进逐条追加。
+- Milestone 完结时：先把一级进度对应行改为“已完成”，再将二级进度清零并切换到下一个 Milestone。
