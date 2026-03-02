@@ -1,3 +1,5 @@
+import { reactive } from 'vue'
+
 export type RoomStatus = 'waiting' | 'playing' | 'settlement'
 
 export interface RoomMember {
@@ -41,6 +43,7 @@ type RoomStoreInitialState = Partial<Omit<RoomStoreLike, 'applyRoomUpdateEvent' 
 let activeRoomStore: RoomStoreLike | null = null
 
 export function createRoomStoreForTest(initialState: RoomStoreInitialState = {}): RoomStoreLike {
+  let proxyStore: RoomStoreLike | null = null
   const store: RoomStoreLike = {
     roomId: initialState.roomId ?? null,
     roomDetail:
@@ -58,40 +61,43 @@ export function createRoomStoreForTest(initialState: RoomStoreInitialState = {})
     coldEndMessage: initialState.coldEndMessage ?? null,
     lastSyncAt: initialState.lastSyncAt ?? null,
     applyRoomUpdateEvent(event: RoomUpdateEvent) {
-      const prevStatus = store.roomDetail?.status
+      const target = proxyStore ?? store
+      const prevStatus = target.roomDetail?.status
       const nextDetail = event.payload.room
 
-      store.roomId = nextDetail.room_id
-      store.roomDetail = {
+      target.roomId = nextDetail.room_id
+      target.roomDetail = {
         room_id: nextDetail.room_id,
         status: nextDetail.status,
         owner_id: nextDetail.owner_id,
         current_game_id: nextDetail.current_game_id,
         members: nextDetail.members.map((member) => ({ ...member })),
       }
-      store.lastSyncAt = Date.now()
+      target.lastSyncAt = Date.now()
 
       if (prevStatus === 'playing' && nextDetail.status === 'waiting') {
-        store.coldEnded = true
-        store.coldEndMessage = '对局结束'
+        target.coldEnded = true
+        target.coldEndMessage = '对局结束'
       }
     },
     toggleReady() {
-      if (!store.roomDetail || store.roomDetail.members.length === 0) {
+      const target = proxyStore ?? store
+      if (!target.roomDetail || target.roomDetail.members.length === 0) {
         return
       }
 
-      const selfMember = store.roomDetail.members[0]
-      const nextMembers = store.roomDetail.members.slice()
+      const selfMember = target.roomDetail.members[0]
+      const nextMembers = target.roomDetail.members.slice()
       nextMembers[0] = { ...selfMember, ready: !selfMember.ready }
-      store.roomDetail = {
-        ...store.roomDetail,
+      target.roomDetail = {
+        ...target.roomDetail,
         members: nextMembers,
       }
     },
   }
 
-  return store
+  proxyStore = reactive(store) as RoomStoreLike
+  return proxyStore
 }
 
 export function setActiveRoomStore(store: RoomStoreLike) {

@@ -1,23 +1,34 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { createRoomsApi } from '@/services/rooms-api'
 import { useAuthStore } from '@/stores/auth'
 import { useLobbyStore } from '@/stores/lobby'
+import { createLobbyChannel } from '@/ws/lobby-channel'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const lobbyStore = useLobbyStore()
 const roomsApi = createRoomsApi()
+const SERVICE_RESET_MESSAGE = '服务已重置，请重新入房'
+let cleanupLobbyChannel: (() => void) | null = null
 
 const rooms = computed(() => lobbyStore.rooms)
 
 onMounted(() => {
-  if (import.meta.env.MODE === 'test') {
+  if (!authStore.accessToken) {
+    lobbyStore.error = '未登录或会话已失效'
     return
   }
+
   void loadRooms()
+  connectLobbyChannel(authStore.accessToken)
+})
+
+onUnmounted(() => {
+  cleanupLobbyChannel?.()
+  cleanupLobbyChannel = null
 })
 
 async function loadRooms() {
@@ -27,9 +38,17 @@ async function loadRooms() {
   }
 
   lobbyStore.loading = true
-  lobbyStore.error = null
+  if (lobbyStore.error !== SERVICE_RESET_MESSAGE) {
+    lobbyStore.error = null
+  }
   try {
-    lobbyStore.rooms = await roomsApi.listRooms(authStore.accessToken)
+    const rooms = await roomsApi.listRooms(authStore.accessToken)
+    lobbyStore.rooms = rooms.sort((left, right) => {
+      if (left.player_count !== right.player_count) {
+        return left.player_count - right.player_count
+      }
+      return left.room_id - right.room_id
+    })
     lobbyStore.lastSyncAt = Date.now()
   } catch (error) {
     lobbyStore.error = resolveErrorMessage(error)
@@ -39,7 +58,17 @@ async function loadRooms() {
 }
 
 async function onJoinRoom(roomId: number) {
-  await router.push(`/rooms/${roomId}`)
+  if (!authStore.accessToken) {
+    lobbyStore.error = '未登录或会话已失效'
+    return
+  }
+
+  try {
+    await roomsApi.joinRoom(authStore.accessToken, roomId)
+    await router.push(`/rooms/${roomId}`)
+  } catch (error) {
+    lobbyStore.error = resolveErrorMessage(error)
+  }
 }
 
 function resolveErrorMessage(error: unknown): string {
@@ -47,6 +76,39 @@ function resolveErrorMessage(error: unknown): string {
     return error.message
   }
   return '房间列表加载失败'
+}
+
+function connectLobbyChannel(accessToken: string) {
+  cleanupLobbyChannel?.()
+  cleanupLobbyChannel = null
+
+  const channel = createLobbyChannel({
+    accessToken,
+    onOpen: () => {
+      lobbyStore.lobbyWsConnected = true
+    },
+    onClose: () => {
+      lobbyStore.lobbyWsConnected = false
+    },
+    onRoomList: (rooms) => {
+      lobbyStore.applyRoomListEvent({
+        type: 'ROOM_LIST',
+        payload: { rooms },
+      })
+    },
+    onRoomUpdate: (room) => {
+      lobbyStore.applyRoomListEvent({
+        type: 'ROOM_UPDATE',
+        payload: { room },
+      })
+    },
+  })
+  channel.connect()
+
+  cleanupLobbyChannel = () => {
+    channel.disconnect()
+    lobbyStore.lobbyWsConnected = false
+  }
 }
 </script>
 

@@ -1,3 +1,5 @@
+import { reactive } from 'vue'
+
 export type RoomStatus = 'waiting' | 'playing' | 'settlement'
 
 export interface RoomSummary {
@@ -37,6 +39,7 @@ type LobbyStoreInitialState = Partial<Omit<LobbyStoreLike, 'applyRoomListEvent'>
 let activeLobbyStore: LobbyStoreLike | null = null
 
 export function createLobbyStoreForTest(initialState: LobbyStoreInitialState = {}): LobbyStoreLike {
+  let proxyStore: LobbyStoreLike | null = null
   const store: LobbyStoreLike = {
     rooms:
       initialState.rooms?.map((room) => ({ ...room })) ?? [
@@ -47,26 +50,35 @@ export function createLobbyStoreForTest(initialState: LobbyStoreInitialState = {
     lobbyWsConnected: initialState.lobbyWsConnected ?? false,
     lastSyncAt: initialState.lastSyncAt ?? null,
     applyRoomListEvent(event: LobbyWsEvent) {
+      const target = proxyStore ?? store
       if (event.type === 'ROOM_LIST') {
-        store.rooms = event.payload.rooms.map((room) => ({ ...room }))
-        store.lastSyncAt = Date.now()
+        target.rooms = event.payload.rooms.map((room) => ({ ...room })).sort(compareRoomsForLobby)
+        target.lastSyncAt = Date.now()
         return
       }
 
       const updateRoom = event.payload.room
-      const targetIndex = store.rooms.findIndex((room) => room.room_id === updateRoom.room_id)
+      const targetIndex = target.rooms.findIndex((room) => room.room_id === updateRoom.room_id)
       if (targetIndex === -1) {
-        store.rooms = [...store.rooms, { ...updateRoom }].sort((left, right) => left.room_id - right.room_id)
+        target.rooms = [...target.rooms, { ...updateRoom }].sort(compareRoomsForLobby)
       } else {
-        const nextRooms = store.rooms.slice()
+        const nextRooms = target.rooms.slice()
         nextRooms[targetIndex] = { ...updateRoom }
-        store.rooms = nextRooms
+        target.rooms = nextRooms.sort(compareRoomsForLobby)
       }
-      store.lastSyncAt = Date.now()
+      target.lastSyncAt = Date.now()
     },
   }
 
-  return store
+  proxyStore = reactive(store) as LobbyStoreLike
+  return proxyStore
+}
+
+function compareRoomsForLobby(left: RoomSummary, right: RoomSummary): number {
+  if (left.player_count !== right.player_count) {
+    return left.player_count - right.player_count
+  }
+  return left.room_id - right.room_id
 }
 
 export function setActiveLobbyStore(store: LobbyStoreLike) {

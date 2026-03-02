@@ -30,7 +30,9 @@
 - M7 E2E 回归修复（2026-03-01）：修复 `frontend/tests/e2e/m7-stage-1-5-red.spec.ts` 对预置账号 `alice/secret` 的隐式依赖，改为用例内自注册唯一账号；在真实后端启动条件下回归 `M7-E2E-01~03` 通过，避免空库环境下误报失败。
 - M7 测试模式启动落地（2026-03-01）：新增 `scripts/start-backend-test.sh`，默认使用每轮唯一临时 sqlite（`/tmp/xqweb-test`）并在退出时自动清理，可通过 `XQWEB_TEST_KEEP_DB=1` 保留调试库；并回归 `frontend/tests/e2e/m7-rs-e2e-01-03.spec.ts` 结果 `3 passed`。
 - M7 真实后端联调第二批拉红（2026-03-01）：新增 `frontend/tests/e2e/m7-rs-e2e-04-08.spec.ts`，覆盖 `M7-RS-E2E-04~08`（入房、ready 持久、leave、大厅双端同步、房间双端同步）；按用例逐条执行均为 Red，失败点已回填 `memory-bank/tests/m7-tests-real-service.md`。
+- M7 真实后端联调第二批闭环（2026-03-01）：补齐前端真实房间链路（`/join`、`/ready`、`/leave`）与大厅/房间 WS 接线（`/ws/lobby`、`/ws/rooms/{id}`），并修复 `lobby/room store` 响应式更新路径；在全新测试后端实例下执行 `cd frontend && npm run test:e2e -- --project=chromium tests/e2e/m7-rs-e2e-04-08.spec.ts`，结果 `5 passed`。
+- M7 测试分支清理与回归（2026-03-01）：移除前端页面中的 `import.meta.env.MODE === 'test'` 业务分支（`LobbyPage`/`RoomPage`），统一走真实 REST/WS 链路；为保持“服务已重置”提示语义，调整大厅加载时保留该提示。回归执行 `cd frontend && npm run test:e2e -- --project=chromium --workers=1`，结果 `13 passed`。
 
 ## 当前阶段
 - 结论（2026-03-01）：M7 非对局范围（登录/大厅/房间 + WS 异常恢复）已完成测试级红绿闭环。
-- 下一步：按 `memory-bank/tests/m7-tests-real-service.md` 继续执行 `M7-RS-E2E-04~12`（真实后端联调），完成 M7 收口后进入 M8 对局与结算前端实现。
+- 下一步：按 `memory-bank/tests/m7-tests-real-service.md` 继续执行 `M7-RS-E2E-09~12`（真实后端联调），完成 M7 收口后进入 M8 对局与结算前端实现。
