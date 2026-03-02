@@ -1,7 +1,7 @@
 # 前端详细设计文档（M7：非对局部分）
 
 本文档用于指导 M7 前端实现：先完成“对局之外”的功能闭环。
-对局操作与结算详情（含 `legal_actions`、`action_idx`、`cover_list`）归入 M8，在需求补充并评审后单独扩展。
+对局操作与结算详情（含 `legal_actions`、`action_idx`、`cover_list`）归入 M8，详见 `memory-bank/design/frontend_ingame_design.md`。
 
 ## 0. 范围与基线
 - 对齐文档：
@@ -206,12 +206,10 @@ frontend/
 - 场景 B：join 房间 -> ready/取消 ready -> leave。
 - 场景 C：断网恢复后页面自动重连并恢复房间快照。
 
-## 10. M8 对局与结算扩展点（待补需求后冻结）
-- 对局视图结构（公共态/私有态）
-- `legal_actions` 渲染策略
-- `action_idx + cover_list + client_version` 提交流程
-- 409 冲突处理细节
-- 结算弹窗字段映射与再开局引导
+## 10. M8 对局与结算设计索引
+- M8 独立文档：`memory-bank/design/frontend_ingame_design.md`。
+- 协议字段定义：`memory-bank/interfaces/frontend-backend-interfaces.md` 与 `memory-bank/interfaces/backend-engine-interface.md`。
+- 本文档（M7）不再承载对局交互细节，避免跨里程碑混写。
 
 ## 11. M7 实施顺序（建议）
 1. 建立 Router + Pinia + Axios 基础设施。
