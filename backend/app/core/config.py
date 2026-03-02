@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from pydantic import Field
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
@@ -22,6 +25,8 @@ class Settings(BaseSettings):
     xqweb_sqlite_path: str = "xqweb.db"
     xqweb_cors_allow_origins: str = "*"
     xqweb_room_count: int = Field(default=8, ge=1)
+    xqweb_seed_catalog_dir: str | None = None
+    xqweb_seed_enable_seed_injection: bool = False
 
     @model_validator(mode="after")
     def validate_refresh_interval(self) -> "Settings":
@@ -34,6 +39,12 @@ class Settings(BaseSettings):
                 "XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS must be less than "
                 "XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS"
             )
+        if self.xqweb_seed_catalog_dir:
+            catalog_dir = Path(self.xqweb_seed_catalog_dir)
+            if not catalog_dir.is_dir():
+                raise ValueError("XQWEB_SEED_CATALOG_DIR must be an existing directory")
+            if not os.access(catalog_dir, os.R_OK):
+                raise ValueError("XQWEB_SEED_CATALOG_DIR must be readable")
         return self
 
 

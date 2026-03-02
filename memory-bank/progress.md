@@ -14,7 +14,15 @@
 ## 二级进度（当前 Milestone 内部，Milestone 完结时清零）
 - 当前 Milestone：`M8`
 - 内部进度记录：
-  - （待更新）M8 刚启动，内部任务尚未登记。
+  - 2026-03-02：完成 `memory-bank/tests/m8-tests-real-service.md` 初版，冻结 Seed Hunter 流程与 test-only 种子注入协议（仅 `/api/test-tools/rooms/{room_id}/next-game-seed`）；明确“黑棋重发对前端无感”，并落地 `M8-SEED-GATE-01~05` 门禁测试清单。
+  - 2026-03-02：Seed 台账迁移到前端 JSON（`frontend/tests/e2e/seed-catalog/m8-seeds.json`），并将 `memory-bank/tests/m8-tests-real-service.md` 调整为流程与字段约束文档（JSON 为 SSOT）。
+  - 2026-03-02：新增前端台账读取工具 `frontend/tests/e2e/support/seed-catalog.ts` 与契约单测 `frontend/tests/unit/m8-seed-catalog.test.ts`，执行结果 `4 passed`。
+  - 2026-03-02：根据 M8 新讨论重写 `memory-bank/tests/m8-tests-real-service.md`：移除全部既有测试用例/执行记录，仅保留测试设计草案；种子口径改为启动参数方案，并冻结 `seed_requirement={first_turn_seat,hands_at_least_by_seat}`（不包含 phase 与 legal_actions 约束）。
+  - 2026-03-02：进一步调整 M8 Seed 设计口径：台账路径改为目录（允许多文件），并从草案中移除 `evidence`、`last_verified_at`、`fallback_policy.max_rounds`、`status` 字段要求。
+  - 2026-03-02：将 Seed Hunter 设计主叙事迁移到 `memory-bank/design/backend_design.md`（新增 M8 专章，定义 ENV 接口、目录多台账契约、匹配与 fail-fast 约束）；`memory-bank/tests/m8-tests-real-service.md` 调整为测试关注点并引用后端设计章节。
+  - 2026-03-02：新增 `memory-bank/tests/m8-test.md`，冻结后端种子能力的 TDD 测试清单（配置路由、离线 seed hunting、REST 注入与“一次性消费”语义）并建立 Red/Green 记录表。
+  - 2026-03-02：按指定测试 ID 拉红 `M8-SEED-CFG-01~05`（新增 `backend/tests/integration/real_service/test_m8_rs_cfg_01_05_red.py`），结果 5/5 Red：种子 ENV 配置校验/模式路由与注入 REST 入口均未落地。
+  - 2026-03-02：完成 `M8-SEED-CFG-01~05` Green 实现并复测通过（`pytest backend/tests/integration/real_service/test_m8_rs_cfg_01_05_red.py -q` -> `5 passed`）；已落地 seed ENV 校验、catalog 模式启动即退出、`POST /api/games/seed-injection` 入口。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。

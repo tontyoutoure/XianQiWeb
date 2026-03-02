@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
+from pydantic import Field
 
 
 class ReadyRequest(BaseModel):
@@ -17,3 +18,9 @@ class GameActionRequest(BaseModel):
     action_idx: int
     client_version: int | None = None
     cover_list: dict[str, int] | None = None
+
+
+class SeedInjectionRequest(BaseModel):
+    """POST /api/games/seed-injection request body."""
+
+    seed: int = Field(ge=0)

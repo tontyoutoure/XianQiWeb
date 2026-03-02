@@ -79,6 +79,8 @@ backend/
 - `XQWEB_SQLITE_PATH`：SQLite 文件路径。
 - `XQWEB_CORS_ALLOW_ORIGINS`：前端域名白名单。
 - `XQWEB_ROOM_COUNT`：预设房间数量（房间 id 固定为 `0..XQWEB_ROOM_COUNT-1`）。
+- `XQWEB_SEED_CATALOG_DIR`：M8 可选；seed 台账目录路径。
+- `XQWEB_SEED_ENABLE_SEED_INJECTION`：M8 可选；是否启用 REST 注入 seed 能力（`true|false`）。
 
 本地开发/测试约定（无 Docker）：
 - 使用项目内 env 文件，不在 shell profile（如 `~/.bashrc`）做全局 `export`。
@@ -92,6 +94,7 @@ backend/
 - secret 缺失时服务启动失败。
 - `XQWEB_JWT_SECRET` 长度至少 32 字节（避免 HS256 弱密钥告警与安全风险）。
 - `XQWEB_ACCESS_TOKEN_REFRESH_INTERVAL_SECONDS < XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS`。
+- M8 Seed Hunter 详细行为（目录扫描、匹配、回填）见本文档 `4. M8 Seed Hunter 与 REST 注入设计`。
 
 ### 1.4 数据库设计（SQLite）
 
@@ -491,7 +494,124 @@ backend/
   - 从“非全员 ready”到“全员 ready”的迁移只能触发 1 次新局创建。
   - 其余并发请求返回最新房间态，不得重复创建 game。
 
-## 4. M1-M2-M4-M6 交付检查清单
+## 4. M8 Seed Hunter 与 REST 注入设计
+
+### 4.1 目标与非目标
+- 目标：
+  - 明确两条能力链路：
+    1) `XQWEB_SEED_CATALOG_DIR` 触发离线 seed hunting 模式（批量寻种后退出）。
+    2) `XQWEB_SEED_ENABLE_SEED_INJECTION` 控制常规服务模式下的 REST 注入能力。
+  - 为 M8 e2e 提供可复现种子能力，并固定“注入后下一局生效且只消费一次”。
+- 非目标：
+  - 不新增 WS 协议字段。
+  - 不改变引擎黑棋重发语义（`seed+1` 内部处理，对前端无感）。
+
+### 4.2 配置接口（ENV 主口径）
+- `XQWEB_SEED_CATALOG_DIR`（可选，string）：
+  - 指向 seed 台账目录（允许多个 JSON 文件）。
+  - 一旦设置，进程进入 seed hunting 模式：仅遍历台账并执行寻种；完成后主动退出。
+- `XQWEB_SEED_ENABLE_SEED_INJECTION`（可选，bool，默认 `false`）：
+  - 仅在常规服务模式下生效（即未设置 `XQWEB_SEED_CATALOG_DIR`）。
+  - `true`：启用 REST 注入 seed 能力。
+  - `false`：关闭注入能力，相关 REST 请求返回 403。
+- 模式优先级：
+  - 若设置 `XQWEB_SEED_CATALOG_DIR`，优先进入 seed hunting 模式，常规服务（含 REST 注入）不启动。
+  - 若未设置 `XQWEB_SEED_CATALOG_DIR`，按常规服务模式启动；是否允许注入由 `XQWEB_SEED_ENABLE_SEED_INJECTION` 决定。
+
+### 4.3 生命周期与行为约束
+- 启动阶段：
+  1. 解析 seed 相关环境变量并做格式校验。
+  2. 若设置 `XQWEB_SEED_CATALOG_DIR`，进入 seed hunting 模式（见 4.6），不启动常规 HTTP/WS 服务。
+  3. 若未设置 `XQWEB_SEED_CATALOG_DIR`，进入常规服务模式。
+- 常规服务模式注入约束：
+  - 仅允许通过约定的 REST 接口写入“首局待消费种子”。
+  - 注入只影响“下一场新建对局”，消费成功后立即清空，不追溯修改已创建/进行中的对局。
+  - 黑棋重发完全由引擎内部处理，不对外暴露重发轨迹。
+
+### 4.4 Seed 台账接口契约（目录多文件）
+- 目录：`frontend/tests/e2e/seed-catalog/`（M8 允许拆分多个文件）。
+- 读取顺序：
+  - 按文件名升序遍历目录中的 `*.json`。
+  - 文件内按 `cases` 数组顺序处理。
+- 遍历范围（seed hunting 模式）：
+  - 处理全部 `enabled=true` 且 `seed_required=true` 的 case。
+- 记录结构（每个 case）：
+  - `test_id`（唯一标识）
+  - `enabled`
+  - `seed_required`
+  - `seed_current`
+  - `seed_requirement`
+  - `fallback_policy.search_range`
+  - `updated_at`
+- 跨文件唯一性约束：
+  - `test_id` 在整个目录范围内必须唯一；若重复，seed hunting 模式失败并以非 0 退出。
+
+### 4.5 `seed_requirement` 匹配语义
+- 当前仅支持两个维度：
+  - `first_turn_seat`
+  - `hands_at_least_by_seat`
+- 判定规则：
+  - `first_turn_seat` 必须等于开局首帧 `turn.current_seat`。
+  - `hands_at_least_by_seat` 采用“至少包含”匹配：台账声明的牌及数量必须满足，可存在额外牌。
+- 只在开局可直接观测状态上判定，不依赖后续动作推进。
+
+### 4.6 Seed Hunting 模式执行流程（批量）
+1. 按 4.4 的顺序读取并遍历全部候选 case（`enabled=true && seed_required=true`）。
+2. 对每个 case 执行：
+   - 快速验证：若 `seed_current` 非空，用该 seed 试开局并校验 `seed_requirement`。
+   - 区间搜索：快速验证失败时，在 `fallback_policy.search_range=[start,end)` 顺序遍历，命中即停止。
+   - 回填：命中后回写 `seed_current` 与 `updated_at`。
+3. 全量遍历结束后输出汇总（total/success/fail）。
+4. 进程退出：
+   - 全部 case 成功命中：`exit 0`。
+   - 存在任一 case 未命中或台账非法：`exit 非0`。
+
+### 4.7 文件写回与并发约束
+- 写回策略：
+  - 仅更新命中的目标文件与目标 case。
+  - 建议采用“写临时文件 + 原子替换”避免半写入文件。
+- 并发约束（MVP）：
+  - 基于“单进程单 worker”部署假设，不支持多进程并发写同一台账目录。
+- 格式约束：
+  - 写回后 JSON 必须保持可解析；字段语义不改变。
+
+### 4.8 REST 注入接口（常规服务模式）
+- 接口：`POST /api/games/seed-injection`
+- 启用条件：`XQWEB_SEED_ENABLE_SEED_INJECTION=true` 且未设置 `XQWEB_SEED_CATALOG_DIR`。
+- 请求体（JSON）：
+  - `seed`（必填，int，`>=0`）
+- 请求示例：
+```json
+{
+  "seed": 123456
+}
+```
+- 成功响应（200）
+- 语义约束：
+  - 注入结果写入“首局待消费种子”运行态。
+  - 下一场新建对局消费一次后自动清空。
+  - 若重复注入，后写覆盖前写。
+- 失败响应：
+  - `400`：`seed` 缺失、类型错误或越界。
+  - `403`：注入能力未开启。
+
+### 4.9 错误与可观测性
+- 典型失败场景：
+  - `XQWEB_SEED_ENABLE_SEED_INJECTION` 非法布尔值。
+  - `XQWEB_SEED_CATALOG_DIR` 不存在/不可读。
+  - `test_id` 在目录中重复。
+  - `search_range` 非法（`start < 0` 或 `end <= start`）。
+  - seed hunting 模式下，存在 case 搜索耗尽未命中。
+  - 注入能力未开启但收到注入请求。
+- 错误处理口径：
+  - 启动阶段配置错误直接终止进程（非 0 退出）。
+  - seed hunting 模式执行完成后主动退出（`0/非0` 由结果决定）。
+  - 常规服务模式下注入失败返回可诊断 4xx，不影响服务存活。
+- 日志建议：
+  - seed hunting 模式记录：`case_total`、`case_success`、`case_fail`、失败 case 列表。
+  - 注入接口记录：`injected_seed`、调用结果、失败原因。
+
+## 5. M1-M2-M4-M6 交付检查清单
 - [ ] 代码结构与配置文件落地。
 - [ ] DB 建表与索引落地。
 - [ ] Auth 五个接口通过测试。
@@ -514,7 +634,7 @@ backend/
 - [ ] 重连与动作并发竞态下，无重复应用动作、无版本回退。
 - [ ] 服务重启边界行为固定（无跨重启恢复承诺，错误码口径一致）。
 
-## 5. 已知风险与决策
+## 6. 已知风险与决策
 - 风险：refresh token 无限增长。
   - 决策：服务启动清理一次 + 每天 00:00 清理一次（仅删过期/撤销记录）。
 - 风险：房间并发写导致座位冲突。
@@ -534,7 +654,7 @@ backend/
 - 风险：重连与动作并发造成短时视图抖动。
   - 决策：以 `version` 单调为收敛标准，HTTP `/state` 作为兜底真源。
 
-## 6. 变更记录
+## 7. 变更记录
 - 2026-02-13：创建文档骨架。
 - 2026-02-13：补充 M1-M2 后端详细设计（目录、数据、接口、并发、测试、风险）。
 - 2026-02-13：统一环境变量前缀为 `XQWEB_`，补充 `.env.dev/.env.test` 本地约定。
@@ -546,3 +666,6 @@ backend/
 - 2026-02-13：补充 username 归一化口径：注册/登录统一 NFC 归一化后再校验与匹配。
 - 2026-02-20：补充 M4-M6 后端引擎集成设计：GameSession 内存模型、Games REST、房间 WS 游戏事件、结算后重新 ready 开局与并发约束。
 - 2026-02-21：补充 M6 细化设计：心跳超时断连口径、断线重连 phase 恢复规则、并发一致性不变量与服务重启边界。
+- 2026-03-02：新增 M8 Seed Hunter 与 REST 注入设计专章，统一 ENV 接口、目录多台账契约与匹配语义。
+- 2026-03-02：M8 种子入口调整：启动参数改为 `XQWEB_SEED_CATALOG_DIR` + `XQWEB_SEED_ENABLE_SEED_INJECTION`，`XQWEB_SEED_FIRST_GAME` 废弃，改为 REST 注入后作用于第一局。
+- 2026-03-02：更正 `XQWEB_SEED_CATALOG_DIR` 语义：设置后进入离线 seed hunting 模式，批量遍历台账寻种并在完成后退出服务；补充 REST 注入请求/响应格式。

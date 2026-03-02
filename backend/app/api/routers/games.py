@@ -9,6 +9,7 @@ import app.runtime as runtime
 from app.api.deps import require_current_user
 from app.api.errors import raise_api_error
 from app.rooms.models import GameActionRequest
+from app.rooms.models import SeedInjectionRequest
 from app.rooms.registry import GameForbiddenError
 from app.rooms.registry import GameInvalidActionError
 from app.rooms.registry import GameNotFoundError
@@ -44,6 +45,25 @@ def get_game_state(
             message="user is not a game member",
             detail={"game_id": game_id, "user_id": user_id},
         )
+
+
+@router.post("/api/games/seed-injection")
+def seed_injection(payload: SeedInjectionRequest) -> dict[str, object]:
+    """Inject one seed for the next new game in normal service mode."""
+    if not runtime.settings.xqweb_seed_enable_seed_injection:
+        raise_api_error(
+            status_code=403,
+            code="SEED_INJECTION_DISABLED",
+            message="seed injection is disabled",
+            detail={},
+        )
+
+    runtime.next_game_seed = int(payload.seed)
+    return {
+        "ok": True,
+        "injected_seed": int(payload.seed),
+        "apply_scope": "next_game_once",
+    }
 
 
 @router.post("/api/games/{game_id}/actions", status_code=204)
