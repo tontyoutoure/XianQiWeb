@@ -26,6 +26,8 @@ from app.rooms.registry import RoomFullError
 from app.rooms.registry import RoomRegistry
 from app.ws import routers as ws_routes
 
+runtime.exit_if_seed_hunting_mode()
+
 settings = runtime.settings
 room_registry = runtime.room_registry
 _lobby_connections = runtime.lobby_connections

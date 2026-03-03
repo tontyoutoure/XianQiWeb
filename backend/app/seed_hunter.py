@@ -321,10 +321,13 @@ def run_seed_hunting(
         test_id = str(case.get("test_id"))
         enabled = case.get("enabled")
         seed_required = case.get("seed_required")
+        seed_current_raw = case.get("seed_current")
         if not isinstance(enabled, bool):
             raise ValueError(f"{test_id}: enabled must be bool")
         if not isinstance(seed_required, bool):
             raise ValueError(f"{test_id}: seed_required must be bool")
+        if seed_required is False and seed_current_raw is not None:
+            raise ValueError(f"{test_id}: seed_required=false requires seed_current=null")
         if not (enabled and seed_required):
             continue
 

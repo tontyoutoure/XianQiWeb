@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+from fastapi import Body
 from fastapi import Header
+from pydantic import ValidationError
 
 import app.runtime as runtime
 from app.api.deps import require_current_user
@@ -48,8 +50,18 @@ def get_game_state(
 
 
 @router.post("/api/games/seed-injection")
-def seed_injection(payload: SeedInjectionRequest) -> dict[str, object]:
+def seed_injection(payload_raw: object = Body(default=None)) -> dict[str, object]:
     """Inject one seed for the next new game in normal service mode."""
+    try:
+        payload = SeedInjectionRequest.model_validate(payload_raw)
+    except ValidationError as exc:
+        raise_api_error(
+            status_code=400,
+            code="SEED_INJECTION_BAD_REQUEST",
+            message="seed payload is invalid",
+            detail={"errors": exc.errors()},
+        )
+
     if not runtime.settings.xqweb_seed_enable_seed_injection:
         raise_api_error(
             status_code=403,

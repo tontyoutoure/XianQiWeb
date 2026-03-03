@@ -41,12 +41,17 @@ def _run_seed_hunting_mode(settings: Settings) -> int:
     return run_seed_hunting_mode(catalog_dir)
 
 
+def exit_if_seed_hunting_mode() -> None:
+    """Exit current process after running seed hunting in catalog mode."""
+    if settings.xqweb_seed_catalog_dir:
+        raise SystemExit(_run_seed_hunting_mode(settings))
+
+
 def startup() -> None:
     """Ensure auth schema exists and reset in-memory room/game runtime state."""
     global settings, room_registry, lobby_connections, room_connections, room_connection_users, next_game_seed
     settings = load_settings()
-    if settings.xqweb_seed_catalog_dir:
-        raise SystemExit(_run_seed_hunting_mode(settings))
+    exit_if_seed_hunting_mode()
 
     startup_auth_schema(settings)
     room_registry = RoomRegistry(
@@ -69,4 +74,5 @@ __all__ = [
     "startup",
     "next_game_seed",
     "consume_next_game_seed",
+    "exit_if_seed_hunting_mode",
 ]
