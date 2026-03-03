@@ -110,10 +110,10 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M8-UT-01 | ⏳ 待执行 | 未开始 | - | - |
-| M8-UT-02 | ⏳ 待执行 | 未开始 | - | - |
-| M8-UT-03 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-01 | ⏳ 待执行 | 未开始 | - | - |
+| M8-UT-01 | ❌ Red失败 | Red完成 | 2026-03-03 | `tests/unit/m8-actions-stage-1-red.test.ts` 失败：缺少 `@/stores/ingame-actions.mapLegalActionsToButtonTypes`，无法验证 legal_actions->按钮映射仅来自后端动作集合。 |
+| M8-UT-02 | ❌ Red失败 | Red完成 | 2026-03-03 | 同次执行失败：缺少 `@/stores/ingame-actions.buildActionSubmitPayload`，无法验证 `action_idx` 按 `legal_actions.actions` 顺序。 |
+| M8-UT-03 | ❌ Red失败 | Red完成 | 2026-03-03 | 同次执行失败：缺少 `@/stores/ingame-actions.buildActionSubmitPayload`，无法验证 COVER/非COVER 的 `cover_list` 携带规则。 |
+| M8-IT-01 | ❌ Red失败 | Red完成 | 2026-03-03 | 同次执行失败：缺少 `@/stores/ingame-actions.buildActionSubmitPayload`，无法验证所有动作提交携带 `client_version=public_state.version`。 |
 | M8-IT-02 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-03 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-04 | ⏳ 待执行 | 未开始 | - | - |
