@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -84,6 +85,7 @@ class GameSession:
     game_id: int
     room_id: int
     status: str
+    rng_seed: int | None
     seat_to_user_id: dict[int, int]
     user_id_to_seat: dict[int, int]
     version: int
@@ -99,7 +101,12 @@ class GameSession:
 class RoomRegistry:
     """In-memory registry for all preset rooms."""
 
-    def __init__(self, room_count: int, initial_chips: int = DEFAULT_CHIPS) -> None:
+    def __init__(
+        self,
+        room_count: int,
+        initial_chips: int = DEFAULT_CHIPS,
+        next_game_seed_provider: Callable[[], int | None] | None = None,
+    ) -> None:
         if room_count < 1:
             raise ValueError("room_count must be >= 1")
 
@@ -114,6 +121,7 @@ class RoomRegistry:
         self._member_room: dict[int, int] = {}
         self._join_sequence: int = 0
         self._initial_chips = initial_chips
+        self._next_game_seed_provider = next_game_seed_provider
         self._games_by_id: dict[int, GameSession] = {}
         self._next_game_id: int = 1
 
@@ -273,6 +281,11 @@ class RoomRegistry:
     def _start_game(self, room: Room) -> None:
         game_id = self._next_game_id
         self._next_game_id += 1
+        rng_seed: int | None = None
+        if self._next_game_seed_provider is not None:
+            injected_seed = self._next_game_seed_provider()
+            if injected_seed is not None:
+                rng_seed = int(injected_seed)
 
         seat_to_user_id = {member.seat: member.user_id for member in room.members}
         user_id_to_seat = {user_id: seat for seat, user_id in seat_to_user_id.items()}
@@ -293,6 +306,7 @@ class RoomRegistry:
             game_id=game_id,
             room_id=room.room_id,
             status="in_progress",
+            rng_seed=rng_seed,
             seat_to_user_id=seat_to_user_id,
             user_id_to_seat=user_id_to_seat,
             version=1,

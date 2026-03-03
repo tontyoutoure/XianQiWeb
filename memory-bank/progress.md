@@ -9,7 +9,7 @@
 | M5 | 已完成 | 2026-03-02 | 结算与“结算后重置 ready -> 再次 ready 开新局”流程已收口。 |
 | M6 | 已完成 | 2026-03-02 | 增量能力（WS/重连/心跳/并发）与全量门禁通过（M1~M5 真实服务回归 `86 passed`）。 |
 | M7 | 已完成 | 2026-03-02 | 前端非对局范围已收口，`M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 全绿（`17 passed`）。 |
-| M8 | 进行中 | 2026-03-02 | 已进入 M8：对局操作区与结算展示前端实现及全链路回归。 |
+| M8 | 进行中 | 2026-03-03 | 已进入 M8：对局操作区与结算展示前端实现及全链路回归。 |
 
 ## 二级进度（当前 Milestone 内部，Milestone 完结时清零）
 - 当前 Milestone：`M8`
@@ -23,6 +23,8 @@
   - 2026-03-02：新增 `memory-bank/tests/m8-test.md`，冻结后端种子能力的 TDD 测试清单（配置路由、离线 seed hunting、REST 注入与“一次性消费”语义）并建立 Red/Green 记录表。
   - 2026-03-02：按指定测试 ID 拉红 `M8-SEED-CFG-01~05`（新增 `backend/tests/integration/real_service/test_m8_rs_cfg_01_05_red.py`），结果 5/5 Red：种子 ENV 配置校验/模式路由与注入 REST 入口均未落地。
   - 2026-03-02：完成 `M8-SEED-CFG-01~05` Green 实现并复测通过（`pytest backend/tests/integration/real_service/test_m8_rs_cfg_01_05_red.py -q` -> `5 passed`）；已落地 seed ENV 校验、catalog 模式启动即退出、`POST /api/games/seed-injection` 入口。
+  - 2026-03-02：完成 `M8-SEED-HUNT-01~08` 与 `M8-SEED-API-05~07` 的 Red->Green：新增 `app.seed_hunter`（候选过滤、`seed_requirement` 匹配、`search_range` 搜索、命中回填、失败退出码），并补齐注入 seed 在开局链路的“一次性消费”语义（`RoomRegistry` 新增 `rng_seed` 记录与 `next_game_seed` 消费回调）；验证通过 `pytest backend/tests/unit/test_m8_seed_hunt_01_08.py -q`（8 passed）、`pytest backend/tests/api/games/test_m8_api_seed_injection_05_07.py -q`（3 passed）。
+  - 2026-03-03：重写 `memory-bank/design/backend_design.md` 第 4 章结构（重编号并按“配置/契约/判定/流程/写回/接口/错误/冻结口径”聚合），同步更新 `memory-bank/tests/m8-tests-real-service.md` 的章节索引锚点，消除 Seed Hunter 同概念分散描述。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。
