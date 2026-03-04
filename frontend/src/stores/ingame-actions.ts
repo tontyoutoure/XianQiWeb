@@ -183,6 +183,7 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
   const playCombos = readPlayCombosFromLegalActions(input, handCards)
   const isRoundStarter = normalizeBooleanFlag(input.isRoundStarter ?? input.is_round_starter)
   const usePlayComboSelection = actionType === 'PLAY' && !isRoundStarter && playCombos.length > 0
+  const useRoundStarterPlaySelection = actionType === 'PLAY' && isRoundStarter && playCombos.length > 0
   let selectedPlayCombo: string[] | null = null
 
   function toggleCard(cardId: string): void {
@@ -192,6 +193,11 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
 
     if (usePlayComboSelection) {
       togglePlayCombo(cardId)
+      return
+    }
+
+    if (useRoundStarterPlaySelection) {
+      toggleRoundStarterPlay(cardId)
       return
     }
 
@@ -230,6 +236,23 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
     selectedPlayCombo = [...candidateCombos[0]]
   }
 
+  function toggleRoundStarterPlay(cardId: string): void {
+    const selectedIndex = selectedCards.indexOf(cardId)
+    if (selectedIndex >= 0) {
+      selectedCards.splice(selectedIndex, 1)
+      return
+    }
+
+    const interactiveSet = new Set(
+      computeRoundStarterPlayInteractiveCards(handCards, playCombos, selectedCards),
+    )
+    if (!interactiveSet.has(cardId)) {
+      return
+    }
+
+    selectedCards.push(cardId)
+  }
+
   function setSelection(nextSelectedCards: string[]): void {
     selectedCards.splice(0, selectedCards.length, ...nextSelectedCards)
   }
@@ -249,12 +272,18 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
       return selectedPlayCombo !== null
     }
 
+    if (useRoundStarterPlaySelection) {
+      return hasExactPlayComboSelection(playCombos, selectedCards)
+    }
+
     return selectedCards.length === requiredCount
   }
 
   function getState(): CardSelectionControllerState {
     const interactiveCards = usePlayComboSelection
       ? computePlayInteractiveCards(handCards, playCombos, selectedPlayCombo)
+      : useRoundStarterPlaySelection
+        ? computeRoundStarterPlayInteractiveCards(handCards, playCombos, selectedCards)
       : computeInteractiveCards(handCards, selectedCards, requiredCount)
     const interactiveSet = new Set(interactiveCards)
     const selectedSet = new Set(selectedCards)
@@ -352,6 +381,71 @@ function computePlayInteractiveCards(
 
   const interactiveCards = handCards.filter((card) => interactiveCardSet.has(card))
   return interactiveCards.length > 0 ? interactiveCards : [...handCards]
+}
+
+function computeRoundStarterPlayInteractiveCards(
+  handCards: string[],
+  playCombos: string[][],
+  selectedCards: string[],
+): string[] {
+  if (playCombos.length === 0) {
+    return [...handCards]
+  }
+
+  const continuableCombos = filterContinuablePlayCombos(playCombos, selectedCards)
+  const selectedSet = new Set(selectedCards)
+  const interactiveCardSet = new Set<string>()
+
+  for (const combo of continuableCombos) {
+    for (const card of combo) {
+      if (!selectedSet.has(card)) {
+        interactiveCardSet.add(card)
+      }
+    }
+  }
+
+  if (selectedCards.length === 0 && interactiveCardSet.size === 0) {
+    return [...handCards]
+  }
+
+  return handCards.filter((card) => interactiveCardSet.has(card))
+}
+
+function filterContinuablePlayCombos(playCombos: string[][], selectedCards: string[]): string[][] {
+  if (selectedCards.length === 0) {
+    return playCombos
+  }
+
+  const selectedSet = new Set(selectedCards)
+  return playCombos.filter((combo) => {
+    for (const selectedCard of selectedSet) {
+      if (!combo.includes(selectedCard)) {
+        return false
+      }
+    }
+    return true
+  })
+}
+
+function hasExactPlayComboSelection(playCombos: string[][], selectedCards: string[]): boolean {
+  if (selectedCards.length === 0) {
+    return false
+  }
+
+  const selectedSet = new Set(selectedCards)
+  return playCombos.some((combo) => {
+    if (combo.length !== selectedSet.size) {
+      return false
+    }
+
+    for (const card of combo) {
+      if (!selectedSet.has(card)) {
+        return false
+      }
+    }
+
+    return true
+  })
 }
 
 function normalizeHandCards(value: unknown): string[] {

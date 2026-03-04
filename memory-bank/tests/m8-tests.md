@@ -130,10 +130,10 @@
 | M8-UT-07 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`COVER` 取消一张后可交互集合重新开放，提交可用性回退为 false。 |
 | M8-UT-08 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`PLAY`（非首位）点击后收敛到唯一合法 `payload_cards` 组合并进入可提交状态。 |
 | M8-UT-09 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：再次点击组合内牌会清空选择并回到初始可选集；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts` 通过。 |
-| M8-UT-10 | ⏳ 待执行 | 未开始 | - | - |
-| M8-UT-11 | ⏳ 待执行 | 未开始 | - | - |
-| M8-UT-12 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-07 | ⏳ 待执行 | 未开始 | - | - |
+| M8-UT-10 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：`PLAY` 首位已支持“部分选中后仅同组合继续可选”，对子/三牛分支均可重现。 |
+| M8-UT-11 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`PLAY` 首位仅在组成完整合法组合后才可提交。 |
+| M8-UT-12 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：首位 `PLAY` 从完整组合撤销一张后可交互集合按剩余已选牌重算，并恢复不可提交。 |
+| M8-CT-07 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `TurnPlaysPanel`，可按顺序渲染 `public_state.turn.plays` 且携带 seat 标识；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts` 通过。 |
 | M8-CT-08 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-09 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-10 | ⏳ 待执行 | 未开始 | - | - |
