@@ -32,7 +32,7 @@ def test_m8_match_02_hands_should_use_at_least_matching() -> None:
     requirement = SeedRequirement(
         first_turn_seat=0,
         hands_at_least_by_seat={
-            0: {"R_SHI": 1, "B_ZU": 1},
+            0: {"R_SHI": 1, "B_NIU": 1},
             1: {"B_XIANG": 1},
             2: {},
         },
@@ -43,9 +43,9 @@ def test_m8_match_02_hands_should_use_at_least_matching() -> None:
         return {
             "first_turn_seat": 0,
             "hands_by_seat": {
-                0: {"R_SHI": 1, "B_ZU": 2, "R_MA": 1},
+                0: {"R_SHI": 1, "B_NIU": 2, "R_MA": 1},
                 1: {"B_XIANG": 1, "R_SHI": 1},
-                2: {"R_JU": 1},
+                2: {"R_CHE": 1},
             },
         }
 
