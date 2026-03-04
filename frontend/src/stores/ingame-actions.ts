@@ -156,6 +156,16 @@ interface CardSelectionControllerState {
   selectedCards: string[]
   interactiveCards: string[]
   cardStates: Record<string, CardUiState>
+  canSubmit: boolean
+  submitEnabled: boolean
+  hasLegalSelection: boolean
+  has_legal_selection: boolean
+  isSelectionValid: boolean
+  is_selection_valid: boolean
+  submitEnabledMap: Record<string, boolean>
+  submit_enabled_map: Record<string, boolean>
+  actionDisabledMap: Record<string, boolean>
+  action_disabled_map: Record<string, boolean>
   uiSelectionState: {
     selectedCards: string[]
     interactiveCards: string[]
@@ -163,18 +173,32 @@ interface CardSelectionControllerState {
 }
 
 export function createCardSelectionControllerForTest(input: Record<string, unknown>) {
+  const actionType = normalizeSelectionActionType(input.actionType ?? input.action_type) ?? 'COVER'
   const handCards = normalizeHandCards(input.handCards ?? input.hand_cards)
   const requiredCount = normalizeRequiredCount(
     input.requiredCount ?? input.required_count ?? readRequiredCountFromLegalActions(input),
   )
   const selectedCards: string[] = []
   const handCardSet = new Set(handCards)
+  const playCombos = readPlayCombosFromLegalActions(input, handCards)
+  const isRoundStarter = normalizeBooleanFlag(input.isRoundStarter ?? input.is_round_starter)
+  const usePlayComboSelection = actionType === 'PLAY' && !isRoundStarter && playCombos.length > 0
+  let selectedPlayCombo: string[] | null = null
 
   function toggleCard(cardId: string): void {
     if (!handCardSet.has(cardId)) {
       return
     }
 
+    if (usePlayComboSelection) {
+      togglePlayCombo(cardId)
+      return
+    }
+
+    toggleCoverSelection(cardId)
+  }
+
+  function toggleCoverSelection(cardId: string): void {
     const selectedIndex = selectedCards.indexOf(cardId)
     if (selectedIndex >= 0) {
       selectedCards.splice(selectedIndex, 1)
@@ -191,10 +215,56 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
     }
   }
 
+  function togglePlayCombo(cardId: string): void {
+    if (selectedPlayCombo?.includes(cardId)) {
+      clearSelection()
+      return
+    }
+
+    const candidateCombos = playCombos.filter((combo) => combo.includes(cardId))
+    if (candidateCombos.length !== 1) {
+      return
+    }
+
+    setSelection(candidateCombos[0])
+    selectedPlayCombo = [...candidateCombos[0]]
+  }
+
+  function setSelection(nextSelectedCards: string[]): void {
+    selectedCards.splice(0, selectedCards.length, ...nextSelectedCards)
+  }
+
+  function clearSelection(): void {
+    selectedPlayCombo = null
+    selectedCards.splice(0, selectedCards.length)
+  }
+
+  function canSubmit(requestedActionType?: unknown): boolean {
+    const normalizedRequestedActionType = normalizeSelectionActionType(requestedActionType)
+    if (normalizedRequestedActionType && normalizedRequestedActionType !== actionType) {
+      return false
+    }
+
+    if (usePlayComboSelection) {
+      return selectedPlayCombo !== null
+    }
+
+    return selectedCards.length === requiredCount
+  }
+
   function getState(): CardSelectionControllerState {
-    const interactiveCards = computeInteractiveCards(handCards, selectedCards, requiredCount)
+    const interactiveCards = usePlayComboSelection
+      ? computePlayInteractiveCards(handCards, playCombos, selectedPlayCombo)
+      : computeInteractiveCards(handCards, selectedCards, requiredCount)
     const interactiveSet = new Set(interactiveCards)
     const selectedSet = new Set(selectedCards)
+    const submitEnabled = canSubmit(actionType)
+    const submitEnabledMap = {
+      [actionType]: submitEnabled,
+    }
+    const actionDisabledMap = {
+      [actionType]: !submitEnabled,
+    }
     const cardStates: Record<string, CardUiState> = {}
 
     for (const handCard of handCards) {
@@ -210,6 +280,16 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
       selectedCards: [...selectedCards],
       interactiveCards,
       cardStates,
+      canSubmit: submitEnabled,
+      submitEnabled,
+      hasLegalSelection: submitEnabled,
+      has_legal_selection: submitEnabled,
+      isSelectionValid: submitEnabled,
+      is_selection_valid: submitEnabled,
+      submitEnabledMap,
+      submit_enabled_map: submitEnabledMap,
+      actionDisabledMap,
+      action_disabled_map: actionDisabledMap,
       uiSelectionState: {
         selectedCards: [...selectedCards],
         interactiveCards: [...interactiveCards],
@@ -226,6 +306,10 @@ export function createCardSelectionControllerForTest(input: Record<string, unkno
     clickCard: toggleCard,
     getState,
     getCardState,
+    canSubmit,
+    isSubmitEnabled: canSubmit,
+    hasLegalSelection: canSubmit,
+    isSelectionValid: canSubmit,
   }
 }
 
@@ -244,6 +328,30 @@ function computeInteractiveCards(
 
   const selectedSet = new Set(selectedCards)
   return handCards.filter((card) => !selectedSet.has(card))
+}
+
+function computePlayInteractiveCards(
+  handCards: string[],
+  playCombos: string[][],
+  selectedPlayCombo: string[] | null,
+): string[] {
+  if (selectedPlayCombo) {
+    return []
+  }
+
+  if (playCombos.length === 0) {
+    return [...handCards]
+  }
+
+  const interactiveCardSet = new Set<string>()
+  for (const combo of playCombos) {
+    for (const card of combo) {
+      interactiveCardSet.add(card)
+    }
+  }
+
+  const interactiveCards = handCards.filter((card) => interactiveCardSet.has(card))
+  return interactiveCards.length > 0 ? interactiveCards : [...handCards]
 }
 
 function normalizeHandCards(value: unknown): string[] {
@@ -266,6 +374,99 @@ function normalizeHandCards(value: unknown): string[] {
 
 function normalizeRequiredCount(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 1
+}
+
+function normalizeSelectionActionType(value: unknown): ActionType | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim().toUpperCase()
+  if (
+    normalized === 'BUCKLE' ||
+    normalized === 'PASS_BUCKLE' ||
+    normalized === 'REVEAL' ||
+    normalized === 'PASS_REVEAL' ||
+    normalized === 'PLAY' ||
+    normalized === 'COVER'
+  ) {
+    return normalized
+  }
+
+  return null
+}
+
+function normalizeBooleanFlag(value: unknown): boolean {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    return normalized === 'true' || normalized === '1'
+  }
+
+  return false
+}
+
+function readPlayCombosFromLegalActions(input: Record<string, unknown>, handCards: string[]): string[][] {
+  const legalActions = input.legalActions ?? input.legal_actions
+  if (!legalActions || typeof legalActions !== 'object') {
+    return []
+  }
+
+  const actions = (legalActions as { actions?: unknown }).actions
+  if (!Array.isArray(actions)) {
+    return []
+  }
+
+  const uniqueCombos = new Set<string>()
+  const combos: string[][] = []
+
+  for (const action of actions) {
+    if (!action || typeof action !== 'object') {
+      continue
+    }
+
+    const typedAction = action as { type?: unknown; payload_cards?: unknown }
+    if (typedAction.type !== 'PLAY') {
+      continue
+    }
+
+    const payloadCards =
+      typedAction.payload_cards && typeof typedAction.payload_cards === 'object'
+        ? (typedAction.payload_cards as Record<string, unknown>)
+        : null
+    if (!payloadCards) {
+      continue
+    }
+
+    const cardSet = new Set<string>()
+    for (const [cardId, count] of Object.entries(payloadCards)) {
+      if (typeof count === 'number' && count > 0) {
+        cardSet.add(cardId)
+      }
+    }
+
+    const combo = handCards.filter((card) => cardSet.has(card))
+    if (combo.length === 0) {
+      continue
+    }
+
+    const signature = combo.join('|')
+    if (uniqueCombos.has(signature)) {
+      continue
+    }
+
+    uniqueCombos.add(signature)
+    combos.push(combo)
+  }
+
+  return combos
 }
 
 function readRequiredCountFromLegalActions(input: Record<string, unknown>): unknown {
