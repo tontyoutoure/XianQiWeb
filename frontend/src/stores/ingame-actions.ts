@@ -25,6 +25,49 @@ export interface ActionSubmitPayload {
   cover_list?: Record<string, number> | null
 }
 
+interface ControllerPendingAction {
+  actionType: ActionType
+  payloadCards?: Record<string, number>
+  coverList?: Record<string, number>
+}
+
+interface IngameActionControllerState {
+  publicState: Record<string, unknown>
+  privateState: Record<string, unknown> | null
+  legalActions: Record<string, unknown> | null
+  uiSelectionState: {
+    selectedCards: string[]
+  }
+  pendingAction: ControllerPendingAction | null
+}
+
+interface RecoverStatePayload {
+  public_state: Record<string, unknown>
+  private_state: Record<string, unknown> | null
+  legal_actions: Record<string, unknown> | null
+}
+
+interface IngameActionControllerServices {
+  submitAction: (payload: Record<string, unknown>) => Promise<{
+    status: number
+    body?: { code?: string }
+  }>
+  fetchLatestState: () => Promise<RecoverStatePayload>
+  notifySubmitError: (message: string) => void
+}
+
+interface CreateIngameActionControllerForTestInput {
+  gameId: number
+  initialState: IngameActionControllerState
+  services: IngameActionControllerServices
+}
+
+interface SubmitControllerActionInput {
+  actionType: ActionType
+  payloadCards?: Record<string, number>
+  coverList?: Record<string, number>
+}
+
 export function mapLegalActionsToButtonTypes(legalActions: LegalActions | null | undefined): ActionType[] {
   if (!legalActions || !Array.isArray(legalActions.actions)) {
     return []
@@ -105,4 +148,83 @@ function isSameCardCountMap(
   }
 
   return true
+}
+
+const DEFAULT_SUBMIT_ERROR_MESSAGE = '动作提交失败，请稍后重试'
+
+export function createIngameActionControllerForTest(input: CreateIngameActionControllerForTestInput) {
+  const state: IngameActionControllerState = {
+    publicState: input.initialState.publicState,
+    privateState: input.initialState.privateState,
+    legalActions: input.initialState.legalActions,
+    uiSelectionState: {
+      selectedCards: [...(input.initialState.uiSelectionState?.selectedCards ?? [])],
+    },
+    pendingAction: input.initialState.pendingAction,
+  }
+
+  async function submitAction(actionInput: SubmitControllerActionInput): Promise<void> {
+    state.pendingAction = {
+      actionType: actionInput.actionType,
+      payloadCards: actionInput.payloadCards,
+      coverList: actionInput.coverList,
+    }
+
+    let submitResponse: { status: number; body?: { code?: string } }
+    try {
+      submitResponse = await input.services.submitAction(
+        buildSubmitPayloadForController(actionInput, state),
+      )
+    } catch {
+      state.pendingAction = null
+      input.services.notifySubmitError(DEFAULT_SUBMIT_ERROR_MESSAGE)
+      return
+    }
+
+    if (submitResponse.status === 204) {
+      state.pendingAction = null
+      return
+    }
+
+    if (submitResponse.status === 409 && submitResponse.body?.code === 'GAME_VERSION_CONFLICT') {
+      try {
+        const latestState = await input.services.fetchLatestState()
+        state.publicState = latestState.public_state
+        state.privateState = latestState.private_state
+        state.legalActions = latestState.legal_actions
+        state.uiSelectionState.selectedCards = []
+        state.pendingAction = null
+      } catch {
+        state.pendingAction = null
+        input.services.notifySubmitError(DEFAULT_SUBMIT_ERROR_MESSAGE)
+      }
+      return
+    }
+
+    state.pendingAction = null
+    input.services.notifySubmitError(DEFAULT_SUBMIT_ERROR_MESSAGE)
+  }
+
+  return {
+    submitAction,
+    getState: (): IngameActionControllerState => state,
+  }
+}
+
+function buildSubmitPayloadForController(
+  actionInput: SubmitControllerActionInput,
+  state: IngameActionControllerState,
+): ActionSubmitPayload {
+  return buildActionSubmitPayload({
+    legalActions: state.legalActions as LegalActions,
+    actionType: actionInput.actionType,
+    payloadCards: actionInput.payloadCards,
+    coverList: actionInput.coverList,
+    publicStateVersion: readPublicStateVersion(state.publicState),
+  })
+}
+
+function readPublicStateVersion(publicState: Record<string, unknown>): number {
+  const version = publicState.version
+  return typeof version === 'number' ? version : 0
 }

@@ -114,10 +114,10 @@
 | M8-UT-02 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；`buildActionSubmitPayload` 已按 `legal_actions.actions` 顺序映射 `action_idx`，同次命令通过。 |
 | M8-UT-03 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；`COVER` 携带 `cover_list`、非 `COVER` 不携带规则实现完成，同次命令通过。 |
 | M8-IT-01 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；动作提交统一携带 `client_version=public_state.version` 已实现，同次命令通过。 |
-| M8-IT-02 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-03 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-04 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-05 | ⏳ 待执行 | 未开始 | - | - |
+| M8-IT-02 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：新增 `createIngameActionControllerForTest`，`204` 返回后不做本地伪推进；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts` 通过。 |
+| M8-IT-03 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`409 + GAME_VERSION_CONFLICT` 会触发拉态并覆盖 `public/private/legal_actions`。 |
+| M8-IT-04 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：冲突恢复后会清空 `uiSelectionState.selectedCards` 与 `pendingAction`。 |
+| M8-IT-05 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：403/404/非版本409 统一错误提示且终止提交，不触发拉态。 |
 | M8-CT-01 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-02 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-03 | ⏳ 待执行 | 未开始 | - | - |
