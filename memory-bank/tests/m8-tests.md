@@ -146,6 +146,6 @@
 | M8-CT-16 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `SettlementModal`，可按玩家行展示 `delta/delta_enough/delta_reveal/delta_ceramic` 且与总和一致。 |
 | M8-IT-07 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：关闭结算弹层后显示“已进入准备阶段，请重新 ready 开新局”。 |
 | M8-IT-08 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`playing -> waiting` 且无结算时清空对局区并显示“对局结束”；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts tests/unit/m8-settlement-stage-9-red.test.ts` 通过。 |
-| M8-IT-09 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-10 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-11 | ⏳ 待执行 | 未开始 | - | - |
+| M8-IT-09 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：新增重连恢复控制器测试导出后，WS 断连可自动重连并 REST 拉态兜底，状态覆盖为最新快照。 |
+| M8-IT-10 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：重连恢复后 `legal_actions` 与状态快照一致，旧选择态被清理并重建。 |
+| M8-IT-11 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：4401 先 refresh，成功后重连恢复，失败则回登录；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts tests/unit/m8-settlement-stage-9-red.test.ts tests/unit/m8-reconnect-stage-10-red.test.ts` 通过。 |

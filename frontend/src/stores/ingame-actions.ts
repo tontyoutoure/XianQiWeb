@@ -649,6 +649,285 @@ export function createIngameActionControllerForTest(input: CreateIngameActionCon
   }
 }
 
+type GenericRecord = Record<string, unknown>
+type GenericCallable = (...args: unknown[]) => unknown
+type RecoverFetcher = () => Promise<unknown>
+type ReconnectCallable = () => Promise<unknown> | unknown
+type RefreshCallable = () => Promise<unknown> | unknown
+type NavigateCallable = () => Promise<unknown> | unknown
+
+export function createIngameReconnectControllerForTest(input: Record<string, unknown>) {
+  const initialState = readRecord(input.initialState ?? input.initial_state)
+  const services = readRecord(input.services ?? input.deps)
+  const reconnectDelayMs = readReconnectDelayMs(input)
+  const reconnectService = findFirstCallable(services, [
+    'reconnectWs',
+    'reconnectChannel',
+    'reconnectRoomChannel',
+    'reconnect',
+  ]) as ReconnectCallable | null
+  const fetchLatestStateService = findFirstCallable(services, [
+    'fetchLatestState',
+    'fetchLatestSnapshot',
+    'fetchGameState',
+    'fetchGameSnapshot',
+  ]) as RecoverFetcher | null
+  const refreshSessionService = findFirstCallable(services, [
+    'refreshSession',
+    'refresh',
+  ]) as RefreshCallable | null
+  const navigateToLoginService = findFirstCallable(services, [
+    'navigateToLogin',
+    'redirectToLogin',
+    'goLogin',
+  ]) as NavigateCallable | null
+
+  const state: IngameActionControllerState = {
+    publicState: readRecord(initialState?.publicState ?? initialState?.public_state) ?? {},
+    privateState: readRecordOrNull(initialState?.privateState ?? initialState?.private_state),
+    legalActions: readRecordOrNull(initialState?.legalActions ?? initialState?.legal_actions),
+    uiSelectionState: {
+      selectedCards: readSelectedCards(
+        initialState?.uiSelectionState ??
+          initialState?.ui_selection_state ??
+          initialState?.selectionState ??
+          initialState?.selection_state,
+      ),
+    },
+    pendingAction: readPendingAction(initialState?.pendingAction ?? initialState?.pending_action),
+  }
+
+  async function recoverLatestState(): Promise<void> {
+    if (typeof reconnectService === 'function') {
+      await reconnectService()
+    }
+
+    if (typeof fetchLatestStateService !== 'function') {
+      return
+    }
+
+    const latestState = await fetchLatestStateService()
+    const latestStateRecord = readRecord(latestState)
+    if (!latestStateRecord) {
+      return
+    }
+
+    state.publicState =
+      readRecord(latestStateRecord.public_state ?? latestStateRecord.publicState) ?? state.publicState
+    state.privateState = readRecordOrNull(
+      latestStateRecord.private_state ?? latestStateRecord.privateState,
+      state.privateState,
+    )
+    state.legalActions = readRecordOrNull(
+      latestStateRecord.legal_actions ?? latestStateRecord.legalActions,
+      state.legalActions,
+    )
+    state.uiSelectionState.selectedCards = []
+    state.pendingAction = null
+  }
+
+  async function onWsClose(event: unknown): Promise<void> {
+    const closeCode = readCloseCode(event)
+    if (closeCode === 4401) {
+      const refreshPassed = await runRefreshSession(refreshSessionService)
+      if (!refreshPassed) {
+        if (typeof navigateToLoginService === 'function') {
+          await navigateToLoginService()
+        }
+        return
+      }
+    }
+
+    if (reconnectDelayMs > 0) {
+      await sleep(reconnectDelayMs)
+    }
+
+    try {
+      await recoverLatestState()
+    } catch {
+      return
+    }
+  }
+
+  return {
+    onWsClose,
+    handleWsClose: onWsClose,
+    getState: (): IngameActionControllerState => state,
+  }
+}
+
+export const createIngameSessionRecoveryForTest = createIngameReconnectControllerForTest
+
+function readRecord(value: unknown): GenericRecord | null {
+  if (value && typeof value === 'object') {
+    return value as GenericRecord
+  }
+  return null
+}
+
+function readRecordOrNull(
+  value: unknown,
+  fallback: Record<string, unknown> | null = null,
+): Record<string, unknown> | null {
+  if (value === null) {
+    return null
+  }
+
+  const parsed = readRecord(value)
+  if (parsed) {
+    return parsed
+  }
+
+  return fallback
+}
+
+function findFirstCallable(
+  target: GenericRecord | null,
+  methodNames: readonly string[],
+): GenericCallable | null {
+  if (!target) {
+    return null
+  }
+
+  for (const methodName of methodNames) {
+    const callable = target[methodName]
+    if (typeof callable === 'function') {
+      return callable as GenericCallable
+    }
+  }
+
+  return null
+}
+
+function readReconnectDelayMs(input: Record<string, unknown>): number {
+  const options = readRecord(input.options)
+  const delayCandidate =
+    input.reconnectDelayMs ??
+    input.reconnect_delay_ms ??
+    options?.reconnectDelayMs ??
+    options?.reconnect_delay_ms
+  if (typeof delayCandidate !== 'number' || !Number.isFinite(delayCandidate) || delayCandidate < 0) {
+    return 0
+  }
+  return Math.floor(delayCandidate)
+}
+
+function readSelectedCards(selectionLike: unknown): string[] {
+  const selection = readRecord(selectionLike)
+  if (!selection) {
+    return []
+  }
+
+  const selectedCards = selection.selectedCards ?? selection.selected_cards
+  if (!Array.isArray(selectedCards)) {
+    return []
+  }
+
+  const normalized: string[] = []
+  for (const card of selectedCards) {
+    if (typeof card === 'string') {
+      normalized.push(card)
+    }
+  }
+  return normalized
+}
+
+function readPendingAction(value: unknown): ControllerPendingAction | null {
+  const pendingAction = readRecord(value)
+  if (!pendingAction) {
+    return null
+  }
+
+  const normalizedActionType = normalizeSelectionActionType(
+    pendingAction.actionType ?? pendingAction.action_type,
+  )
+  if (!normalizedActionType) {
+    return null
+  }
+
+  return {
+    actionType: normalizedActionType,
+    payloadCards: readCardCountMap(pendingAction.payloadCards ?? pendingAction.payload_cards),
+    coverList: readCardCountMap(pendingAction.coverList ?? pendingAction.cover_list),
+  }
+}
+
+function readCardCountMap(value: unknown): Record<string, number> | undefined {
+  const cardMap = readRecord(value)
+  if (!cardMap) {
+    return undefined
+  }
+
+  const normalized: Record<string, number> = {}
+  for (const [cardId, count] of Object.entries(cardMap)) {
+    if (typeof count === 'number' && Number.isFinite(count) && count > 0) {
+      normalized[cardId] = count
+    }
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined
+}
+
+function readCloseCode(event: unknown): number {
+  if (typeof event === 'number' && Number.isFinite(event)) {
+    return Math.floor(event)
+  }
+
+  const closeEvent = readRecord(event)
+  if (!closeEvent) {
+    return 0
+  }
+
+  const code = closeEvent.code
+  if (typeof code === 'number' && Number.isFinite(code)) {
+    return Math.floor(code)
+  }
+
+  return 0
+}
+
+async function runRefreshSession(refreshSession: RefreshCallable | null): Promise<boolean> {
+  if (typeof refreshSession !== 'function') {
+    return false
+  }
+
+  try {
+    const refreshResult = await refreshSession()
+    if (refreshResult === false || refreshResult === null) {
+      return false
+    }
+    if (refreshResult === undefined) {
+      return true
+    }
+
+    if (typeof refreshResult === 'number') {
+      return refreshResult !== 0
+    }
+
+    if (typeof refreshResult === 'object') {
+      const refreshRecord = readRecord(refreshResult)
+      if (refreshRecord) {
+        if (typeof refreshRecord.ok === 'boolean') {
+          return refreshRecord.ok
+        }
+        if (typeof refreshRecord.success === 'boolean') {
+          return refreshRecord.success
+        }
+      }
+    }
+
+    return Boolean(refreshResult)
+  } catch {
+    return false
+  }
+}
+
+async function sleep(delayMs: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, delayMs)
+  })
+}
+
 function buildSubmitPayloadForController(
   actionInput: SubmitControllerActionInput,
   state: IngameActionControllerState,
