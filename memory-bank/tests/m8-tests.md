@@ -134,10 +134,10 @@
 | M8-UT-11 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`PLAY` 首位仅在组成完整合法组合后才可提交。 |
 | M8-UT-12 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：首位 `PLAY` 从完整组合撤销一张后可交互集合按剩余已选牌重算，并恢复不可提交。 |
 | M8-CT-07 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `TurnPlaysPanel`，可按顺序渲染 `public_state.turn.plays` 且携带 seat 标识；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts` 通过。 |
-| M8-CT-08 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-09 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-10 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-11 | ⏳ 待执行 | 未开始 | - | - |
+| M8-CT-08 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：新增 `PillarBoard` 后，公共区垫牌仅展示 `covered_count` 标记，不泄露对手垫牌牌面。 |
+| M8-CT-09 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：己方垫牌可由 `private_state.covered` 补全并仅在自己视角显示具体牌面。 |
+| M8-CT-10 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：主界面棋柱按“最大牌完整 + 其余遮挡”展示，隐藏牌以 mask/card-back 渲染。 |
+| M8-CT-11 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `PillarOverlay` 按归属分组并完整展开三枚牌；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts` 通过。 |
 | M8-CT-12 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-13 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-14 | ⏳ 待执行 | 未开始 | - | - |
