@@ -118,10 +118,10 @@
 | M8-IT-03 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`409 + GAME_VERSION_CONFLICT` 会触发拉态并覆盖 `public/private/legal_actions`。 |
 | M8-IT-04 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：冲突恢复后会清空 `uiSelectionState.selectedCards` 与 `pendingAction`。 |
 | M8-IT-05 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：403/404/非版本409 统一错误提示且终止提交，不触发拉态。 |
-| M8-CT-01 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-02 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-03 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-04 | ⏳ 待执行 | 未开始 | - | - |
+| M8-CT-01 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：新增 `frontend/src/components/ingame/ActionBar.vue` 后，`buckle_flow` 起始决策仅显示 `BUCKLE/PASS_BUCKLE`。 |
+| M8-CT-02 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：掀棋询问阶段仅显示 `REVEAL/PASS_REVEAL`。 |
+| M8-CT-03 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`in_round` 可压制时仅显示 `PLAY`。 |
+| M8-CT-04 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`in_round` 不可压制时仅显示 `COVER`；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts` 通过。 |
 | M8-CT-05 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-06 | ⏳ 待执行 | 未开始 | - | - |
 | M8-UT-04 | ⏳ 待执行 | 未开始 | - | - |
