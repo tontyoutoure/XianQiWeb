@@ -138,10 +138,10 @@
 | M8-CT-09 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：己方垫牌可由 `private_state.covered` 补全并仅在自己视角显示具体牌面。 |
 | M8-CT-10 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：主界面棋柱按“最大牌完整 + 其余遮挡”展示，隐藏牌以 mask/card-back 渲染。 |
 | M8-CT-11 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `PillarOverlay` 按归属分组并完整展开三枚牌；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts` 通过。 |
-| M8-CT-12 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-13 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-14 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-15 | ⏳ 待执行 | 未开始 | - | - |
+| M8-CT-12 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：`PillarOverlay` 已支持“按大小”视图，公共牌按牌力降序展示，对手垫牌仅数量化并放在列表末尾。 |
+| M8-CT-13 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增“包含柱外牌”开关，仅影响本地展示集合（含手牌/回合外牌），不触发请求与状态同步事件。 |
+| M8-CT-14 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `RevealRelationModal`，支持打开/关闭与 close/update 事件。 |
+| M8-CT-15 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：失效掀扣关系项带 invalid 标记并具备置灰+中划线样式语义；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts` 通过。 |
 | M8-IT-06 | ⏳ 待执行 | 未开始 | - | - |
 | M8-CT-16 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-07 | ⏳ 待执行 | 未开始 | - | - |
