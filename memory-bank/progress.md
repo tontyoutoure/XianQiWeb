@@ -37,6 +37,7 @@
   - 2026-03-03：将 `memory-bank/tests/m8-tests.md` 重命名为 `memory-bank/tests/m7.5-test.md`，并将文档内测试编号统一为 `M7.5-*`；补充“该文档用于 M8 阶段 E2E 测试基础设施”的定位说明，同时同步修正文档引用路径。
   - 2026-03-03：基于 `memory-bank/design/frontend_ingame_design.md` 完成 M8 测试设计文档拆分：新增 `memory-bank/tests/m8-tests.md`（UT/CT/集成）并重写 `memory-bank/tests/m8-tests-real-service.md`（真实后端 E2E），同时为全部测试 ID 初始化 Red/Green 执行记录模板。
   - 2026-03-03：新增 `memory-bank/tests/tdd-subagent-batch-workflow.md`，固化“双 agent、每 4 条测试一波、Red/Green 各一次提交、波末重启 agent、改测争议即停机”的统一执行规范。
+  - 2026-03-03：完成 M8 前四项（`M8-UT-01/02/03`、`M8-IT-01`）Red->Green：新增 `frontend/src/stores/ingame-actions.ts`（`mapLegalActionsToButtonTypes`、`buildActionSubmitPayload`），并修正 `frontend/tests/unit/m8-actions-stage-1-red.test.ts` 的模块加载方式为标准 `import('@/stores/ingame-actions')`；验证 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts` 通过（`4 passed`），全量前端单测回归 `26 passed`。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。

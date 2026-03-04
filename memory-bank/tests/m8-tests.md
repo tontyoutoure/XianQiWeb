@@ -110,10 +110,10 @@
 
 | 测试ID | 当前状态 | TDD阶段 | 执行日期 | 备注 |
 |---|---|---|---|---|
-| M8-UT-01 | ❌ Red失败 | Red完成 | 2026-03-03 | `tests/unit/m8-actions-stage-1-red.test.ts` 失败：缺少 `@/stores/ingame-actions.mapLegalActionsToButtonTypes`，无法验证 legal_actions->按钮映射仅来自后端动作集合。 |
-| M8-UT-02 | ❌ Red失败 | Red完成 | 2026-03-03 | 同次执行失败：缺少 `@/stores/ingame-actions.buildActionSubmitPayload`，无法验证 `action_idx` 按 `legal_actions.actions` 顺序。 |
-| M8-UT-03 | ❌ Red失败 | Red完成 | 2026-03-03 | 同次执行失败：缺少 `@/stores/ingame-actions.buildActionSubmitPayload`，无法验证 COVER/非COVER 的 `cover_list` 携带规则。 |
-| M8-IT-01 | ❌ Red失败 | Red完成 | 2026-03-03 | 同次执行失败：缺少 `@/stores/ingame-actions.buildActionSubmitPayload`，无法验证所有动作提交携带 `client_version=public_state.version`。 |
+| M8-UT-01 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；新增 `frontend/src/stores/ingame-actions.ts` 后，执行 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts` 通过。 |
+| M8-UT-02 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；`buildActionSubmitPayload` 已按 `legal_actions.actions` 顺序映射 `action_idx`，同次命令通过。 |
+| M8-UT-03 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；`COVER` 携带 `cover_list`、非 `COVER` 不携带规则实现完成，同次命令通过。 |
+| M8-IT-01 | ✅ Green通过 | Green完成 | 2026-03-03 | Red阶段见原失败记录；动作提交统一携带 `client_version=public_state.version` 已实现，同次命令通过。 |
 | M8-IT-02 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-03 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-04 | ⏳ 待执行 | 未开始 | - | - |

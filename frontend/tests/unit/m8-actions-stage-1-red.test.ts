@@ -34,11 +34,7 @@ interface InGameActionModuleExports {
 
 async function loadInGameActionModule(): Promise<InGameActionModuleExports> {
   try {
-    const importAtRuntime = new Function(
-      'modulePath',
-      'return import(modulePath)',
-    ) as (modulePath: string) => Promise<unknown>
-    return (await importAtRuntime('@/stores/ingame-actions')) as InGameActionModuleExports
+    return (await import('@/stores/ingame-actions')) as InGameActionModuleExports
   } catch {
     return {}
   }

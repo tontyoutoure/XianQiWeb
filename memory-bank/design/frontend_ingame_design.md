@@ -17,6 +17,17 @@
 - 不覆盖：
   - 登录/大厅/房间基础链路（见 `memory-bank/design/frontend_design.md`）
 
+### 0.1 棋子资源文件位置（前端）
+- 棋子 SVG 静态资源目录：`frontend/public/pieces/`
+- 文件命名规则：`{card_type}.svg`，例如：
+  - `R_SHI.svg`、`B_SHI.svg`
+  - `R_XIANG.svg`、`B_XIANG.svg`
+  - `R_MA.svg`、`B_MA.svg`
+  - `R_CHE.svg`、`B_CHE.svg`
+  - `R_GOU.svg`、`B_GOU.svg`
+  - `R_NIU.svg`、`B_NIU.svg`
+- 资源更新方式：修改模板 `frontend/public/favicon.svg` 后，执行 `python3 scripts/gen_piece_icons.py` 重新生成。
+
 ## 1. 页面信息架构
 
 ### 1.1 对局主界面（默认视图）
@@ -117,9 +128,21 @@
 ## 4. 手牌交互状态机
 
 ### 4.1 三态定义
-- 普通态：不可交互。
-- 可合法交互态：可点击。
-- 已选中态：当前提交候选。
+- 普通态（不可交互）：
+  - 视觉：`opacity: 0.72`，`filter: saturate(0.9)`，无高亮描边/无光晕。
+  - 形态：`transform: translateY(0) scale(1)`。
+  - 交互：`cursor: default`，无 hover 动效。
+- 可合法交互态（可点击）：
+  - 视觉：保持原色，增加细描边 `1.5px #f59e0b` 与弱光晕 `0 0 0 3px rgba(245,158,11,0.2)`。
+  - 形态：hover 时 `transform: translateY(-4px) scale(1.03)`。
+  - 交互：`cursor: pointer`；右上角显示小圆点提示“可选”。
+- 已选中态（当前提交候选）：
+  - 视觉：强化描边 `2.5px #f59e0b`，增强阴影 `0 10px 20px rgba(0,0,0,0.28)`。
+  - 形态：固定 `transform: translateY(-10px) scale(1.05)`，并提升 `z-index`，避免邻牌遮挡。
+  - 交互：显示“已选”角标（可附带数量），不可仅依赖颜色表达状态。
+- 动效统一约束：
+  - `transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease`。
+  - 移动端抬起高度降级为 `translateY(-6px)`，防止遮挡上方区域。
 
 ### 4.2 通用规则
 - 只有“可合法交互态”与“已选中态”允许点击。
