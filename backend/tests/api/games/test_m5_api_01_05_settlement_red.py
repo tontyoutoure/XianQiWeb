@@ -73,6 +73,8 @@ def test_m5_be_01_get_settlement_success_returns_settlement_snapshot(
 
     game = app_main.room_registry.get_game(context["game_id"])
     app_main.room_registry.mark_game_settlement(context["game_id"])
+    public_state = game.engine.get_public_state()
+    assert isinstance(public_state, dict)
 
     payload = app_main.get_game_settlement(
         game_id=context["game_id"],
@@ -81,7 +83,7 @@ def test_m5_be_01_get_settlement_success_returns_settlement_snapshot(
 
     assert {"chip_delta_by_seat", "final_state"} <= set(payload)
     assert payload["final_state"]["phase"] == "settlement"
-    assert int(payload["final_state"]["version"]) == int(game.version)
+    assert int(payload["final_state"]["version"]) == int(public_state["version"])
 
 
 def test_m5_be_02_settlement_phase_gate_depends_on_phase_only(
@@ -94,7 +96,10 @@ def test_m5_be_02_settlement_phase_gate_depends_on_phase_only(
 
     game = app_main.room_registry.get_game(context["game_id"])
     game.status = "settlement"
-    game.phase = "in_round"
+    state = game.engine.dump_state()
+    assert isinstance(state, dict)
+    state["phase"] = "in_round"
+    game.engine.load_state(state)
 
     with pytest.raises(HTTPException) as exc_info:
         app_main.get_game_settlement(

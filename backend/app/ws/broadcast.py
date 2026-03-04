@@ -206,7 +206,7 @@ async def broadcast_game_progress(game_id: int) -> None:
     await broadcast_game_public_state(room_id=room_id, game_id=game_id)
     await broadcast_game_private_states(room_id=room_id, game_id=game_id)
 
-    if game.phase == "settlement":
+    if runtime.room_registry.get_game_phase(game_id) == "settlement":
         await broadcast_room_changes([room_id])
         await broadcast_settlement(room_id=room_id, game_id=game_id)
 

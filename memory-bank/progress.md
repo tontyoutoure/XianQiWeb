@@ -50,6 +50,7 @@
   - 2026-03-04：完成 M8 收口门禁验证 `M8-GATE-01~04` 并回填 `memory-bank/tests/m8-tests-real-service.md`：`M8-GATE-01` 执行 M7 真服务 E2E（`12 passed`）；`M8-GATE-02` seed 注入接口返回 `200`；`M8-GATE-03` 执行三端 WS 真服务用例（`1 passed`）；`M8-GATE-04` 执行 Playwright A/B/C 三上下文连续 2 轮稳定通过。
   - 2026-03-04：按人类指定测试 ID 拉红 `M8-RS-E2E-01~03`：新增 `frontend/tests/e2e/m8-rs-e2e-01-03.spec.ts` 并执行 `cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`，结果 `3 failed`；失败点分别为“入局手牌区未渲染”“`buckle_flow` 按钮未渲染”“扣后未进入 `REVEAL/PASS_REVEAL` 询问”。
   - 2026-03-04：后端完成 `RoomRegistry` 去 mock 并接入真实 `engine.core.XianqiGameEngine`，补齐“无合法动作时收敛 settlement + settlement 幂等缓存 + 默认 seed 可复现”；按 `memory-bank/tests/m4-tests-real-service.md`、`m5-tests-real-service.md`、`m6-tests-real-service.md` 全量回归并附加 M5 API 回归，结果全绿：M4（14+6+3）、M5（5+5+8+1+1）、M6（8+8+3+5）。
+  - 2026-03-04：后端完成 `GameSession` 瘦身：移除 `version/phase/current_seat/round_index/round_kind/last_combo/plays/private_hands_by_seat` 镜像字段，房间编排层改为从引擎 `public_state` 实时取 phase/current_seat；`broadcast_game_progress` settlement 判定改为调用 `RoomRegistry.get_game_phase()`；同步修正 `test_m5_api_01_05_settlement_red.py` 的引擎状态断言与 phase gate 前置。回归结果：`pytest backend/tests/api/games/test_m5_api_01_05_settlement_red.py -q` -> `5 passed`，`scripts/run-m4-m6-tests.sh` -> engine `17 passed` + backend `72 passed`（全绿）。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。
