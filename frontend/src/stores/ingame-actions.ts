@@ -150,6 +150,149 @@ function isSameCardCountMap(
   return true
 }
 
+type CardUiState = 'normal' | 'interactive' | 'selected'
+
+interface CardSelectionControllerState {
+  selectedCards: string[]
+  interactiveCards: string[]
+  cardStates: Record<string, CardUiState>
+  uiSelectionState: {
+    selectedCards: string[]
+    interactiveCards: string[]
+  }
+}
+
+export function createCardSelectionControllerForTest(input: Record<string, unknown>) {
+  const handCards = normalizeHandCards(input.handCards ?? input.hand_cards)
+  const requiredCount = normalizeRequiredCount(
+    input.requiredCount ?? input.required_count ?? readRequiredCountFromLegalActions(input),
+  )
+  const selectedCards: string[] = []
+  const handCardSet = new Set(handCards)
+
+  function toggleCard(cardId: string): void {
+    if (!handCardSet.has(cardId)) {
+      return
+    }
+
+    const selectedIndex = selectedCards.indexOf(cardId)
+    if (selectedIndex >= 0) {
+      selectedCards.splice(selectedIndex, 1)
+      return
+    }
+
+    if (selectedCards.length < requiredCount) {
+      selectedCards.push(cardId)
+      return
+    }
+
+    if (requiredCount === 1) {
+      selectedCards[0] = cardId
+    }
+  }
+
+  function getState(): CardSelectionControllerState {
+    const interactiveCards = computeInteractiveCards(handCards, selectedCards, requiredCount)
+    const interactiveSet = new Set(interactiveCards)
+    const selectedSet = new Set(selectedCards)
+    const cardStates: Record<string, CardUiState> = {}
+
+    for (const handCard of handCards) {
+      if (selectedSet.has(handCard)) {
+        cardStates[handCard] = 'selected'
+        continue
+      }
+
+      cardStates[handCard] = interactiveSet.has(handCard) ? 'interactive' : 'normal'
+    }
+
+    return {
+      selectedCards: [...selectedCards],
+      interactiveCards,
+      cardStates,
+      uiSelectionState: {
+        selectedCards: [...selectedCards],
+        interactiveCards: [...interactiveCards],
+      },
+    }
+  }
+
+  function getCardState(cardId: string): CardUiState {
+    return getState().cardStates[cardId] ?? 'normal'
+  }
+
+  return {
+    toggleCard,
+    clickCard: toggleCard,
+    getState,
+    getCardState,
+  }
+}
+
+function computeInteractiveCards(
+  handCards: string[],
+  selectedCards: string[],
+  requiredCount: number,
+): string[] {
+  if (selectedCards.length === 0) {
+    return [...handCards]
+  }
+
+  if (selectedCards.length >= requiredCount) {
+    return []
+  }
+
+  const selectedSet = new Set(selectedCards)
+  return handCards.filter((card) => !selectedSet.has(card))
+}
+
+function normalizeHandCards(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const uniqueCards: string[] = []
+  const seen = new Set<string>()
+  for (const item of value) {
+    if (typeof item !== 'string' || seen.has(item)) {
+      continue
+    }
+    uniqueCards.push(item)
+    seen.add(item)
+  }
+
+  return uniqueCards
+}
+
+function normalizeRequiredCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 1
+}
+
+function readRequiredCountFromLegalActions(input: Record<string, unknown>): unknown {
+  const legalActions = input.legalActions ?? input.legal_actions
+  if (!legalActions || typeof legalActions !== 'object') {
+    return undefined
+  }
+
+  const actions = (legalActions as { actions?: unknown }).actions
+  if (!Array.isArray(actions)) {
+    return undefined
+  }
+
+  for (const action of actions) {
+    if (!action || typeof action !== 'object') {
+      continue
+    }
+
+    const typedAction = action as { type?: unknown; required_count?: unknown }
+    if (typedAction.type === 'COVER') {
+      return typedAction.required_count
+    }
+  }
+
+  return undefined
+}
+
 const DEFAULT_SUBMIT_ERROR_MESSAGE = '动作提交失败，请稍后重试'
 
 export function createIngameActionControllerForTest(input: CreateIngameActionControllerForTestInput) {

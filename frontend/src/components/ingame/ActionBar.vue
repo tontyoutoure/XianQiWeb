@@ -11,6 +11,8 @@ interface LegalActionsLike {
   actions?: unknown
 }
 
+type ActionDisabledMapLike = Record<string, unknown> | null | undefined
+
 const VALID_ACTION_TYPES: readonly ActionType[] = [
   'BUCKLE',
   'PASS_BUCKLE',
@@ -27,6 +29,12 @@ const props = defineProps<{
   legal_actions?: LegalActionsLike | null
   actionTypes?: string[] | null
   availableActionTypes?: string[] | null
+  actionDisabledMap?: ActionDisabledMapLike
+  action_disabled_map?: ActionDisabledMapLike
+  actionButtonDisabledMap?: ActionDisabledMapLike
+  action_button_disabled_map?: ActionDisabledMapLike
+  submitDisabledMap?: ActionDisabledMapLike
+  submit_disabled_map?: ActionDisabledMapLike
 }>()
 
 const visibleActionTypes = computed<ActionType[]>(() => {
@@ -77,6 +85,30 @@ function dedupeActionTypes(actionTypes: readonly string[]): ActionType[] {
 function isActionType(value: string): value is ActionType {
   return (VALID_ACTION_TYPES as readonly string[]).includes(value)
 }
+
+function isActionDisabled(actionType: ActionType): boolean {
+  const disabledMaps: ActionDisabledMapLike[] = [
+    props.actionDisabledMap,
+    props.action_disabled_map,
+    props.actionButtonDisabledMap,
+    props.action_button_disabled_map,
+    props.submitDisabledMap,
+    props.submit_disabled_map,
+  ]
+
+  for (const disabledMap of disabledMaps) {
+    if (!disabledMap || typeof disabledMap !== 'object') {
+      continue
+    }
+
+    const disabled = (disabledMap as Record<string, unknown>)[actionType]
+    if (typeof disabled === 'boolean') {
+      return disabled
+    }
+  }
+
+  return false
+}
 </script>
 
 <template>
@@ -86,6 +118,7 @@ function isActionType(value: string): value is ActionType {
       :key="actionType"
       type="button"
       :data-testid="`action-btn-${actionType}`"
+      :disabled="isActionDisabled(actionType)"
     >
       {{ actionType }}
     </button>
