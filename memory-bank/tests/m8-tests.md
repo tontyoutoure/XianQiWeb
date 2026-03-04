@@ -142,10 +142,10 @@
 | M8-CT-13 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增“包含柱外牌”开关，仅影响本地展示集合（含手牌/回合外牌），不触发请求与状态同步事件。 |
 | M8-CT-14 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `RevealRelationModal`，支持打开/关闭与 close/update 事件。 |
 | M8-CT-15 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：失效掀扣关系项带 invalid 标记并具备置灰+中划线样式语义；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts` 通过。 |
-| M8-IT-06 | ⏳ 待执行 | 未开始 | - | - |
-| M8-CT-16 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-07 | ⏳ 待执行 | 未开始 | - | - |
-| M8-IT-08 | ⏳ 待执行 | 未开始 | - | - |
+| M8-IT-06 | ✅ Green通过 | Green完成 | 2026-03-04 | 先 Red 后 Green：新增 `IngameShell` 后，`SETTLEMENT` 事件或 `phase=settlement` 可自动拉起结算弹层。 |
+| M8-CT-16 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：新增 `SettlementModal`，可按玩家行展示 `delta/delta_enough/delta_reveal/delta_ceramic` 且与总和一致。 |
+| M8-IT-07 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：关闭结算弹层后显示“已进入准备阶段，请重新 ready 开新局”。 |
+| M8-IT-08 | ✅ Green通过 | Green完成 | 2026-03-04 | 同次验证通过：`playing -> waiting` 且无结算时清空对局区并显示“对局结束”；验证命令 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts tests/unit/m8-settlement-stage-9-red.test.ts` 通过。 |
 | M8-IT-09 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-10 | ⏳ 待执行 | 未开始 | - | - |
 | M8-IT-11 | ⏳ 待执行 | 未开始 | - | - |
