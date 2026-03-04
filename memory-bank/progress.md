@@ -9,7 +9,7 @@
 | M5 | 已完成 | 2026-03-02 | 结算与“结算后重置 ready -> 再次 ready 开新局”流程已收口。 |
 | M6 | 已完成 | 2026-03-02 | 增量能力（WS/重连/心跳/并发）与全量门禁通过（M1~M5 真实服务回归 `86 passed`）。 |
 | M7 | 已完成 | 2026-03-02 | 前端非对局范围已收口，`M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 全绿（`17 passed`）。 |
-| M8 | 进行中 | 2026-03-03 | 已进入 M8：对局操作区与结算展示前端实现及全链路回归。 |
+| M8 | 进行中 | 2026-03-04 | 对局与结算前端单测已全绿（39 passed），并完成 M8 收口门禁 `M8-GATE-01~04` 实测通过。 |
 
 ## 二级进度（当前 Milestone 内部，Milestone 完结时清零）
 - 当前 Milestone：`M8`
@@ -47,6 +47,8 @@
   - 2026-03-04：按 `tdd-subagent-batch-workflow` 完成新一轮第 3 波（`M8-CT-12~15`）Red->Green：扩展 `PillarOverlay` 支持按大小降序、对手垫牌数量化末尾展示与“包含柱外牌”本地开关；新增 `frontend/src/components/ingame/RevealRelationModal.vue` 支持开关弹层与失效关系样式语义；复测 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts` 通过（`32 passed`）。
   - 2026-03-04：按 `tdd-subagent-batch-workflow` 完成新一轮第 4 波（`M8-IT-06, M8-CT-16, M8-IT-07, M8-IT-08`）Red->Green：新增 `frontend/src/components/ingame/SettlementModal.vue` 与 `frontend/src/components/ingame/IngameShell.vue`，打通“结算事件自动弹层、分项展示、关闭后准备态提示、冷结束清空对局 UI”链路；复测 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts tests/unit/m8-settlement-stage-9-red.test.ts` 通过（`36 passed`）。
   - 2026-03-04：按 `tdd-subagent-batch-workflow` 收口 `M8-IT-09~11`（最后一波 3 用例）Red->Green：在 `frontend/src/stores/ingame-actions.ts` 新增 `createIngameReconnectControllerForTest` / `createIngameSessionRecoveryForTest`，落地“断连重连+拉态兜底、重连后选择态重建、4401 refresh 成功重连/失败回登录”测试语义；复测 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts tests/unit/m8-settlement-stage-9-red.test.ts tests/unit/m8-reconnect-stage-10-red.test.ts` 通过（`39 passed`），`memory-bank/tests/m8-tests.md` 已全部 Green。
+  - 2026-03-04：完成 M8 收口门禁验证 `M8-GATE-01~04` 并回填 `memory-bank/tests/m8-tests-real-service.md`：`M8-GATE-01` 执行 M7 真服务 E2E（`12 passed`）；`M8-GATE-02` seed 注入接口返回 `200`；`M8-GATE-03` 执行三端 WS 真服务用例（`1 passed`）；`M8-GATE-04` 执行 Playwright A/B/C 三上下文连续 2 轮稳定通过。
+  - 2026-03-04：按人类指定测试 ID 拉红 `M8-RS-E2E-01~03`：新增 `frontend/tests/e2e/m8-rs-e2e-01-03.spec.ts` 并执行 `cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`，结果 `3 failed`；失败点分别为“入局手牌区未渲染”“`buckle_flow` 按钮未渲染”“扣后未进入 `REVEAL/PASS_REVEAL` 询问”。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。

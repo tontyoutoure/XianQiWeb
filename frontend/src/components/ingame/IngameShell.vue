@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
+import ActionBar from './ActionBar.vue'
 import SettlementModal from './SettlementModal.vue'
 
 interface GenericRecord {
@@ -27,6 +28,15 @@ const props = defineProps<{
   settlement?: unknown
   settlementResult?: unknown
   settlement_result?: unknown
+  legalActions?: unknown
+  legal_actions?: unknown
+  actionDisabledMap?: unknown
+  action_disabled_map?: unknown
+  submitDisabledMap?: unknown
+  submit_disabled_map?: unknown
+}>()
+const emit = defineEmits<{
+  (event: 'action-click', actionType: string): void
 }>()
 
 const settlementVisible = ref(false)
@@ -68,6 +78,19 @@ const resolvedSettlement = computed<unknown>(() => {
   }
 
   return null
+})
+
+const resolvedLegalActions = computed<GenericRecord | null>(() => {
+  return asRecord(props.legalActions) ?? asRecord(props.legal_actions)
+})
+
+const resolvedActionDisabledMap = computed<GenericRecord | null>(() => {
+  return (
+    asRecord(props.actionDisabledMap) ??
+    asRecord(props.action_disabled_map) ??
+    asRecord(props.submitDisabledMap) ??
+    asRecord(props.submit_disabled_map)
+  )
 })
 
 const hasSettlementData = computed<boolean>(() => {
@@ -186,6 +209,10 @@ function handleSettlementModelUpdate(value: boolean): void {
   }
 }
 
+function handleActionClick(actionType: string): void {
+  emit('action-click', actionType)
+}
+
 function firstDefined(values: unknown[]): unknown {
   for (const value of values) {
     if (value !== undefined) {
@@ -247,7 +274,18 @@ function readCardList(value: unknown): string[] {
     <p v-if="showColdEndNotice">对局结束</p>
 
     <section v-if="showIngameArea" data-testid="ingame-area">
-      <div data-testid="ingame-action-bar">actions</div>
+      <div data-testid="ingame-action-bar">
+        <ActionBar
+          :phase="resolvedPhase"
+          :legal-actions="resolvedLegalActions"
+          :legal_actions="resolvedLegalActions"
+          :action-disabled-map="resolvedActionDisabledMap"
+          :actionDisabledMap="resolvedActionDisabledMap"
+          :submit-disabled-map="resolvedActionDisabledMap"
+          :submitDisabledMap="resolvedActionDisabledMap"
+          @action-click="handleActionClick"
+        />
+      </div>
       <div data-testid="turn-plays-panel">{{ ingamePlaySummary }}</div>
       <div data-testid="ingame-hand-cards">{{ ingameHandSummary }}</div>
     </section>

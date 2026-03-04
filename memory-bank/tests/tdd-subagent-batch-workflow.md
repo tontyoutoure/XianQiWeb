@@ -48,9 +48,7 @@
   - 未改动实现代码（越权改动视为异常）。
 
 ### Step C：Red 提交（由编排者执行）
-- 提交内容：测试改动 + 测试文档 Red 记录。
-- 提交信息模板：
-  - `test(red): <milestone/module> <batch_ids>`
+- 这一步中不进行git提交，仅将变更放入暂存区，方便追踪实现 Agent 是否未经允许修改
 
 ### Step D：Green 阶段（实现 Agent）
 - 实现 Agent 基于 Red 失败进行最小实现修复并执行测试。
