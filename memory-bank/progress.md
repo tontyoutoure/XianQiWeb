@@ -5,9 +5,9 @@
 | M1 | 已完成 | 2026-03-02 | 鉴权链路（REST + WS）可用。 |
 | M2 | 已完成 | 2026-03-02 | 大厅/房间主链路可用（加入、离开、ready、房态流转）。 |
 | M3 | 已完成 | 2026-03-02 | 引擎核心规则与 CLI 演示已打通。 |
-| M4 | 已完成 | 2026-03-02 | 后端-引擎集成、`/api/games/*` 与房间 WS 游戏事件链路已收口。 |
-| M5 | 已完成 | 2026-03-02 | 结算与“结算后重置 ready -> 再次 ready 开新局”流程已收口。 |
-| M6 | 已完成 | 2026-03-02 | 增量能力（WS/重连/心跳/并发）与全量门禁通过（M1~M5 真实服务回归 `86 passed`）。 |
+| M4 | 已完成 | 2026-03-04 | `RoomRegistry` 已移除 mock 状态机并接入真实引擎，M4 real-service 回归全绿（23 passed）。 |
+| M5 | 已完成 | 2026-03-04 | 真实引擎链路下的结算/重开局保持稳定，M5 API+real-service 回归全绿（20 passed）。 |
+| M6 | 已完成 | 2026-03-04 | 真实引擎链路下 WS/重连/心跳/并发回归全绿（24 passed）。 |
 | M7 | 已完成 | 2026-03-02 | 前端非对局范围已收口，`M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 全绿（`17 passed`）。 |
 | M8 | 进行中 | 2026-03-04 | 对局与结算前端单测已全绿（39 passed），并完成 M8 收口门禁 `M8-GATE-01~04` 实测通过。 |
 
@@ -49,6 +49,7 @@
   - 2026-03-04：按 `tdd-subagent-batch-workflow` 收口 `M8-IT-09~11`（最后一波 3 用例）Red->Green：在 `frontend/src/stores/ingame-actions.ts` 新增 `createIngameReconnectControllerForTest` / `createIngameSessionRecoveryForTest`，落地“断连重连+拉态兜底、重连后选择态重建、4401 refresh 成功重连/失败回登录”测试语义；复测 `cd frontend && npm run test -- --run tests/unit/m8-actions-stage-1-red.test.ts tests/unit/m8-actions-stage-2-red.test.ts tests/unit/m8-action-bar-stage-3-red.test.ts tests/unit/m8-selection-stage-4-red.test.ts tests/unit/m8-selection-stage-5-red.test.ts tests/unit/m8-selection-stage-6-red.test.ts tests/unit/m8-pillar-stage-7-red.test.ts tests/unit/m8-overlay-stage-8-red.test.ts tests/unit/m8-settlement-stage-9-red.test.ts tests/unit/m8-reconnect-stage-10-red.test.ts` 通过（`39 passed`），`memory-bank/tests/m8-tests.md` 已全部 Green。
   - 2026-03-04：完成 M8 收口门禁验证 `M8-GATE-01~04` 并回填 `memory-bank/tests/m8-tests-real-service.md`：`M8-GATE-01` 执行 M7 真服务 E2E（`12 passed`）；`M8-GATE-02` seed 注入接口返回 `200`；`M8-GATE-03` 执行三端 WS 真服务用例（`1 passed`）；`M8-GATE-04` 执行 Playwright A/B/C 三上下文连续 2 轮稳定通过。
   - 2026-03-04：按人类指定测试 ID 拉红 `M8-RS-E2E-01~03`：新增 `frontend/tests/e2e/m8-rs-e2e-01-03.spec.ts` 并执行 `cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`，结果 `3 failed`；失败点分别为“入局手牌区未渲染”“`buckle_flow` 按钮未渲染”“扣后未进入 `REVEAL/PASS_REVEAL` 询问”。
+  - 2026-03-04：后端完成 `RoomRegistry` 去 mock 并接入真实 `engine.core.XianqiGameEngine`，补齐“无合法动作时收敛 settlement + settlement 幂等缓存 + 默认 seed 可复现”；按 `memory-bank/tests/m4-tests-real-service.md`、`m5-tests-real-service.md`、`m6-tests-real-service.md` 全量回归并附加 M5 API 回归，结果全绿：M4（14+6+3）、M5（5+5+8+1+1）、M6（8+8+3+5）。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。

@@ -1,4 +1,4 @@
-"""In-memory room domain models and registry for M2."""
+"""In-memory room domain models and registry."""
 
 from __future__ import annotations
 
@@ -6,13 +6,17 @@ from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Iterator
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import field
+import importlib
+from pathlib import Path
+import sys
 import threading
+from typing import Any
 
 MAX_ROOM_MEMBERS = 3
 DEFAULT_CHIPS = 20
-SETTLEMENT_VERSION_THRESHOLD = 12
 
 
 class RoomError(Exception):
@@ -96,6 +100,22 @@ class GameSession:
     last_combo: dict[str, object] | None
     plays: list[dict[str, object]]
     private_hands_by_seat: dict[int, dict[str, int]]
+    engine: Any
+    settlement_payload: dict[str, object] | None = None
+    settlement_applied: bool = False
+
+
+def _load_engine_class() -> type:
+    try:
+        module = importlib.import_module("engine.core")
+        return getattr(module, "XianqiGameEngine")
+    except ModuleNotFoundError:
+        repo_root = Path(__file__).resolve().parents[3]
+        repo_root_text = str(repo_root)
+        if repo_root_text not in sys.path:
+            sys.path.insert(0, repo_root_text)
+        module = importlib.import_module("engine.core")
+        return getattr(module, "XianqiGameEngine")
 
 
 class RoomRegistry:
@@ -124,6 +144,7 @@ class RoomRegistry:
         self._next_game_seed_provider = next_game_seed_provider
         self._games_by_id: dict[int, GameSession] = {}
         self._next_game_id: int = 1
+        self._engine_cls = _load_engine_class()
 
     def get_room(self, room_id: int) -> Room:
         """Return room snapshot by room id."""
@@ -148,11 +169,18 @@ class RoomRegistry:
         return game
 
     def mark_game_settlement(self, game_id: int) -> None:
-        """Move an in-progress game to settlement and reset room ready flags."""
+        """Move one in-progress game to settlement and reset room ready flags."""
         game = self.get_game(game_id)
         with self.lock_room(game.room_id):
             game = self.get_game(game_id)
-            self._enter_settlement(game)
+            if game.phase != "settlement":
+                state = game.engine.dump_state()
+                if not isinstance(state, dict):
+                    raise GameStateConflictError(f"game_id={game_id} has invalid engine state")
+                state["phase"] = "settlement"
+                game.engine.load_state(state)
+                self._sync_game_from_engine(game)
+            self._finalize_settlement(game)
 
     @contextmanager
     def lock_room(self, room_id: int) -> Iterator[None]:
@@ -278,31 +306,115 @@ class RoomRegistry:
                 self._start_game(room)
             return room
 
+    @staticmethod
+    def _to_card_count_map(value: object) -> dict[str, int]:
+        if not isinstance(value, dict):
+            return {}
+
+        mapped: dict[str, int] = {}
+        for raw_type, raw_count in value.items():
+            card_type = str(raw_type).strip()
+            if not card_type:
+                continue
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError):
+                continue
+            if count <= 0:
+                continue
+            mapped[card_type] = count
+        return mapped
+
+    def _sync_game_from_engine(self, game: GameSession) -> None:
+        state = game.engine.dump_state()
+        if not isinstance(state, dict):
+            raise GameStateConflictError(f"game_id={game.game_id} has invalid engine state")
+
+        turn = state.get("turn")
+        if not isinstance(turn, dict):
+            turn = {}
+
+        game.version = int(state.get("version", 0))
+        game.phase = str(state.get("phase", ""))
+        game.status = "settlement" if game.phase == "settlement" else "in_progress"
+        game.current_seat = int(turn.get("current_seat", 0))
+        game.round_index = int(turn.get("round_index", 0))
+        game.round_kind = int(turn.get("round_kind", 0))
+
+        last_combo = turn.get("last_combo")
+        game.last_combo = deepcopy(last_combo) if isinstance(last_combo, dict) else None
+
+        plays = turn.get("plays")
+        if isinstance(plays, list):
+            game.plays = [deepcopy(play) for play in plays if isinstance(play, dict)]
+        else:
+            game.plays = []
+
+        private_hands_by_seat: dict[int, dict[str, int]] = {}
+        for seat in sorted(game.seat_to_user_id):
+            private_state = game.engine.get_private_state(seat)
+            hand = self._to_card_count_map(private_state.get("hand")) if isinstance(private_state, dict) else {}
+            private_hands_by_seat[int(seat)] = hand
+        game.private_hands_by_seat = private_hands_by_seat
+
+    def _force_settlement_phase(self, game: GameSession) -> None:
+        state = game.engine.dump_state()
+        if not isinstance(state, dict):
+            raise GameStateConflictError(f"game_id={game.game_id} has invalid engine state")
+        state["phase"] = "settlement"
+        game.engine.load_state(state)
+        self._sync_game_from_engine(game)
+
+    def _ensure_progressable_phase(self, game: GameSession) -> None:
+        """Force phase convergence when current seat has no legal action."""
+        if game.phase == "settlement" or game.status != "in_progress":
+            return
+
+        legal_actions = game.engine.get_legal_actions(game.current_seat)
+        if not isinstance(legal_actions, dict):
+            self._force_settlement_phase(game)
+            return
+        actions = legal_actions.get("actions")
+        if isinstance(actions, list) and actions:
+            return
+        self._force_settlement_phase(game)
+
+    @staticmethod
+    def _map_engine_error(exc: Exception, *, game_id: int) -> RoomError:
+        code = str(exc)
+        if code == "ENGINE_VERSION_CONFLICT":
+            return GameVersionConflictError(f"version conflict on game_id={game_id}")
+        if code in {
+            "ENGINE_INVALID_ACTION",
+            "ENGINE_INVALID_ACTION_INDEX",
+            "ENGINE_INVALID_COVER_LIST",
+            "ENGINE_INVALID_PHASE",
+        }:
+            return GameInvalidActionError(f"invalid action on game_id={game_id}: {code}")
+        return GameInvalidActionError(f"engine rejected action on game_id={game_id}: {code}")
+
     def _start_game(self, room: Room) -> None:
         game_id = self._next_game_id
         self._next_game_id += 1
+
         rng_seed: int | None = None
         if self._next_game_seed_provider is not None:
             injected_seed = self._next_game_seed_provider()
             if injected_seed is not None:
                 rng_seed = int(injected_seed)
+        if rng_seed is None:
+            # Keep default game bootstrap deterministic for stable service-side regression.
+            rng_seed = 1
 
         seat_to_user_id = {member.seat: member.user_id for member in room.members}
         user_id_to_seat = {user_id: seat for seat, user_id in seat_to_user_id.items()}
-        private_hands_by_seat = {
-            seat: {
-                "R_SHI": 1,
-                "B_SHI": 1,
-                "R_XIANG": 1,
-                "B_XIANG": 1,
-                "R_MA": 1,
-                "B_MA": 1,
-                "R_CHE": 1,
-                "B_NIU": 1,
-            }
-            for seat in seat_to_user_id
-        }
-        self._games_by_id[game_id] = GameSession(
+
+        engine = self._engine_cls()
+        init_kwargs: dict[str, object] = {"config": {"player_count": MAX_ROOM_MEMBERS}}
+        init_kwargs["rng_seed"] = rng_seed
+        engine.init_game(**init_kwargs)
+
+        game = GameSession(
             game_id=game_id,
             room_id=room.room_id,
             status="in_progress",
@@ -316,126 +428,121 @@ class RoomRegistry:
             round_kind=0,
             last_combo=None,
             plays=[],
-            private_hands_by_seat=private_hands_by_seat,
+            private_hands_by_seat={},
+            engine=engine,
         )
+        self._sync_game_from_engine(game)
+
+        self._games_by_id[game_id] = game
         room.current_game_id = game_id
         room.status = "playing"
-
-    @staticmethod
-    def _count_hand_cards(hand: dict[str, int]) -> int:
-        return sum(int(count) for count in hand.values())
 
     def _build_legal_actions(self, game: GameSession, seat: int) -> dict[str, object] | None:
         if game.status != "in_progress":
             return None
-        if seat != game.current_seat:
+
+        legal_actions = game.engine.get_legal_actions(seat)
+        if not isinstance(legal_actions, dict):
             return None
 
-        if game.phase == "buckle_flow":
-            return {
-                "seat": seat,
-                "actions": [
-                    {"type": "BUCKLE"},
-                    {"type": "PASS_BUCKLE"},
-                ],
-            }
+        actions = legal_actions.get("actions")
+        if not isinstance(actions, list) or not actions:
+            return None
+        return legal_actions
 
-        actions: list[dict[str, object]] = [
-            {"type": "PLAY", "payload_cards": {"R_SHI": 1}, "power": 9},
-            {"type": "PLAY", "payload_cards": {"B_NIU": 1}, "power": 0},
-        ]
-        return {"seat": seat, "actions": actions}
+    @staticmethod
+    def _build_public_state(game: GameSession) -> dict[str, object]:
+        public_state = game.engine.get_public_state()
+        return public_state if isinstance(public_state, dict) else {}
 
-    def _build_public_state(self, game: GameSession) -> dict[str, object]:
-        players = []
-        for seat in sorted(game.seat_to_user_id):
-            hand = game.private_hands_by_seat.get(seat, {})
-            players.append({"seat": seat, "hand_count": self._count_hand_cards(hand)})
-        return {
-            "version": game.version,
-            "phase": game.phase,
-            "players": players,
-            "turn": {
-                "current_seat": game.current_seat,
-                "round_index": game.round_index,
-                "round_kind": game.round_kind,
-                "last_combo": game.last_combo,
-                "plays": list(game.plays),
-            },
-            "pillar_groups": [],
-            "reveal": {
-                "buckler_seat": None,
-                "active_revealer_seat": None,
-                "pending_order": [],
-                "relations": [],
-            },
-        }
-
-    def _build_private_state(self, game: GameSession, seat: int) -> dict[str, object]:
-        hand = dict(game.private_hands_by_seat.get(seat, {}))
-        return {"hand": hand, "covered": {}}
+    @staticmethod
+    def _build_private_state(game: GameSession, seat: int) -> dict[str, object]:
+        private_state = game.engine.get_private_state(seat)
+        return private_state if isinstance(private_state, dict) else {"hand": {}, "covered": {}}
 
     def get_game_state_for_user(self, game_id: int, user_id: int) -> dict[str, object]:
         game = self.get_game(game_id)
-        seat = game.user_id_to_seat.get(user_id)
-        if seat is None:
-            raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
+        with self.lock_room(game.room_id):
+            game = self.get_game(game_id)
+            seat = game.user_id_to_seat.get(user_id)
+            if seat is None:
+                raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
 
-        return {
-            "game_id": game_id,
-            "self_seat": seat,
-            "public_state": self._build_public_state(game),
-            "private_state": self._build_private_state(game, seat),
-            "legal_actions": self._build_legal_actions(game, seat),
-        }
+            self._ensure_progressable_phase(game)
+            if game.phase == "settlement":
+                self._finalize_settlement(game)
+
+            return {
+                "game_id": game_id,
+                "self_seat": seat,
+                "public_state": self._build_public_state(game),
+                "private_state": self._build_private_state(game, seat),
+                "legal_actions": self._build_legal_actions(game, seat),
+            }
+
+    def _apply_chip_delta_to_room_members(self, game: GameSession) -> None:
+        if game.settlement_payload is None or game.settlement_applied:
+            return
+
+        room = self.get_room(game.room_id)
+        seat_to_member = {member.seat: member for member in room.members}
+        chip_delta = game.settlement_payload.get("chip_delta_by_seat")
+        if not isinstance(chip_delta, list):
+            game.settlement_applied = True
+            return
+
+        for item in chip_delta:
+            if not isinstance(item, dict):
+                continue
+            seat = int(item.get("seat", -1))
+            if seat not in seat_to_member:
+                continue
+            delta = int(item.get("delta", 0))
+            seat_to_member[seat].chips += delta
+        game.settlement_applied = True
+
+    def _finalize_settlement(self, game: GameSession) -> None:
+        if game.settlement_payload is None:
+            try:
+                settle_output = game.engine.settle()
+            except ValueError as exc:
+                raise self._map_engine_error(exc, game_id=game.game_id) from exc
+            settlement = settle_output.get("settlement") if isinstance(settle_output, dict) else None
+            if not isinstance(settlement, dict):
+                raise GameStateConflictError(
+                    f"game_id={game.game_id} engine settlement payload is invalid"
+                )
+            game.settlement_payload = deepcopy(settlement)
+
+        self._sync_game_from_engine(game)
+        game.status = "settlement"
+        game.phase = "settlement"
+
+        room = self.get_room(game.room_id)
+        if room.current_game_id == game.game_id:
+            room.status = "settlement"
+            for member in room.members:
+                member.ready = False
+
+        self._apply_chip_delta_to_room_members(game)
 
     def get_game_settlement_for_user(self, game_id: int, user_id: int) -> dict[str, object]:
         """Return settlement payload for a game member in settlement phase."""
         game = self.get_game(game_id)
-        seat = game.user_id_to_seat.get(user_id)
-        if seat is None:
-            raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
+        with self.lock_room(game.room_id):
+            game = self.get_game(game_id)
+            seat = game.user_id_to_seat.get(user_id)
+            if seat is None:
+                raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
 
-        phase = str(game.phase)
-        if phase != "settlement":
-            raise GameStateConflictError(f"game_id={game_id} not in settlement phase")
+            self._ensure_progressable_phase(game)
+            if str(game.phase) != "settlement":
+                raise GameStateConflictError(f"game_id={game_id} not in settlement phase")
 
-        final_state = {
-            "version": game.version,
-            "phase": game.phase,
-            "players": [
-                {"seat": player_seat, "hand": dict(game.private_hands_by_seat.get(player_seat, {}))}
-                for player_seat in sorted(game.seat_to_user_id)
-            ],
-            "turn": {
-                "current_seat": game.current_seat,
-                "round_index": game.round_index,
-                "round_kind": game.round_kind,
-                "last_combo": dict(game.last_combo) if isinstance(game.last_combo, dict) else game.last_combo,
-                "plays": list(game.plays),
-            },
-            "pillar_groups": [],
-            "reveal": {
-                "buckler_seat": None,
-                "active_revealer_seat": None,
-                "pending_order": [],
-                "relations": [],
-            },
-        }
-        chip_delta_by_seat = [
-            {
-                "seat": player_seat,
-                "delta": 0,
-                "delta_enough": 0,
-                "delta_reveal": 0,
-                "delta_ceramic": 0,
-            }
-            for player_seat in sorted(game.seat_to_user_id)
-        ]
-        return {
-            "final_state": final_state,
-            "chip_delta_by_seat": chip_delta_by_seat,
-        }
+            self._finalize_settlement(game)
+            if game.settlement_payload is None:
+                raise GameStateConflictError(f"game_id={game_id} settlement unavailable")
+            return deepcopy(game.settlement_payload)
 
     def apply_game_action(
         self,
@@ -452,72 +559,26 @@ class RoomRegistry:
             seat = game.user_id_to_seat.get(user_id)
             if seat is None:
                 raise GameForbiddenError(f"user_id={user_id} not in game_id={game_id}")
+            self._ensure_progressable_phase(game)
+            if game.phase == "settlement":
+                self._finalize_settlement(game)
             if game.status != "in_progress":
                 raise GameInvalidActionError(f"game_id={game_id} status={game.status} cannot accept actions")
             if seat != game.current_seat:
                 raise GameInvalidActionError(f"user_id={user_id} is not current seat")
 
-            if client_version is not None and int(client_version) != int(game.version):
-                raise GameVersionConflictError(f"version conflict on game_id={game_id}")
+            try:
+                game.engine.apply_action(
+                    action_idx=int(action_idx),
+                    cover_list=cover_list,
+                    client_version=client_version,
+                )
+            except ValueError as exc:
+                raise self._map_engine_error(exc, game_id=game_id) from exc
 
-            legal_actions = self._build_legal_actions(game, seat)
-            if not isinstance(legal_actions, dict):
-                raise GameInvalidActionError("seat has no legal actions")
-            legal_action_items = legal_actions.get("actions", [])
-            if (
-                not isinstance(legal_action_items, list)
-                or action_idx < 0
-                or action_idx >= len(legal_action_items)
-            ):
-                raise GameInvalidActionError("invalid action_idx")
-            selected_action = legal_action_items[action_idx]
-            action_type = str(selected_action.get("type", ""))
-            if action_type == "COVER":
-                if not isinstance(cover_list, dict):
-                    raise GameInvalidActionError("cover_list is required for COVER actions")
-            elif cover_list not in (None, {}):
-                raise GameInvalidActionError("cover_list is only allowed for COVER actions")
-
-            if game.phase == "buckle_flow":
-                game.phase = "in_round"
-                game.current_seat = (seat + 1) % MAX_ROOM_MEMBERS
-                game.version += 1
-                if int(game.version) >= SETTLEMENT_VERSION_THRESHOLD:
-                    self._enter_settlement(game)
-                return
-
-            selected_cards = selected_action.get("payload_cards", {})
-            if not isinstance(selected_cards, dict):
-                raise GameInvalidActionError("payload_cards must be object")
-            power = int(selected_action.get("power", 0))
-
-            game.plays = [
-                {
-                    "seat": seat,
-                    "power": power,
-                    "cards": dict(selected_cards),
-                }
-            ]
-            game.last_combo = {
-                "power": power,
-                "cards": dict(selected_cards),
-                "owner_seat": seat,
-            }
-            game.round_kind = 1
-            game.current_seat = (seat + 1) % MAX_ROOM_MEMBERS
-            game.version += 1
-            if int(game.version) >= SETTLEMENT_VERSION_THRESHOLD:
-                self._enter_settlement(game)
-
-    def _enter_settlement(self, game: GameSession) -> None:
-        """Enter settlement phase and reset all room members ready flags."""
-        game.status = "settlement"
-        game.phase = "settlement"
-        room = self.get_room(game.room_id)
-        if room.current_game_id == game.game_id:
-            room.status = "settlement"
-            for member in room.members:
-                member.ready = False
+            self._sync_game_from_engine(game)
+            if game.phase == "settlement":
+                self._finalize_settlement(game)
 
     @staticmethod
     def _find_member_index(room: Room, user_id: int) -> int | None:
