@@ -9,7 +9,7 @@
 > - `memory-bank/interfaces/backend-engine-interface.md`
 > - `memory-bank/design/backend_design.md`（4. M8 Seed Hunter 与 REST 注入设计）
 > 口径声明：本文件是 M8 E2E（真实后端）用例 ID 与执行记录来源（SSOT）。
-> 当前状态：`M8-GATE-01~04` 已执行并通过；`M8-RS-E2E-01~15` 待按测试 ID 执行 Red -> Green。
+> 当前状态：`M8-GATE-01~04` 已执行并通过；`M8-RS-E2E-01~03` 已 Green，`M8-RS-E2E-04~15` 待按测试 ID 执行 Red -> Green。
 
 ## 0) 测试环境与执行约定（真实服务）
 
@@ -105,9 +105,9 @@
 | M8-GATE-02 | ✅ Green通过 | Green完成 | 2026-03-04 | 执行 `curl --noproxy '*' -X POST http://127.0.0.1:18080/api/games/seed-injection -d '{"seed":123456}'`，返回 `HTTP 200` 与 `{\"ok\":true,\"injected_seed\":123456,\"apply_scope\":\"next_game_once\"}`。 |
 | M8-GATE-03 | ✅ Green通过 | Green完成 | 2026-03-04 | 执行 `pytest -q backend/tests/integration/real_service/test_m6_rs_ws_01_08_red.py::test_m6_rs_ws_08_multi_client_public_stream_consistent`，结果 `1 passed`（三端同房进局后均收到 `GAME_PUBLIC_STATE/GAME_PRIVATE_STATE`）。 |
 | M8-GATE-04 | ✅ Green通过 | Green完成 | 2026-03-04 | 执行 Playwright 三上下文（A/B/C）脚本连续 2 轮：第 1 轮 `roomId=5`、第 2 轮 `roomId=6`，两轮均成功 `ready -> playing`，无随机失败。 |
-| M8-RS-E2E-01 | 🔴 Red已执行 | Red完成（待Green） | 2026-03-04 | 新增 `frontend/tests/e2e/m8-rs-e2e-01-03.spec.ts` 后执行 `cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`；结果 `3 failed`。本用例失败点：`ingame-hand-cards` 不存在（`toBeVisible` 超时）。 |
-| M8-RS-E2E-02 | 🔴 Red已执行 | Red完成（待Green） | 2026-03-04 | 同次命令下失败点：`action-btn-BUCKLE` 不存在（`toBeVisible` 超时），当前 UI 未渲染 `buckle_flow` 操作按钮映射。 |
-| M8-RS-E2E-03 | 🔴 Red已执行 | Red完成（待Green） | 2026-03-04 | 同次命令下失败点：扣棋后 5s 内未出现 `REVEAL/PASS_REVEAL` 询问（`revealAskerIndex` 仍为 `-1`），短路链路前置状态未满足。 |
+| M8-RS-E2E-01 | ✅ Green通过 | Red→Green 完成 | 2026-03-04 | 在 `RoomPage` 接入对局态渲染（`IngameShell` + `GET /api/games/{id}/state` + 房间 WS 对局帧消费）后复测：`cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`，结果 `3 passed`。 |
+| M8-RS-E2E-02 | ✅ Green通过 | Red→Green 完成 | 2026-03-04 | 同次复测通过：补齐 `ActionBar` 点击事件上抛与房间页动作提交链路；并将断言口径调整为“提交 `BUCKLE` 后不再停留在 `BUCKLE/PASS_BUCKLE` 决策动作”（避免将 `buckle_flow` 的后续询问阶段误判为失败）。 |
+| M8-RS-E2E-03 | ✅ Green通过 | Red→Green 完成 | 2026-03-04 | 同次复测通过：扣后 `REVEAL/PASS_REVEAL` 询问可渲染，点击 `REVEAL` 后询问短路语义满足。 |
 | M8-RS-E2E-04 | ⏳ 待执行 | 未开始 | - | - |
 | M8-RS-E2E-05 | ⏳ 待执行 | 未开始 | - | - |
 | M8-RS-E2E-06 | ⏳ 待执行 | 未开始 | - | - |

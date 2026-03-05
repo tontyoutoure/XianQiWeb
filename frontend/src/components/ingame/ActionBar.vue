@@ -36,6 +36,9 @@ const props = defineProps<{
   submitDisabledMap?: ActionDisabledMapLike
   submit_disabled_map?: ActionDisabledMapLike
 }>()
+const emit = defineEmits<{
+  (event: 'action-click', actionType: ActionType): void
+}>()
 
 const visibleActionTypes = computed<ActionType[]>(() => {
   const fromCamel = readActionTypesFromLegalActions(props.legalActions)
@@ -109,6 +112,13 @@ function isActionDisabled(actionType: ActionType): boolean {
 
   return false
 }
+
+function handleActionClick(actionType: ActionType): void {
+  if (isActionDisabled(actionType)) {
+    return
+  }
+  emit('action-click', actionType)
+}
 </script>
 
 <template>
@@ -119,6 +129,7 @@ function isActionDisabled(actionType: ActionType): boolean {
       type="button"
       :data-testid="`action-btn-${actionType}`"
       :disabled="isActionDisabled(actionType)"
+      @click="handleActionClick(actionType)"
     >
       {{ actionType }}
     </button>

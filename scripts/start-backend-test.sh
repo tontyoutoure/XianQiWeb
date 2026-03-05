@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-HOST="${XQWEB_APP_HOST:-127.0.0.1}"
+HOST="${XQWEB_APP_HOST:-0.0.0.0}"
 PORT="${XQWEB_APP_PORT:-18080}"
 export XQWEB_APP_ENV="${XQWEB_APP_ENV:-test}"
 export XQWEB_JWT_SECRET="${XQWEB_JWT_SECRET:-xqweb-test-secret-change-this-key-32-bytes-minimum}"

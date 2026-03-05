@@ -274,7 +274,7 @@ function readCardList(value: unknown): string[] {
     <p v-if="showColdEndNotice">对局结束</p>
 
     <section v-if="showIngameArea" data-testid="ingame-area">
-      <div data-testid="ingame-action-bar">
+      <div data-testid="ingame-action-bar" style="min-height: 1.5rem">
         <ActionBar
           :phase="resolvedPhase"
           :legal-actions="resolvedLegalActions"

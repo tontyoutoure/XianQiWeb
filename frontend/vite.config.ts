@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_BASE_URL || 'http://127.0.0.1:18080'
+  const apiTarget = env.VITE_API_BASE_URL || 'http://192.168.110.73:18080'
   const wsTarget = env.VITE_WS_BASE_URL || apiTarget.replace(/^http/, 'ws')
 
   return {

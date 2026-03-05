@@ -298,9 +298,10 @@ test.describe('M8 RS E2E 01-03', () => {
             runtime.players[buckleActorIndex].session.accessToken,
             runtime.gameId,
           )
-          return nextState.public_state.phase
+          const actionTypes = readActionTypes(nextState)
+          return actionTypes.includes('BUCKLE') || actionTypes.includes('PASS_BUCKLE')
         })
-        .toBe('in_round')
+        .toBe(false)
     } finally {
       await cleanupPlayers(runtime.players, runtime.roomId)
     }

@@ -6,6 +6,18 @@ interface RoomWsFrame {
   payload?: Record<string, unknown>
 }
 
+export interface RoomGamePublicPayload {
+  game_id: number
+  public_state: Record<string, unknown>
+}
+
+export interface RoomGamePrivatePayload {
+  game_id: number
+  self_seat: number
+  private_state: Record<string, unknown>
+  legal_actions: Record<string, unknown> | null
+}
+
 interface CreateRoomChannelOptions {
   roomId: number
   accessToken: string
@@ -14,6 +26,9 @@ interface CreateRoomChannelOptions {
   onOpen?: () => void
   onClose?: () => void
   onRoomUpdate?: (room: RoomDetail) => void
+  onGamePublicState?: (payload: RoomGamePublicPayload) => void
+  onGamePrivateState?: (payload: RoomGamePrivatePayload) => void
+  onSettlement?: (payload: Record<string, unknown>) => void
 }
 
 export interface RoomChannel {
@@ -127,6 +142,29 @@ function handleRoomMessage(raw: unknown, socket: WebSocket | null, options: Crea
   }
 
   if (frame.type !== 'ROOM_UPDATE') {
+    if (frame.type === 'GAME_PUBLIC_STATE') {
+      const payload = frame.payload
+      if (payload && typeof payload === 'object') {
+        options.onGamePublicState?.(payload as RoomGamePublicPayload)
+      }
+      return
+    }
+
+    if (frame.type === 'GAME_PRIVATE_STATE') {
+      const payload = frame.payload
+      if (payload && typeof payload === 'object') {
+        options.onGamePrivateState?.(payload as RoomGamePrivatePayload)
+      }
+      return
+    }
+
+    if (frame.type === 'SETTLEMENT') {
+      const payload = frame.payload
+      if (payload && typeof payload === 'object') {
+        options.onSettlement?.(payload)
+      }
+      return
+    }
     return
   }
 

@@ -9,7 +9,7 @@
 | M5 | 已完成 | 2026-03-04 | 真实引擎链路下的结算/重开局保持稳定，M5 API+real-service 回归全绿（20 passed）。 |
 | M6 | 已完成 | 2026-03-04 | 真实引擎链路下 WS/重连/心跳/并发回归全绿（24 passed）。 |
 | M7 | 已完成 | 2026-03-02 | 前端非对局范围已收口，`M7-GATE-01~03` 与 `M7-RS-E2E-01~12` 全绿（`17 passed`）。 |
-| M8 | 进行中 | 2026-03-04 | 对局与结算前端单测已全绿（39 passed），并完成 M8 收口门禁 `M8-GATE-01~04` 实测通过。 |
+| M8 | 进行中 | 2026-03-04 | 对局与结算前端单测已全绿（39 passed），M8 收口门禁 `M8-GATE-01~04` 通过，且 `M8-RS-E2E-01~03` 已拉绿（3 passed）。 |
 
 ## 二级进度（当前 Milestone 内部，Milestone 完结时清零）
 - 当前 Milestone：`M8`
@@ -51,6 +51,8 @@
   - 2026-03-04：按人类指定测试 ID 拉红 `M8-RS-E2E-01~03`：新增 `frontend/tests/e2e/m8-rs-e2e-01-03.spec.ts` 并执行 `cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`，结果 `3 failed`；失败点分别为“入局手牌区未渲染”“`buckle_flow` 按钮未渲染”“扣后未进入 `REVEAL/PASS_REVEAL` 询问”。
   - 2026-03-04：后端完成 `RoomRegistry` 去 mock 并接入真实 `engine.core.XianqiGameEngine`，补齐“无合法动作时收敛 settlement + settlement 幂等缓存 + 默认 seed 可复现”；按 `memory-bank/tests/m4-tests-real-service.md`、`m5-tests-real-service.md`、`m6-tests-real-service.md` 全量回归并附加 M5 API 回归，结果全绿：M4（14+6+3）、M5（5+5+8+1+1）、M6（8+8+3+5）。
   - 2026-03-04：后端完成 `GameSession` 瘦身：移除 `version/phase/current_seat/round_index/round_kind/last_combo/plays/private_hands_by_seat` 镜像字段，房间编排层改为从引擎 `public_state` 实时取 phase/current_seat；`broadcast_game_progress` settlement 判定改为调用 `RoomRegistry.get_game_phase()`；同步修正 `test_m5_api_01_05_settlement_red.py` 的引擎状态断言与 phase gate 前置。回归结果：`pytest backend/tests/api/games/test_m5_api_01_05_settlement_red.py -q` -> `5 passed`，`scripts/run-m4-m6-tests.sh` -> engine `17 passed` + backend `72 passed`（全绿）。
+  - 2026-03-04：按人类要求拉绿 `M8-RS-E2E-01~03`：前端补齐房间页对局壳接入（`IngameShell` + `games-api` + 房间 WS 对局帧消费 + 动作提交），`ActionBar` 增加点击事件上抛；并修正 `M8-RS-E2E-02` 断言口径为“`BUCKLE` 提交后退出 `BUCKLE/PASS_BUCKLE` 决策动作”。复测命令 `cd frontend && VITE_API_BASE_URL=http://127.0.0.1:18080 VITE_WS_BASE_URL=ws://127.0.0.1:18080 npm run test:e2e -- --project=chromium --workers=1 tests/e2e/m8-rs-e2e-01-03.spec.ts`，结果 `3 passed`。
+  - 2026-03-04：按人类反馈新增并拉红 M7 推送回归用例 `M7-RS-E2E-13~14`（`frontend/tests/e2e/m7-rs-e2e-13-14.spec.ts`）：在短 token 过期环境（`XQWEB_ACCESS_TOKEN_EXPIRE_SECONDS=5`）下，大厅房态推送断言失败（期望 `playing` 实际 `waiting`），房间他人 ready 推送断言失败（期望 `ready 1/2` 实际 `ready 0/2`）；执行记录已回填 `memory-bank/tests/m7-tests-real-service.md`。
 
 ## 维护规则（执行口径）
 - 一级进度：每个 Milestone 永远只保留一条，推进时只更新该 Milestone 对应行。
